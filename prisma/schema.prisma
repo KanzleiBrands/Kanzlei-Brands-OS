@@ -64,7 +64,7 @@ model User {
   activationTokenExpiresAt  DateTime?
 
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   pipelineAccess PipelineAccess[]
   activities     Activity[]
@@ -110,7 +110,7 @@ model Pipeline {
   active Boolean      @default(true)
 
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   stages          Stage[]
   contacts        Contact[]
@@ -238,7 +238,7 @@ model WebhookEndpoint {
   active Boolean       @default(true)
 
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   pipelineId     String
   pipeline       Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
 
@@ -427,7 +427,7 @@ model OfferInterest {
   offerId String
   offer   Offer  @relation(fields: [offerId], references: [id], onDelete: Cascade)
   userId  String
-  user    User   @relation(fields: [userId], references: [id])
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   note    String?
 
   createdAt DateTime @default(now())
@@ -446,7 +446,7 @@ model AuditLog {
   entityId   String
 
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String?
   user           User?        @relation(fields: [userId], references: [id])
 

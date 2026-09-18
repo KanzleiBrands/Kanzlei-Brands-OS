@@ -66,7 +66,7 @@ export default async function SettingsPage({
       )}
 
       {tab === "team" && canManageTeam && (
-        <TeamSectionData organizationId={session.user.organizationId} />
+        <TeamSectionData organizationId={session.user.organizationId} currentUserId={session.user.id} />
       )}
 
       {tab === "mailbox" && canUseMailbox && (
@@ -76,7 +76,7 @@ export default async function SettingsPage({
   );
 }
 
-async function TeamSectionData({ organizationId }: { organizationId: string }) {
+async function TeamSectionData({ organizationId, currentUserId }: { organizationId: string; currentUserId: string }) {
   const [organization, baseUrl] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: organizationId },
@@ -95,6 +95,7 @@ async function TeamSectionData({ organizationId }: { organizationId: string }) {
       users={organization.users}
       pipelines={organization.pipelines}
       baseUrl={baseUrl}
+      currentUserId={currentUserId}
     />
   );
 }

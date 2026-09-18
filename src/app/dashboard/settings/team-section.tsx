@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { NewUserForm } from "../clients/[orgId]/new-user-form";
 import { PipelineAccessToggle } from "../clients/[orgId]/pipeline-access-toggle";
 import { ActivationStatus } from "@/components/activation-status";
+import { DeleteUserButton } from "../clients/[orgId]/delete-user-button";
 
 type Pipeline = { id: string; name: string };
 type PipelineAccess = { pipelineId: string };
@@ -23,11 +24,13 @@ export function TeamSection({
   users,
   pipelines,
   baseUrl,
+  currentUserId,
 }: {
   organizationId: string;
   users: TeamUser[];
   pipelines: Pipeline[];
   baseUrl: string;
+  currentUserId: string;
 }) {
   return (
     <Card>
@@ -45,6 +48,7 @@ export function TeamSection({
               <TableHead>Rolle</TableHead>
               <TableHead>Zugang</TableHead>
               <TableHead>Kampagnen-Zugriff</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,6 +87,11 @@ export function TeamSection({
                       </div>
                     ) : (
                       <span className="text-sm text-muted-foreground">Voller Zugriff (Admin)</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.role === "CLIENT_STAFF" && user.id !== currentUserId && (
+                      <DeleteUserButton userId={user.id} userName={user.name} />
                     )}
                   </TableCell>
                 </TableRow>

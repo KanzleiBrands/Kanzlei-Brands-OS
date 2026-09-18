@@ -15,6 +15,8 @@ const ACTION_LABELS: Record<string, string> = {
   "contact.deleted": "Kontakt gelöscht",
   "contacts.csv_imported": "Kontakte per CSV importiert",
   "user.activated": "Zugang aktiviert",
+  "user.deleted": "Mitarbeiter gelöscht",
+  "organization.deleted": "Kunde gelöscht",
   "contact.stage_changed": "Kontakt-Status geändert",
   "contact.viewed": "Kontakt angesehen",
   "offer_interest.created": "Interesse an Angebot bekundet",

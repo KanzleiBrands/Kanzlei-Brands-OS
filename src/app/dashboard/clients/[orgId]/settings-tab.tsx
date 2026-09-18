@@ -5,6 +5,8 @@ import { NewUserForm } from "./new-user-form";
 import { PipelineAccessToggle } from "./pipeline-access-toggle";
 import { CourseAssignmentToggle } from "./course-assignment-toggle";
 import { ActivationStatus } from "@/components/activation-status";
+import { DeleteUserButton } from "./delete-user-button";
+import { DeleteOrganizationDialog } from "./delete-organization-dialog";
 
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
@@ -65,6 +67,7 @@ export function SettingsTab({
                 <TableHead>Rolle</TableHead>
                 <TableHead>Zugang</TableHead>
                 <TableHead>Kampagnen-Zugriff</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -105,6 +108,9 @@ export function SettingsTab({
                         <span className="text-sm text-muted-foreground">Voller Zugriff (Admin)</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <DeleteUserButton userId={user.id} userName={user.name} />
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -133,6 +139,20 @@ export function SettingsTab({
               </label>
             ))}
             {courses.length === 0 && <span className="text-sm text-muted-foreground">Noch keine Kurse angelegt.</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle>Gefahrenzone</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Löscht diesen Kunden inklusive aller Kampagnen, Kontakte, Mitarbeiter und Lead-Quellen unwiderruflich.
+          </p>
+          <div>
+            <DeleteOrganizationDialog organizationId={organizationId} organizationName={organizationName} />
           </div>
         </CardContent>
       </Card>

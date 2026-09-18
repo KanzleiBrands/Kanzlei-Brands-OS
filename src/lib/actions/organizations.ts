@@ -144,6 +144,65 @@ export async function regenerateActivationLink(userId: string): Promise<CreateUs
   return { status: "success", link };
 }
 
+export async function deleteUser(formData: FormData) {
+  const session = await requireSession();
+  const userId = String(formData.get("userId") ?? "");
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return;
+  try {
+    assertOrganizationAccess(session, target.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return;
+    throw error;
+  }
+  if (session.user.role === "CLIENT_STAFF") return;
+  if (target.id === session.user.id) return;
+  // CLIENT_ADMIN may only remove staff in their own org, never other admins.
+  if (session.user.role === "CLIENT_ADMIN" && target.role !== "CLIENT_STAFF") return;
+
+  await prisma.user.delete({ where: { id: userId } });
+
+  await logAudit({
+    action: "user.deleted",
+    entityType: "User",
+    entityId: userId,
+    organizationId: target.organizationId,
+    userId: session.user.id,
+    metadata: { name: target.name, email: target.email },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/settings");
+}
+
+export async function deleteOrganization(formData: FormData) {
+  const session = await requireSession();
+  const organizationId = String(formData.get("organizationId") ?? "");
+
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return;
+
+  await prisma.organization.delete({ where: { id: organizationId } });
+
+  // The client's own audit trail is deleted along with it, so record this
+  // under the agency's org instead.
+  await logAudit({
+    action: "organization.deleted",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+    metadata: { name: organization.name },
+  });
+
+  revalidatePath("/dashboard/clients");
+
+  redirect("/dashboard/clients");
+}
+
 export async function createPipeline(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
 
