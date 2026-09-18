@@ -32,19 +32,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
           <h1 className="text-2xl font-semibold">{course.title}</h1>
           {course.description && <p className="text-muted-foreground">{course.description}</p>}
         </div>
-        {isAgency && <PublishToggle courseId={course.id} published={course.published} />}
+        <div className="flex items-center gap-2">
+          {isAgency && <PublishToggle courseId={course.id} published={course.published} />}
+          {isAgency && <AddLessonForm courseId={course.id} />}
+        </div>
       </div>
-
-      {isAgency && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Lektion hinzufügen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AddLessonForm courseId={course.id} />
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex flex-col gap-4">
         {course.lessons.map((lesson, index) => (

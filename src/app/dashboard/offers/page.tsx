@@ -18,19 +18,13 @@ export default async function OffersPage() {
 
   return (
     <div className="p-8">
-      <h1 className="mb-2 text-2xl font-semibold">Angebote</h1>
+      <div className="mb-2 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Angebote</h1>
+        <NewOfferForm />
+      </div>
       <p className="mb-6 text-muted-foreground">
         Diese Angebote werden identisch bei allen Kunden im Bereich &bdquo;Angebote&ldquo; angezeigt.
       </p>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Neues Angebot anlegen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <NewOfferForm />
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

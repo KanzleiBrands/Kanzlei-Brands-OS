@@ -1,10 +1,18 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { PlusIcon } from "lucide-react";
 import { createContact } from "@/lib/actions/contacts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export function NewContactForm({
   pipelineId,
@@ -13,31 +21,56 @@ export function NewContactForm({
   pipelineId: string;
   stages: { id: string; name: string }[];
 }) {
+  const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createContact, undefined);
+  const formRef = useRef<HTMLFormElement>(null);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && !error) {
+      formRef.current?.reset();
+      setOpen(false);
+    }
+    wasPending.current = isPending;
+  }, [isPending, error]);
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
-      <input type="hidden" name="pipelineId" value={pipelineId} />
-      <Input name="firstName" placeholder="Vorname" className="w-32" />
-      <Input name="lastName" placeholder="Nachname" className="w-32" />
-      <Input name="email" type="email" placeholder="E-Mail" className="w-48" />
-      <Input name="phone" placeholder="Telefon" className="w-36" />
-      <Select name="stageId" defaultValue={stages[0]?.id}>
-        <SelectTrigger className="w-40">
-          <SelectValue>{(value: string) => stages.find((s) => s.id === value)?.name ?? "Stage"}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {stages.map((stage) => (
-            <SelectItem key={stage.id} value={stage.id}>
-              {stage.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button type="submit" disabled={isPending} size="sm">
-        {isPending ? "Wird angelegt..." : "Kontakt anlegen"}
-      </Button>
-      {error && <p className="w-full text-sm text-destructive">{error}</p>}
-    </form>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" size="sm" />}>
+        <PlusIcon className="size-4" />
+        Kontakt anlegen
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Kontakt anlegen</DialogTitle>
+        </DialogHeader>
+
+        <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+          <input type="hidden" name="pipelineId" value={pipelineId} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input name="firstName" placeholder="Vorname" />
+            <Input name="lastName" placeholder="Nachname" />
+          </div>
+          <Input name="email" type="email" placeholder="E-Mail" />
+          <Input name="phone" placeholder="Telefon" />
+          <Select name="stageId" defaultValue={stages[0]?.id}>
+            <SelectTrigger>
+              <SelectValue>{(value: string) => stages.find((s) => s.id === value)?.name ?? "Status"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {stages.map((stage) => (
+                <SelectItem key={stage.id} value={stage.id}>
+                  {stage.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Wird angelegt..." : "Kontakt anlegen"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

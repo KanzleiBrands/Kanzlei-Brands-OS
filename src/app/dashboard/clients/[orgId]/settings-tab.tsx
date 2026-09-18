@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { NewUserForm } from "./new-user-form";
@@ -55,10 +55,11 @@ export function SettingsTab({
       <Card>
         <CardHeader>
           <CardTitle>Mitarbeiter</CardTitle>
+          <CardAction>
+            <NewUserForm organizationId={organizationId} canAssignAdmin />
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <NewUserForm organizationId={organizationId} canAssignAdmin />
-
           <Table>
             <TableHeader>
               <TableRow>

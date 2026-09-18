@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { NewUserForm } from "../clients/[orgId]/new-user-form";
@@ -36,10 +36,11 @@ export function TeamSection({
     <Card>
       <CardHeader>
         <CardTitle>Team</CardTitle>
+        <CardAction>
+          <NewUserForm organizationId={organizationId} canAssignAdmin={false} />
+        </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <NewUserForm organizationId={organizationId} canAssignAdmin={false} />
-
         <Table>
           <TableHeader>
             <TableRow>

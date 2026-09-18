@@ -35,7 +35,8 @@ export function PipelineView({ pipelineId, stages }: { pipelineId: string; stage
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-end">
+      <div className="mb-4 flex items-center justify-between">
+        <NewContactForm pipelineId={pipelineId} stages={stages} />
         <div className="inline-flex flex-shrink-0 rounded-lg border p-0.5">
           <Button
             type="button"
@@ -49,9 +50,6 @@ export function PipelineView({ pipelineId, stages }: { pipelineId: string; stage
             Liste
           </Button>
         </div>
-      </div>
-      <div className="mb-4">
-        <NewContactForm pipelineId={pipelineId} stages={stages} />
       </div>
 
       {view === "board" ? (

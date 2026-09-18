@@ -32,16 +32,10 @@ export default async function ClientsPage() {
 
   return (
     <div className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Kunden</h1>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Neuen Kunden anlegen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <NewClientForm />
-        </CardContent>
-      </Card>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Kunden</h1>
+        <NewClientForm />
+      </div>
 
       <Card>
         <CardHeader>

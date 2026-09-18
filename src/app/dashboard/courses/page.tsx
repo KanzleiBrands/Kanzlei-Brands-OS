@@ -23,15 +23,10 @@ export default async function CoursesPage() {
 
     return (
       <div className="p-8">
-        <h1 className="mb-6 text-2xl font-semibold">Schulung – Kursverwaltung</h1>
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Neuen Kurs anlegen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NewCourseForm />
-          </CardContent>
-        </Card>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Schulung – Kursverwaltung</h1>
+          <NewCourseForm />
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
