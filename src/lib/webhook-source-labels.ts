@@ -1,10 +1,15 @@
+// Every key that has ever been offered/stored stays here so existing
+// endpoints and contacts (created before the source list was trimmed down)
+// keep rendering correctly. Only WEBHOOK_FORM_SOURCES/DIRECT_INTEGRATION_SOURCES
+// below control what can be newly selected in the "Quelle hinzufügen" dialog.
 export const WEBHOOK_SOURCE_LABELS: Record<string, string> = {
-  GENERIC: "Generisch",
+  GENERIC: "Generisch / Sonstige",
   ZAPIER: "Zapier",
+  GOOGLE_ADS: "Google Ads",
   ONEPAGE: "OnePage",
   PERSPEKTIVE: "Perspektive",
   META_LEAD_ADS: "Meta Ads",
-  LINKEDIN_LEAD_GEN: "LinkedIn",
+  LINKEDIN_LEAD_GEN: "LinkedIn Ads",
   ELEMENTOR: "Elementor",
   TYPEFORM: "TypeForm",
   FUNNELCOCKPIT: "FunnelCockpit",
@@ -17,6 +22,7 @@ export const WEBHOOK_SOURCE_LABELS: Record<string, string> = {
 export const WEBHOOK_SOURCE_DESCRIPTIONS: Record<string, string> = {
   GENERIC: "Für individuelle Formulare & alles mit JSON-Webhook",
   ZAPIER: "Verbindet tausende Tools über Zapier",
+  GOOGLE_ADS: "Google Ads Lead-Formulare",
   ONEPAGE: "Bewerbungen aus OnePage",
   PERSPEKTIVE: "Bewerbungen aus Perspektive",
   META_LEAD_ADS: "Facebook & Instagram Lead-Formulare",
@@ -33,6 +39,7 @@ export const WEBHOOK_SOURCE_DESCRIPTIONS: Record<string, string> = {
 export const WEBHOOK_SOURCE_COLORS: Record<string, string> = {
   GENERIC: "#6B7280",
   ZAPIER: "#F97316",
+  GOOGLE_ADS: "#4285F4",
   ONEPAGE: "#8B5CF6",
   PERSPEKTIVE: "#14B8A6",
   META_LEAD_ADS: "#1877F2",
@@ -47,21 +54,9 @@ export const WEBHOOK_SOURCE_COLORS: Record<string, string> = {
 };
 
 // "Formular/Webhook"-style sources: shown as copy-the-URL tiles.
-export const WEBHOOK_FORM_SOURCES = [
-  "GENERIC",
-  "ZAPIER",
-  "ONEPAGE",
-  "PERSPEKTIVE",
-  "ELEMENTOR",
-  "TYPEFORM",
-  "FUNNELCOCKPIT",
-  "HEYFLOW",
-  "MEETOVO",
-  "AIDAFORM",
-  "THRIVE",
-] as const;
+export const WEBHOOK_FORM_SOURCES = ["GENERIC"] as const;
 
 // Native/ads-platform sources, grouped separately as "Direktintegrationen".
-export const DIRECT_INTEGRATION_SOURCES = ["META_LEAD_ADS", "LINKEDIN_LEAD_GEN"] as const;
+export const DIRECT_INTEGRATION_SOURCES = ["GOOGLE_ADS", "META_LEAD_ADS", "LINKEDIN_LEAD_GEN"] as const;
 
 export const WEBHOOK_SOURCES = [...WEBHOOK_FORM_SOURCES, ...DIRECT_INTEGRATION_SOURCES] as const;

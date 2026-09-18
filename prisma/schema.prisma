@@ -142,6 +142,7 @@ enum ContactSource {
   MANUAL
   WEBHOOK_GENERIC
   ZAPIER
+  GOOGLE_ADS
   META_LEAD_ADS
   LINKEDIN_LEAD_GEN
   ONEPAGE
@@ -214,6 +215,7 @@ model Activity {
 enum WebhookSource {
   GENERIC
   ZAPIER
+  GOOGLE_ADS
   ONEPAGE
   PERSPEKTIVE
   META_LEAD_ADS

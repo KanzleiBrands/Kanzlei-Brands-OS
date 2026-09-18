@@ -6,6 +6,7 @@ import { extractContactFields } from "@/lib/webhook-ingest";
 const CONTACT_SOURCE_BY_WEBHOOK_SOURCE: Record<WebhookSource, ContactSource> = {
   GENERIC: "WEBHOOK_GENERIC",
   ZAPIER: "ZAPIER",
+  GOOGLE_ADS: "GOOGLE_ADS",
   ONEPAGE: "ONEPAGE",
   PERSPEKTIVE: "PERSPEKTIVE",
   META_LEAD_ADS: "META_LEAD_ADS",

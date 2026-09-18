@@ -1,0 +1,2 @@
+ALTER TYPE "ContactSource" ADD VALUE 'GOOGLE_ADS';
+ALTER TYPE "WebhookSource" ADD VALUE 'GOOGLE_ADS';
