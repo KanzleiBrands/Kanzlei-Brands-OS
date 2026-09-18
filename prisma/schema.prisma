@@ -1,0 +1,428 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+enum OrganizationType {
+  AGENCY // Kanzlei Brands itself (top of the tree, manages every client)
+  CLIENT // A customer of Kanzlei Brands, has its own leads/applicants/staff
+}
+
+model Organization {
+  id     String           @id @default(cuid())
+  type   OrganizationType
+  name   String
+  slug   String           @unique
+
+  // Branding (client orgs can override the agency defaults)
+  logoUrl      String?
+  primaryColor String?
+
+  parentId String?
+  parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children Organization[] @relation("OrgHierarchy")
+
+  users           User[]
+  pipelines       Pipeline[]
+  courses         Course[]
+  offers          Offer[]
+  webhookEndpoints WebhookEndpoint[]
+  auditLogs       AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+}
+
+// ---------------------------------------------------------------------------
+// Users & access
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  AGENCY_ADMIN  // Kanzlei Brands staff, full control over every client org
+  CLIENT_ADMIN  // Owner-level user at a client org, manages that org's staff/pipelines
+  CLIENT_STAFF  // Employee at a client org, access limited to assigned pipelines
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  pipelineAccess PipelineAccess[]
+  activities     Activity[]
+  emailAccounts  EmailAccount[]
+  enrollments    Enrollment[]
+  auditLogs      AuditLog[]
+  offerInterests OfferInterest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// Grants a CLIENT_STAFF user access to one pipeline (campaign).
+// CLIENT_ADMIN / AGENCY_ADMIN implicitly see every pipeline in their org tree,
+// so this table only needs rows for staff-level scoping.
+model PipelineAccess {
+  id         String   @id @default(cuid())
+  userId     String
+  pipelineId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, pipelineId])
+  @@index([pipelineId])
+}
+
+// ---------------------------------------------------------------------------
+// Pipelines / CRM & ATS core
+// ---------------------------------------------------------------------------
+
+enum PipelineKind {
+  LEADS      // Sales / CRM pipeline
+  APPLICANTS // Recruiting / ATS pipeline
+}
+
+model Pipeline {
+  id   String       @id @default(cuid())
+  name String
+  kind PipelineKind
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  stages          Stage[]
+  contacts        Contact[]
+  access          PipelineAccess[]
+  webhookEndpoints WebhookEndpoint[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model Stage {
+  id         String   @id @default(cuid())
+  name       String
+  order      Int
+  color      String?
+
+  pipelineId String
+  pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  contacts   Contact[]
+
+  createdAt DateTime @default(now())
+
+  @@index([pipelineId])
+}
+
+enum ContactSource {
+  MANUAL
+  WEBHOOK_GENERIC
+  ZAPIER
+  META_LEAD_ADS
+  LINKEDIN_LEAD_GEN
+  ONEPAGE
+  PERSPEKTIVE
+}
+
+// A Lead or an Applicant, depending on the pipeline's kind.
+model Contact {
+  id        String  @id @default(cuid())
+  firstName String?
+  lastName  String?
+  email     String?
+  phone     String?
+  source    ContactSource @default(MANUAL)
+  // Raw/extra fields that don't map to a fixed column (form-specific answers, CV links, UTM data, ...)
+  customFields Json?
+
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id])
+  stageId    String
+  stage      Stage    @relation(fields: [stageId], references: [id])
+
+  activities    Activity[]
+  emailMessages EmailMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pipelineId])
+  @@index([stageId])
+}
+
+enum ActivityType {
+  NOTE
+  STAGE_CHANGE
+  EMAIL_IN
+  EMAIL_OUT
+  CALL
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  type      ActivityType
+  content   String?
+  metadata  Json?
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+}
+
+// ---------------------------------------------------------------------------
+// Lead ingestion
+// ---------------------------------------------------------------------------
+
+enum WebhookSource {
+  GENERIC
+  ZAPIER
+  ONEPAGE
+  PERSPEKTIVE
+  META_LEAD_ADS
+  LINKEDIN_LEAD_GEN
+}
+
+// One inbound endpoint per pipeline+source; `token` is the unguessable
+// path segment used in the public URL, field mapping controls how the
+// arbitrary payload lands on Contact/customFields.
+model WebhookEndpoint {
+  id     String        @id @default(cuid())
+  token  String        @unique @default(cuid())
+  source WebhookSource
+  fieldMapping Json? // e.g. { "firstName": "data.first_name", "email": "data.email" }
+  active Boolean       @default(true)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  pipelineId     String
+  pipeline       Pipeline     @relation(fields: [pipelineId], references: [id])
+
+  deliveries WebhookDelivery[]
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([pipelineId])
+}
+
+// Raw log of every inbound webhook call, kept for debugging failed mappings.
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  endpointId  String
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  rawPayload  Json
+  contactId   String?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([endpointId])
+}
+
+// ---------------------------------------------------------------------------
+// Email integration (per client staff member, not per lead)
+// ---------------------------------------------------------------------------
+
+enum EmailProvider {
+  GOOGLE
+  MICROSOFT
+}
+
+model EmailAccount {
+  id       String        @id @default(cuid())
+  provider EmailProvider
+  email    String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tokens are encrypted at rest by the application layer before being stored here.
+  accessTokenEnc  String
+  refreshTokenEnc String
+  expiresAt       DateTime
+
+  messages EmailMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, email])
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model EmailMessage {
+  id        String         @id @default(cuid())
+  direction EmailDirection
+  subject   String?
+  bodyText  String?
+  bodyHtml  String?
+  fromAddress String
+  toAddress   String
+  providerMessageId String
+
+  emailAccountId String
+  emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  sentAt    DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([emailAccountId, providerMessageId])
+  @@index([contactId])
+}
+
+// ---------------------------------------------------------------------------
+// Schulung / LMS
+// ---------------------------------------------------------------------------
+
+enum CourseCategory {
+  ONBOARDING // Required platform onboarding for new customers/staff
+  TRAINING   // General knowledge-transfer courses
+}
+
+model Course {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  category    CourseCategory
+  published   Boolean        @default(false)
+
+  // Courses are authored by the agency; null organizationId = visible to all clients.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  lessons     Lesson[]
+  enrollments Enrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lesson {
+  id       String @id @default(cuid())
+  title    String
+  order    Int
+  videoUrl String? // Vercel Blob URL (or external provider URL later)
+  durationSeconds Int?
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  progress LessonProgress[]
+
+  @@index([courseId])
+}
+
+model Enrollment {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  progress  LessonProgress[]
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
+
+model LessonProgress {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lessonId     String
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt  DateTime?
+
+  @@unique([enrollmentId, lessonId])
+}
+
+// ---------------------------------------------------------------------------
+// Kunden-Hub: Angebote / Upsells
+// ---------------------------------------------------------------------------
+
+// An upsell/offer shown in a specific client's Kunden-Hub.
+model Offer {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  ctaLabel    String  @default("Interesse")
+  active      Boolean @default(true)
+
+  // The CLIENT organization this offer is presented to.
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  interests OfferInterest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// Recorded whenever a client user clicks the CTA on an offer, so the agency
+// gets notified instead of a payment flow running automatically.
+model OfferInterest {
+  id      String @id @default(cuid())
+  offerId String
+  offer   Offer  @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  note    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([offerId])
+}
+
+// ---------------------------------------------------------------------------
+// DSGVO / compliance
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // e.g. "contact.viewed", "contact.updated", "user.invited"
+  entityType String
+  entityId   String
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+}
