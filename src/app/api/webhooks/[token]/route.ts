@@ -10,6 +10,13 @@ const CONTACT_SOURCE_BY_WEBHOOK_SOURCE: Record<WebhookSource, ContactSource> = {
   PERSPEKTIVE: "PERSPEKTIVE",
   META_LEAD_ADS: "META_LEAD_ADS",
   LINKEDIN_LEAD_GEN: "LINKEDIN_LEAD_GEN",
+  ELEMENTOR: "ELEMENTOR",
+  TYPEFORM: "TYPEFORM",
+  FUNNELCOCKPIT: "FUNNELCOCKPIT",
+  HEYFLOW: "HEYFLOW",
+  MEETOVO: "MEETOVO",
+  AIDAFORM: "AIDAFORM",
+  THRIVE: "THRIVE",
 };
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {

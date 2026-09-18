@@ -12,6 +12,7 @@ import { StageSelectForm } from "./stage-select-form";
 import { SendEmailForm } from "./send-email-form";
 import { ActivityTimeline } from "./activity-timeline";
 import { StarRating } from "@/components/star-rating";
+import { DeleteContactButton } from "@/components/delete-contact-button";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = await params;
@@ -93,6 +94,12 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           )}
           <Badge variant="secondary">{contact.source}</Badge>
           <StageSelectForm contactId={contact.id} currentStageId={contact.stageId} stages={contact.pipeline.stages} />
+          <DeleteContactButton
+            contactId={contact.id}
+            contactName={fullName}
+            redirectTo={`/dashboard/pipelines/${contact.pipelineId}`}
+            variant="full"
+          />
         </div>
       </div>
 

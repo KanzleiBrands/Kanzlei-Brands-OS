@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { StarRating } from "@/components/star-rating";
+import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Contact = {
@@ -29,7 +30,7 @@ type Row = Contact & { stageName: string; stageColor: string | null };
 
 type SortKey = "name" | "eingang";
 
-export function ContactsTable({ stages }: { stages: Stage[] }) {
+export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; duplicateEmails: Set<string> }) {
   const [sortKey, setSortKey] = useState<SortKey>("eingang");
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -78,6 +79,7 @@ export function ContactsTable({ stages }: { stages: Stage[] }) {
           <TableHead className="cursor-pointer" onClick={() => toggleSort("eingang")}>
             Eingang {sortKey === "eingang" ? (sortAsc ? "↑" : "↓") : ""}
           </TableHead>
+          <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -94,7 +96,17 @@ export function ContactsTable({ stages }: { stages: Stage[] }) {
                     {initialsOf(contact.firstName, contact.lastName)}
                   </span>
                   <span>
-                    <span className="block font-medium">{fullName}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="font-medium">{fullName}</span>
+                      {contact.email && duplicateEmails.has(contact.email.trim().toLowerCase()) && (
+                        <span
+                          className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500"
+                          title="Mögliches Duplikat: E-Mail existiert mehrfach in dieser Pipeline"
+                        >
+                          ⚠ Duplikat
+                        </span>
+                      )}
+                    </span>
                     <span className="block text-xs text-muted-foreground">{contact.email}</span>
                   </span>
                 </Link>
@@ -118,12 +130,15 @@ export function ContactsTable({ stages }: { stages: Stage[] }) {
               <TableCell className="text-sm text-muted-foreground">
                 {contact.createdAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
               </TableCell>
+              <TableCell>
+                <DeleteContactButton contactId={contact.id} contactName={fullName} />
+              </TableCell>
             </TableRow>
           );
         })}
         {sorted.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground">
+            <TableCell colSpan={7} className="text-center text-muted-foreground">
               Noch keine Kontakte.
             </TableCell>
           </TableRow>

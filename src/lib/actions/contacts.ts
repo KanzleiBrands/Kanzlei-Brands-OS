@@ -7,6 +7,27 @@ import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
 import { extractContactFields } from "@/lib/webhook-ingest";
 
+export async function deleteContact(formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return;
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.contact.delete({ where: { id: contactId } });
+
+  await logAudit({
+    action: "contact.deleted",
+    entityType: "Contact",
+    entityId: contactId,
+    organizationId: (await prisma.pipeline.findUnique({ where: { id: contact.pipelineId } }))!.organizationId,
+    userId: session.user.id,
+  });
+
+  revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+}
+
 export async function moveContactStage(formData: FormData) {
   const session = await requireSession();
   const contactId = String(formData.get("contactId") ?? "");

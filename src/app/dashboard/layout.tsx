@@ -4,7 +4,7 @@ import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
-import { ClientSwitcher } from "./client-switcher";
+import { SidebarNav } from "./sidebar-nav";
 
 function navFor(role: string) {
   const common = [
@@ -39,7 +39,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     session.user.role === "AGENCY_ADMIN"
       ? await prisma.organization.findMany({
           where: { type: "CLIENT", parentId: session.user.organizationId },
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            pipelines: { select: { id: true, name: true, active: true }, orderBy: { createdAt: "asc" } },
+          },
           orderBy: { name: "asc" },
         })
       : [];
@@ -50,21 +54,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="mb-6 px-2">
           <Image src="/brand/logo-on-dark.svg" alt="Kanzlei Brands" width={140} height={56} priority />
         </div>
-        {session.user.role === "AGENCY_ADMIN" && (
-          <div className="mb-4 px-2">
-            <ClientSwitcher currentLabel="Alle Kunden" clients={clients} />
-          </div>
-        )}
-        <nav className="flex flex-col gap-1">
-          <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">
-            Übersicht
-          </Link>
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className="rounded px-3 py-2 text-sm hover:bg-muted">
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <SidebarNav role={session.user.role} links={links} clients={clients} />
         <div className="mt-auto flex flex-col gap-2 px-2 pt-4">
           <Link href="/dashboard/account" className="rounded px-1 py-1 text-sm hover:underline">
             Mein Account

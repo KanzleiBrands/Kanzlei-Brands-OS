@@ -48,6 +48,21 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim().length > 0));
 }
 
+function escapeCsvField(value: string): string {
+  if (/[",;\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function objectsToCsv(rows: Record<string, string>[], headers: string[]): string {
+  const lines = [headers.map(escapeCsvField).join(",")];
+  for (const row of rows) {
+    lines.push(headers.map((header) => escapeCsvField(row[header] ?? "")).join(","));
+  }
+  return lines.join("\r\n");
+}
+
 export function csvToObjects(text: string): Record<string, string>[] {
   const rows = parseCsv(text);
   if (rows.length === 0) return [];

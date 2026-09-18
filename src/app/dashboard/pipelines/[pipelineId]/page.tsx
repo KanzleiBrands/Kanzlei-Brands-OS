@@ -5,6 +5,7 @@ import { getBaseUrl } from "@/lib/base-url";
 import { PipelineView } from "./pipeline-view";
 import { WebhookPanel } from "./webhook-panel";
 import { PipelineActiveToggle } from "./pipeline-active-toggle";
+import { DeletePipelineButton } from "./delete-pipeline-button";
 
 export default async function PipelineDetailPage({ params }: { params: Promise<{ pipelineId: string }> }) {
   const { pipelineId } = await params;
@@ -52,7 +53,10 @@ export default async function PipelineDetailPage({ params }: { params: Promise<{
           <p className="text-muted-foreground">{pipeline.kind === "LEADS" ? "Leads (CRM)" : "Bewerber (ATS)"}</p>
         </div>
         {session.user.role !== "CLIENT_STAFF" && (
-          <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
+          <div className="flex items-center gap-2">
+            <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
+            <DeletePipelineButton pipelineId={pipeline.id} pipelineName={pipeline.name} />
+          </div>
         )}
       </div>
       <div className="mb-6">

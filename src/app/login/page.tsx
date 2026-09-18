@@ -2,7 +2,13 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ activated?: string }>;
+}) {
+  const { activated } = await searchParams;
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/20 blur-3xl" />
@@ -20,6 +26,11 @@ export default function LoginPage() {
           <CardDescription className="text-base">Melde dich mit deinem Zugang an.</CardDescription>
         </CardHeader>
         <CardContent className="pb-8 pt-2">
+          {activated && (
+            <p className="mb-4 rounded-md bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-500">
+              Konto aktiviert. Du kannst dich jetzt anmelden.
+            </p>
+          )}
           <LoginForm />
         </CardContent>
       </Card>

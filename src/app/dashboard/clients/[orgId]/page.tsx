@@ -13,6 +13,8 @@ import { NewPipelineForm } from "./new-pipeline-form";
 import { PipelineAccessToggle } from "./pipeline-access-toggle";
 import { NewOfferForm } from "./new-offer-form";
 import { OfferActiveToggle } from "./offer-active-toggle";
+import { ActivationStatus } from "@/components/activation-status";
+import { getBaseUrl } from "@/lib/base-url";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
@@ -39,6 +41,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
 
   const staff = organization.users.filter((u) => u.role === "CLIENT_STAFF");
   const stats = computeOverviewStats(organization.pipelines);
+  const baseUrl = await getBaseUrl();
 
   return (
     <div className="p-8">
@@ -86,11 +89,17 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
                 <TableHead>Name</TableHead>
                 <TableHead>E-Mail</TableHead>
                 <TableHead>Rolle</TableHead>
+                <TableHead>Zugang</TableHead>
                 <TableHead>Pipeline-Zugriff</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {organization.users.map((user) => (
+              {organization.users.map((user) => {
+                const activationLink =
+                  user.activationToken && user.activationTokenExpiresAt && user.activationTokenExpiresAt > new Date()
+                    ? `${baseUrl}/activate/${user.activationToken}`
+                    : null;
+                return (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -98,6 +107,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
                     <Badge variant={user.role === "CLIENT_ADMIN" ? "default" : "secondary"}>
                       {user.role === "CLIENT_ADMIN" ? "Admin" : "Mitarbeiter"}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <ActivationStatus userId={user.id} isActive={!!user.passwordHash} activationLink={activationLink} />
                   </TableCell>
                   <TableCell>
                     {user.role === "CLIENT_STAFF" ? (
@@ -120,7 +132,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

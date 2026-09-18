@@ -29,7 +29,7 @@ export async function changePassword(
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!user) return { status: "error", message: "Nutzer nicht gefunden." };
+  if (!user || !user.passwordHash) return { status: "error", message: "Nutzer nicht gefunden." };
 
   const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!isValid) {

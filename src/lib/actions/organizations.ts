@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertOrganizationAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
+import { STAGE_TEMPLATES } from "@/lib/pipeline-stage-templates";
+import { generateActivationToken } from "@/lib/invite";
+import { getBaseUrl } from "@/lib/base-url";
 
 function slugify(name: string) {
   return (
@@ -47,43 +50,49 @@ export async function createClientOrganization(_prevState: string | undefined, f
   revalidatePath("/dashboard/clients");
 }
 
-export async function createOrgUser(_prevState: string | undefined, formData: FormData) {
+export type CreateUserResult = { status: "error"; message: string } | { status: "success"; link: string } | undefined;
+
+export async function createOrgUser(_prevState: CreateUserResult, formData: FormData): Promise<CreateUserResult> {
   const session = await requireSession();
 
   const organizationId = String(formData.get("organizationId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const password = String(formData.get("password") ?? "");
   const requestedRole = String(formData.get("role") ?? "CLIENT_STAFF");
 
-  if (!organizationId || !name || !email || !password) {
-    return "Alle Felder sind erforderlich.";
-  }
-  if (password.length < 8) {
-    return "Passwort muss mindestens 8 Zeichen lang sein.";
+  if (!organizationId || !name || !email) {
+    return { status: "error", message: "Alle Felder sind erforderlich." };
   }
 
   try {
     assertOrganizationAccess(session, organizationId);
   } catch (error) {
-    if (error instanceof AccessDeniedError) return error.message;
+    if (error instanceof AccessDeniedError) return { status: "error", message: error.message };
     throw error;
   }
 
   // CLIENT_ADMIN may only create staff in their own org, never other admins.
   const role = session.user.role === "AGENCY_ADMIN" ? requestedRole : "CLIENT_STAFF";
   if (role !== "CLIENT_ADMIN" && role !== "CLIENT_STAFF") {
-    return "Ungültige Rolle.";
+    return { status: "error", message: "Ungültige Rolle." };
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return "Diese E-Mail-Adresse wird bereits verwendet.";
+    return { status: "error", message: "Diese E-Mail-Adresse wird bereits verwendet." };
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const { token, expiresAt } = generateActivationToken();
   const user = await prisma.user.create({
-    data: { name, email, passwordHash, role, organizationId },
+    data: {
+      name,
+      email,
+      role,
+      organizationId,
+      passwordHash: null,
+      activationToken: token,
+      activationTokenExpiresAt: expiresAt,
+    },
   });
 
   await logAudit({
@@ -95,8 +104,44 @@ export async function createOrgUser(_prevState: string | undefined, formData: Fo
     metadata: { email, role },
   });
 
+  const baseUrl = await getBaseUrl();
+  const link = `${baseUrl}/activate/${token}`;
+
   revalidatePath("/dashboard/clients");
   revalidatePath("/dashboard/team");
+
+  return { status: "success", link };
+}
+
+export async function regenerateActivationLink(userId: string): Promise<CreateUserResult> {
+  const session = await requireSession();
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return { status: "error", message: "Nutzer nicht gefunden." };
+
+  try {
+    assertOrganizationAccess(session, user.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return { status: "error", message: error.message };
+    throw error;
+  }
+  if (session.user.role === "CLIENT_STAFF") {
+    return { status: "error", message: "Keine Berechtigung." };
+  }
+
+  const { token, expiresAt } = generateActivationToken();
+  await prisma.user.update({
+    where: { id: userId },
+    data: { activationToken: token, activationTokenExpiresAt: expiresAt },
+  });
+
+  const baseUrl = await getBaseUrl();
+  const link = `${baseUrl}/activate/${token}`;
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/team");
+
+  return { status: "success", link };
 }
 
 export async function createPipeline(_prevState: string | undefined, formData: FormData) {
@@ -125,11 +170,7 @@ export async function createPipeline(_prevState: string | undefined, formData: F
       kind,
       organizationId,
       stages: {
-        create: [
-          { name: "Neu", order: 0, color: "#3B82F6" },
-          { name: "In Bearbeitung", order: 1, color: "#F59E0B" },
-          { name: "Abgeschlossen", order: 2, color: "#22C55E" },
-        ],
+        create: [...STAGE_TEMPLATES[kind as keyof typeof STAGE_TEMPLATES]],
       },
     },
   });
@@ -149,6 +190,41 @@ export async function createPipeline(_prevState: string | undefined, formData: F
 
   revalidatePath("/dashboard/clients");
   revalidatePath("/dashboard/pipelines");
+}
+
+export async function deletePipeline(formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return;
+  try {
+    assertOrganizationAccess(session, pipeline.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return;
+    throw error;
+  }
+  if (session.user.role === "CLIENT_STAFF") return;
+
+  await prisma.pipeline.delete({ where: { id: pipelineId } });
+
+  await logAudit({
+    action: "pipeline.deleted",
+    entityType: "Pipeline",
+    entityId: pipelineId,
+    organizationId: pipeline.organizationId,
+    userId: session.user.id,
+    metadata: { name: pipeline.name },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/pipelines");
+
+  redirect(
+    session.user.role === "AGENCY_ADMIN"
+      ? `/dashboard/clients/${pipeline.organizationId}`
+      : "/dashboard/pipelines",
+  );
 }
 
 export async function togglePipelineActive(formData: FormData) {

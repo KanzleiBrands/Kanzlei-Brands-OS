@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { NewUserForm } from "../clients/[orgId]/new-user-form";
 import { PipelineAccessToggle } from "../clients/[orgId]/pipeline-access-toggle";
+import { ActivationStatus } from "@/components/activation-status";
+import { getBaseUrl } from "@/lib/base-url";
 
 export default async function TeamPage() {
   const session = await auth();
@@ -20,6 +22,7 @@ export default async function TeamPage() {
     },
   });
   if (!organization) redirect("/dashboard");
+  const baseUrl = await getBaseUrl();
 
   return (
     <div className="p-8">
@@ -38,11 +41,17 @@ export default async function TeamPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>E-Mail</TableHead>
                 <TableHead>Rolle</TableHead>
+                <TableHead>Zugang</TableHead>
                 <TableHead>Kampagnen-Zugriff</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {organization.users.map((user) => (
+              {organization.users.map((user) => {
+                const activationLink =
+                  user.activationToken && user.activationTokenExpiresAt && user.activationTokenExpiresAt > new Date()
+                    ? `${baseUrl}/activate/${user.activationToken}`
+                    : null;
+                return (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -50,6 +59,9 @@ export default async function TeamPage() {
                     <Badge variant={user.role === "CLIENT_ADMIN" ? "default" : "secondary"}>
                       {user.role === "CLIENT_ADMIN" ? "Admin" : "Mitarbeiter"}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <ActivationStatus userId={user.id} isActive={!!user.passwordHash} activationLink={activationLink} />
                   </TableCell>
                   <TableCell>
                     {user.role === "CLIENT_STAFF" ? (
@@ -72,7 +84,8 @@ export default async function TeamPage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

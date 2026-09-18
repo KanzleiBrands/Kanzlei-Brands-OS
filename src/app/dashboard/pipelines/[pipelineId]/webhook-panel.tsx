@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WEBHOOK_SOURCE_COLORS, WEBHOOK_SOURCE_LABELS } from "@/lib/webhook-source-labels";
 import { AddSourceDialog } from "./add-source-dialog";
-import { CsvImportDialog } from "./csv-import-dialog";
 
 type Delivery = {
   id: string;
@@ -98,7 +97,15 @@ export function WebhookPanel({ pipelineId, endpoints }: { pipelineId: string; en
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Lead-Quellen</CardTitle>
         <div className="flex gap-2">
-          <CsvImportDialog pipelineId={pipelineId} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<a href={`/api/pipelines/${pipelineId}/export`} download />}
+          >
+            CSV exportieren
+          </Button>
           <AddSourceDialog pipelineId={pipelineId} existingSources={endpoints.map((e) => e.source)} />
         </div>
       </CardHeader>

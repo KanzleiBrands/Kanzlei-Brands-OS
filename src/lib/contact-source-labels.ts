@@ -6,6 +6,13 @@ export const CONTACT_SOURCE_LABELS: Record<string, string> = {
   LINKEDIN_LEAD_GEN: "LinkedIn",
   ONEPAGE: "OnePage",
   PERSPEKTIVE: "Perspektive",
+  ELEMENTOR: "Elementor",
+  TYPEFORM: "TypeForm",
+  FUNNELCOCKPIT: "FunnelCockpit",
+  HEYFLOW: "HeyFlow",
+  MEETOVO: "Meetovo",
+  AIDAFORM: "AidaForm",
+  THRIVE: "Thrive",
 };
 
 export const CONTACT_SOURCE_COLORS: Record<string, string> = {
@@ -16,4 +23,11 @@ export const CONTACT_SOURCE_COLORS: Record<string, string> = {
   LINKEDIN_LEAD_GEN: "#0A66C2",
   ONEPAGE: "#8B5CF6",
   PERSPEKTIVE: "#14B8A6",
+  ELEMENTOR: "#92003B",
+  TYPEFORM: "#262627",
+  FUNNELCOCKPIT: "#111827",
+  HEYFLOW: "#4F46E5",
+  MEETOVO: "#EC4899",
+  AIDAFORM: "#0EA5E9",
+  THRIVE: "#16A34A",
 };

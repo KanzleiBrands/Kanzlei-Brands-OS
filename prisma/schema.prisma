@@ -55,9 +55,14 @@ enum UserRole {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String?
   name         String
   role         UserRole
+
+  // Set when the user is invited via activation link instead of a password;
+  // cleared once they complete activation and set their own password.
+  activationToken           String?   @unique
+  activationTokenExpiresAt  DateTime?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -142,6 +147,13 @@ enum ContactSource {
   LINKEDIN_LEAD_GEN
   ONEPAGE
   PERSPEKTIVE
+  ELEMENTOR
+  TYPEFORM
+  FUNNELCOCKPIT
+  HEYFLOW
+  MEETOVO
+  AIDAFORM
+  THRIVE
 }
 
 // A Lead or an Applicant, depending on the pipeline's kind.
@@ -158,7 +170,7 @@ model Contact {
   customFields Json?
 
   pipelineId String
-  pipeline   Pipeline @relation(fields: [pipelineId], references: [id])
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   stageId    String
   stage      Stage    @relation(fields: [stageId], references: [id])
 
@@ -207,6 +219,13 @@ enum WebhookSource {
   PERSPEKTIVE
   META_LEAD_ADS
   LINKEDIN_LEAD_GEN
+  ELEMENTOR
+  TYPEFORM
+  FUNNELCOCKPIT
+  HEYFLOW
+  MEETOVO
+  AIDAFORM
+  THRIVE
 }
 
 // One inbound endpoint per pipeline+source; `token` is the unguessable
@@ -222,7 +241,7 @@ model WebhookEndpoint {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   pipelineId     String
-  pipeline       Pipeline     @relation(fields: [pipelineId], references: [id])
+  pipeline       Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
 
   deliveries WebhookDelivery[]
 

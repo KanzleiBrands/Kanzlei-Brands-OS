@@ -8,6 +8,7 @@ import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { CONTACT_SOURCE_LABELS, CONTACT_SOURCE_COLORS } from "@/lib/contact-source-labels";
 import { StarRating } from "@/components/star-rating";
+import { DeleteContactButton } from "@/components/delete-contact-button";
 
 type Contact = {
   id: string;
@@ -53,7 +54,7 @@ function TimeBadge({ createdAt, isFirstStage }: { createdAt: Date; isFirstStage:
   return <span className={`rounded-full px-1.5 py-0.5 text-[11px] whitespace-nowrap ${classes}`}>{label}</span>;
 }
 
-export function KanbanBoard({ stages }: { stages: Stage[] }) {
+export function KanbanBoard({ stages, duplicateEmails }: { stages: Stage[]; duplicateEmails: Set<string> }) {
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
@@ -104,6 +105,7 @@ export function KanbanBoard({ stages }: { stages: Stage[] }) {
                 const highlight = formatCustomFields(contact.customFields)[0];
                 const sourceLabel = CONTACT_SOURCE_LABELS[contact.source] ?? contact.source;
                 const sourceColor = CONTACT_SOURCE_COLORS[contact.source] ?? "#6B7280";
+                const isDuplicate = !!contact.email && duplicateEmails.has(contact.email.trim().toLowerCase());
                 return (
                   <Link
                     key={contact.id}
@@ -113,10 +115,13 @@ export function KanbanBoard({ stages }: { stages: Stage[] }) {
                     onDragStart={(e) => {
                       e.dataTransfer.setData("text/contact-id", contact.id);
                     }}
-                    className={`block cursor-grab rounded-md border bg-background p-3 text-sm shadow-sm transition-shadow hover:border-primary hover:shadow-md ${
+                    className={`group relative block cursor-grab rounded-md border bg-background p-3 text-sm shadow-sm transition-shadow hover:border-primary hover:shadow-md ${
                       isPending ? "opacity-60" : ""
                     }`}
                   >
+                    <div className="absolute top-1 right-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <DeleteContactButton contactId={contact.id} contactName={fullName} />
+                    </div>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <span
@@ -134,6 +139,12 @@ export function KanbanBoard({ stages }: { stages: Stage[] }) {
                         {sourceLabel}
                       </span>
                     </div>
+
+                    {isDuplicate && (
+                      <span className="mt-1 inline-block rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
+                        ⚠ Mögliches Duplikat
+                      </span>
+                    )}
 
                     <div className="mt-1.5 flex flex-col gap-0.5 text-xs text-muted-foreground">
                       <span>

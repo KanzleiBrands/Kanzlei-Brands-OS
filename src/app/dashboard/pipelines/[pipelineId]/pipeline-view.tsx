@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "./kanban-board";
 import { ContactsTable } from "./contacts-table";
 import { NewContactForm } from "./new-contact-form";
+import { findDuplicateEmails } from "@/lib/duplicate-contacts";
 
 type Contact = {
   id: string;
@@ -30,6 +31,7 @@ type Stage = {
 
 export function PipelineView({ pipelineId, stages }: { pipelineId: string; stages: Stage[] }) {
   const [view, setView] = useState<"board" | "list">("board");
+  const duplicateEmails = useMemo(() => findDuplicateEmails(stages), [stages]);
 
   return (
     <div>
@@ -52,7 +54,11 @@ export function PipelineView({ pipelineId, stages }: { pipelineId: string; stage
         <NewContactForm pipelineId={pipelineId} stages={stages} />
       </div>
 
-      {view === "board" ? <KanbanBoard stages={stages} /> : <ContactsTable stages={stages} />}
+      {view === "board" ? (
+        <KanbanBoard stages={stages} duplicateEmails={duplicateEmails} />
+      ) : (
+        <ContactsTable stages={stages} duplicateEmails={duplicateEmails} />
+      )}
     </div>
   );
 }
