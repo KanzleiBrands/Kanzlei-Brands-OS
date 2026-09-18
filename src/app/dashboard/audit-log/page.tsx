@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,22 +8,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const ACTION_LABELS: Record<string, string> = {
   "organization.created": "Kunde angelegt",
   "user.created": "Nutzer angelegt",
-  "pipeline.created": "Pipeline angelegt",
-  "pipeline_access.granted": "Pipeline-Zugriff gewährt",
-  "pipeline_access.revoked": "Pipeline-Zugriff entzogen",
+  "pipeline.created": "Kampagne angelegt",
+  "pipeline.deleted": "Kampagne gelöscht",
+  "pipeline_access.granted": "Kampagnen-Zugriff gewährt",
+  "pipeline_access.revoked": "Kampagnen-Zugriff entzogen",
+  "contact.deleted": "Kontakt gelöscht",
+  "contacts.csv_imported": "Kontakte per CSV importiert",
+  "user.activated": "Zugang aktiviert",
   "contact.stage_changed": "Kontakt-Status geändert",
   "contact.viewed": "Kontakt angesehen",
   "offer_interest.created": "Interesse an Angebot bekundet",
   "user.password_changed": "Passwort geändert",
+  "user.email_changed": "E-Mail geändert",
 };
 
-export default async function AuditLogPage() {
+export default async function AuditLogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ orgId?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role === "CLIENT_STAFF") redirect("/dashboard");
+  // Internal to the agency only — clients never see the audit log.
+  if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");
+
+  const { orgId } = await searchParams;
+  const scopedOrg = orgId ? await prisma.organization.findUnique({ where: { id: orgId } }) : null;
 
   const entries = await prisma.auditLog.findMany({
-    where: session.user.role === "AGENCY_ADMIN" ? {} : { organizationId: session.user.organizationId },
+    where: scopedOrg ? { organizationId: scopedOrg.id } : {},
     include: { user: true, organization: true },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -30,10 +44,15 @@ export default async function AuditLogPage() {
 
   return (
     <div className="p-8">
-      <h1 className="mb-2 text-2xl font-semibold">Audit-Log</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Audit-Log{scopedOrg ? ` – ${scopedOrg.name}` : ""}</h1>
       <p className="mb-6 text-muted-foreground">
         Nachvollziehbarkeit für DSGVO-Zwecke: wer hat wann welche Aktion durchgeführt.
       </p>
+      {scopedOrg && (
+        <Link href="/dashboard/audit-log" className="mb-4 inline-block text-sm text-muted-foreground underline">
+          ← Alle Kunden anzeigen
+        </Link>
+      )}
 
       <Card>
         <CardHeader>
@@ -46,7 +65,7 @@ export default async function AuditLogPage() {
                 <TableHead>Zeitpunkt</TableHead>
                 <TableHead>Aktion</TableHead>
                 <TableHead>Nutzer</TableHead>
-                {session.user.role === "AGENCY_ADMIN" && <TableHead>Organisation</TableHead>}
+                {!scopedOrg && <TableHead>Organisation</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -57,7 +76,7 @@ export default async function AuditLogPage() {
                   </TableCell>
                   <TableCell>{ACTION_LABELS[entry.action] ?? entry.action}</TableCell>
                   <TableCell>{entry.user?.name ?? "System"}</TableCell>
-                  {session.user.role === "AGENCY_ADMIN" && <TableCell>{entry.organization.name}</TableCell>}
+                  {!scopedOrg && <TableCell>{entry.organization.name}</TableCell>}
                 </TableRow>
               ))}
               {entries.length === 0 && (

@@ -5,9 +5,9 @@ import { LoginForm } from "./login-form";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ activated?: string }>;
+  searchParams: Promise<{ activated?: string; email_changed?: string }>;
 }) {
-  const { activated } = await searchParams;
+  const { activated, email_changed } = await searchParams;
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
@@ -29,6 +29,11 @@ export default async function LoginPage({
           {activated && (
             <p className="mb-4 rounded-md bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-500">
               Konto aktiviert. Du kannst dich jetzt anmelden.
+            </p>
+          )}
+          {email_changed && (
+            <p className="mb-4 rounded-md bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-500">
+              E-Mail-Adresse geändert. Bitte melde dich mit deiner neuen E-Mail-Adresse an.
             </p>
           )}
           <LoginForm />

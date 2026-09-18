@@ -13,7 +13,7 @@ export function SendEmailForm({ contactId, hasMailbox }: { contactId: string; ha
     return (
       <p className="text-sm text-muted-foreground">
         Kein E-Mail-Postfach verbunden. Verbinde eines unter{" "}
-        <a href="/dashboard/mailbox" className="underline">
+        <a href="/dashboard/settings?tab=mailbox" className="underline">
           Postfach
         </a>
         , um E-Mails direkt aus der Plattform zu senden.

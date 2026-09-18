@@ -58,5 +58,5 @@ export async function disconnectMailbox(formData: FormData) {
   const session = await requireSession();
   const accountId = String(formData.get("accountId") ?? "");
   await prisma.emailAccount.deleteMany({ where: { id: accountId, userId: session.user.id } });
-  revalidatePath("/dashboard/mailbox");
+  revalidatePath("/dashboard/settings");
 }

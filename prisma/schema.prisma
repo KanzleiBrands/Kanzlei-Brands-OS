@@ -31,8 +31,7 @@ model Organization {
 
   users           User[]
   pipelines       Pipeline[]
-  courses         Course[]
-  offers          Offer[]
+  courseAssignments CourseAssignment[]
   webhookEndpoints WebhookEndpoint[]
   auditLogs       AuditLog[]
 
@@ -330,6 +329,8 @@ enum CourseCategory {
   TRAINING   // General knowledge-transfer courses
 }
 
+// Courses are authored by the agency and only visible to clients they've been
+// explicitly assigned to via CourseAssignment (opt-in, no default visibility).
 model Course {
   id          String         @id @default(cuid())
   title       String
@@ -337,15 +338,27 @@ model Course {
   category    CourseCategory
   published   Boolean        @default(false)
 
-  // Courses are authored by the agency; null organizationId = visible to all clients.
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-
   lessons     Lesson[]
   enrollments Enrollment[]
+  assignments CourseAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Grants a client organization visibility into a course (e.g. "Recruiting"
+// vs. "Kundengewinnung" depending on which service the client booked).
+model CourseAssignment {
+  id             String       @id @default(cuid())
+  courseId       String
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, organizationId])
+  @@index([organizationId])
 }
 
 model Lesson {
@@ -392,6 +405,7 @@ model LessonProgress {
 // ---------------------------------------------------------------------------
 
 // An upsell/offer shown in a specific client's Kunden-Hub.
+// Offers are global: the same set is shown to every client in their Angebote page.
 model Offer {
   id          String  @id @default(cuid())
   title       String
@@ -400,16 +414,10 @@ model Offer {
   ctaLabel    String  @default("Interesse")
   active      Boolean @default(true)
 
-  // The CLIENT organization this offer is presented to.
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
   interests OfferInterest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([organizationId])
 }
 
 // Recorded whenever a client user clicks the CTA on an offer, so the agency

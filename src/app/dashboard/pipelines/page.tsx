@@ -22,7 +22,7 @@ export default async function PipelinesPage() {
 
   return (
     <div className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Pipelines</h1>
+      <h1 className="mb-6 text-2xl font-semibold">Kampagnen</h1>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {pipelines.map((pipeline) => (
           <Link key={pipeline.id} href={`/dashboard/pipelines/${pipeline.id}`}>
@@ -39,7 +39,7 @@ export default async function PipelinesPage() {
           </Link>
         ))}
         {pipelines.length === 0 && (
-          <p className="text-muted-foreground">Dir wurde noch keine Pipeline zugewiesen.</p>
+          <p className="text-muted-foreground">Dir wurde noch keine Kampagne zugewiesen.</p>
         )}
       </div>
     </div>

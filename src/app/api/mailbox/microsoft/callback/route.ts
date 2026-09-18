@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const stateOk = await verifyAndClearOAuthState(state);
   if (!stateOk || !code) {
-    return NextResponse.redirect(`${baseUrl}/dashboard/mailbox?error=invalid_state`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/settings?tab=mailbox&error=invalid_state`);
   }
 
   try {
@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.redirect(`${baseUrl}/dashboard/mailbox?connected=microsoft`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/settings?tab=mailbox&connected=microsoft`);
   } catch (error) {
     console.error("Microsoft mailbox connect failed", error);
-    return NextResponse.redirect(`${baseUrl}/dashboard/mailbox?error=connect_failed`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/settings?tab=mailbox&error=connect_failed`);
   }
 }

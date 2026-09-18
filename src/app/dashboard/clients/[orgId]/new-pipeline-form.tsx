@@ -12,7 +12,7 @@ export function NewPipelineForm({ organizationId }: { organizationId: string }) 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="organizationId" value={organizationId} />
-      <Input name="name" placeholder="Pipeline-Name (z.B. Kampagne X)" required className="max-w-xs" />
+      <Input name="name" placeholder="Kampagnen-Name (z.B. Kampagne X)" required className="max-w-xs" />
       <Select name="kind" defaultValue="LEADS">
         <SelectTrigger className="w-40">
           <SelectValue>
@@ -25,7 +25,7 @@ export function NewPipelineForm({ organizationId }: { organizationId: string }) 
         </SelectContent>
       </Select>
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Wird angelegt..." : "Pipeline anlegen"}
+        {isPending ? "Wird angelegt..." : "Kampagne anlegen"}
       </Button>
       {error && <p className="w-full text-sm text-destructive">{error}</p>}
     </form>

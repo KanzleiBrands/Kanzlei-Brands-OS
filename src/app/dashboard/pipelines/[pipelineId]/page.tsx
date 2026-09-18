@@ -62,21 +62,23 @@ export default async function PipelineDetailPage({ params }: { params: Promise<{
       <div className="mb-6">
         <PipelineView pipelineId={pipeline.id} stages={pipeline.stages} />
       </div>
-      <WebhookPanel
-        pipelineId={pipeline.id}
-        endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
-          id: endpoint.id,
-          source: endpoint.source,
-          url: `${baseUrl}/api/webhooks/${endpoint.token}`,
-          fieldMapping: endpoint.fieldMapping,
-          deliveries: endpoint.deliveries.map((d) => ({
-            id: d.id,
-            createdAt: d.createdAt.toLocaleString("de-DE"),
-            error: d.error,
-            contactId: d.contactId,
-          })),
-        }))}
-      />
+      {session.user.role === "AGENCY_ADMIN" && (
+        <WebhookPanel
+          pipelineId={pipeline.id}
+          endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
+            id: endpoint.id,
+            source: endpoint.source,
+            url: `${baseUrl}/api/webhooks/${endpoint.token}`,
+            fieldMapping: endpoint.fieldMapping,
+            deliveries: endpoint.deliveries.map((d) => ({
+              id: d.id,
+              createdAt: d.createdAt.toLocaleString("de-DE"),
+              error: d.error,
+              contactId: d.contactId,
+            })),
+          }))}
+        />
+      )}
     </div>
   );
 }

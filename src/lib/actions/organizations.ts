@@ -108,7 +108,7 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
   const link = `${baseUrl}/activate/${token}`;
 
   revalidatePath("/dashboard/clients");
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/settings");
 
   return { status: "success", link };
 }
@@ -139,7 +139,7 @@ export async function regenerateActivationLink(userId: string): Promise<CreateUs
   const link = `${baseUrl}/activate/${token}`;
 
   revalidatePath("/dashboard/clients");
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/settings");
 
   return { status: "success", link };
 }
@@ -275,5 +275,5 @@ export async function setPipelineAccess(formData: FormData) {
   });
 
   revalidatePath("/dashboard/clients");
-  revalidatePath("/dashboard/team");
+  revalidatePath("/dashboard/settings");
 }

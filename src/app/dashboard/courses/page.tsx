@@ -17,7 +17,7 @@ export default async function CoursesPage() {
 
   if (isAgency) {
     const courses = await prisma.course.findMany({
-      include: { _count: { select: { lessons: true } } },
+      include: { _count: { select: { lessons: true, assignments: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -43,7 +43,9 @@ export default async function CoursesPage() {
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">{course._count.lessons} Lektionen</p>
+                <p className="text-sm text-muted-foreground">
+                  {course._count.lessons} Lektionen · {course._count.assignments} Kunden zugewiesen
+                </p>
                 <div className="flex items-center justify-between">
                   <Link href={`/dashboard/courses/${course.id}`} className="text-sm underline">
                     Lektionen verwalten
@@ -59,7 +61,10 @@ export default async function CoursesPage() {
   }
 
   const courses = await prisma.course.findMany({
-    where: { published: true },
+    where: {
+      published: true,
+      assignments: { some: { organizationId: session.user.organizationId } },
+    },
     include: {
       lessons: true,
       enrollments: {

@@ -5,6 +5,28 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { storeLessonVideo } from "@/lib/video-storage";
 
+export async function setCourseAssignment(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const courseId = String(formData.get("courseId") ?? "");
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const assign = formData.get("assign") === "true";
+
+  if (assign) {
+    await prisma.courseAssignment.upsert({
+      where: { courseId_organizationId: { courseId, organizationId } },
+      update: {},
+      create: { courseId, organizationId },
+    });
+  } else {
+    await prisma.courseAssignment.deleteMany({ where: { courseId, organizationId } });
+  }
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidatePath("/dashboard/courses");
+}
+
 export async function createCourse(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Kurse anlegen.";

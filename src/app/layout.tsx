@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Kanzlei Brands Plattform",
-  description: "Bewerber- & Lead-Management, Schulung und Kunden-Hub für Kanzlei Brands Kunden.",
+  description: "Bewerber- & Lead-Management, Schulung und Angebote für Kanzlei Brands Kunden.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

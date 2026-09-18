@@ -105,19 +105,24 @@ async function main() {
     },
   });
 
-  // Offers are scoped to the client organization that should see them in its Kunden-Hub.
+  // Offers are global and shown identically to every client.
   const existingOffer = await prisma.offer.findFirst({
-    where: { title: "Performance-Marketing Paket", organizationId: demoClient.id },
+    where: { title: "Performance-Marketing Paket" },
   });
   if (!existingOffer) {
     await prisma.offer.create({
       data: {
         title: "Performance-Marketing Paket",
         description: "Zusätzliche Meta & LinkedIn Kampagnen für mehr Leads.",
-        organizationId: demoClient.id,
       },
     });
   }
+
+  await prisma.courseAssignment.upsert({
+    where: { courseId_organizationId: { courseId: "seed-onboarding-course", organizationId: demoClient.id } },
+    update: {},
+    create: { courseId: "seed-onboarding-course", organizationId: demoClient.id },
+  });
 
   console.log("Seed complete.");
   console.log("Agency admin login: lukas@kanzlei-brands.de / changeme123");

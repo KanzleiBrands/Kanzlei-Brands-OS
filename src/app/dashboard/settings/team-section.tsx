@@ -1,57 +1,59 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { NewUserForm } from "../clients/[orgId]/new-user-form";
 import { PipelineAccessToggle } from "../clients/[orgId]/pipeline-access-toggle";
 import { ActivationStatus } from "@/components/activation-status";
-import { getBaseUrl } from "@/lib/base-url";
 
-export default async function TeamPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-  if (session.user.role !== "CLIENT_ADMIN") redirect("/dashboard");
+type Pipeline = { id: string; name: string };
+type PipelineAccess = { pipelineId: string };
+type TeamUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  passwordHash: string | null;
+  activationToken: string | null;
+  activationTokenExpiresAt: Date | null;
+  pipelineAccess: PipelineAccess[];
+};
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: session.user.organizationId },
-    include: {
-      users: { orderBy: { createdAt: "asc" }, include: { pipelineAccess: true } },
-      pipelines: { orderBy: { createdAt: "asc" } },
-    },
-  });
-  if (!organization) redirect("/dashboard");
-  const baseUrl = await getBaseUrl();
-
+export function TeamSection({
+  organizationId,
+  users,
+  pipelines,
+  baseUrl,
+}: {
+  organizationId: string;
+  users: TeamUser[];
+  pipelines: Pipeline[];
+  baseUrl: string;
+}) {
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Mitarbeiter verwalten</h1>
+    <Card>
+      <CardHeader>
+        <CardTitle>Team</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <NewUserForm organizationId={organizationId} canAssignAdmin={false} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Team</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <NewUserForm organizationId={organization.id} canAssignAdmin={false} />
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>E-Mail</TableHead>
-                <TableHead>Rolle</TableHead>
-                <TableHead>Zugang</TableHead>
-                <TableHead>Kampagnen-Zugriff</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {organization.users.map((user) => {
-                const activationLink =
-                  user.activationToken && user.activationTokenExpiresAt && user.activationTokenExpiresAt > new Date()
-                    ? `${baseUrl}/activate/${user.activationToken}`
-                    : null;
-                return (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>E-Mail</TableHead>
+              <TableHead>Rolle</TableHead>
+              <TableHead>Zugang</TableHead>
+              <TableHead>Kampagnen-Zugriff</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => {
+              const activationLink =
+                user.activationToken && user.activationTokenExpiresAt && user.activationTokenExpiresAt > new Date()
+                  ? `${baseUrl}/activate/${user.activationToken}`
+                  : null;
+              return (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -66,7 +68,7 @@ export default async function TeamPage() {
                   <TableCell>
                     {user.role === "CLIENT_STAFF" ? (
                       <div className="flex flex-wrap gap-3">
-                        {organization.pipelines.map((pipeline) => {
+                        {pipelines.map((pipeline) => {
                           const granted = user.pipelineAccess.some((a) => a.pipelineId === pipeline.id);
                           return (
                             <label key={pipeline.id} className="flex items-center gap-1 text-sm">
@@ -75,7 +77,7 @@ export default async function TeamPage() {
                             </label>
                           );
                         })}
-                        {organization.pipelines.length === 0 && (
+                        {pipelines.length === 0 && (
                           <span className="text-sm text-muted-foreground">Keine Kampagnen vorhanden</span>
                         )}
                       </div>
@@ -84,12 +86,11 @@ export default async function TeamPage() {
                     )}
                   </TableCell>
                 </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

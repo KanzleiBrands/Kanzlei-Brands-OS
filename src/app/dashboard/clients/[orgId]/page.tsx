@@ -11,8 +11,7 @@ import { StatusDistributionBar } from "@/components/status-distribution-bar";
 import { NewUserForm } from "./new-user-form";
 import { NewPipelineForm } from "./new-pipeline-form";
 import { PipelineAccessToggle } from "./pipeline-access-toggle";
-import { NewOfferForm } from "./new-offer-form";
-import { OfferActiveToggle } from "./offer-active-toggle";
+import { CourseAssignmentToggle } from "./course-assignment-toggle";
 import { ActivationStatus } from "@/components/activation-status";
 import { getBaseUrl } from "@/lib/base-url";
 
@@ -33,7 +32,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
           contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true } },
         },
       },
-      offers: { orderBy: { createdAt: "desc" }, include: { interests: { include: { user: true } } } },
+      courseAssignments: { select: { courseId: true } },
     },
   });
 
@@ -42,11 +41,20 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
   const staff = organization.users.filter((u) => u.role === "CLIENT_STAFF");
   const stats = computeOverviewStats(organization.pipelines);
   const baseUrl = await getBaseUrl();
+  const courses = await prisma.course.findMany({ orderBy: { createdAt: "desc" } });
+  const assignedCourseIds = new Set(organization.courseAssignments.map((a) => a.courseId));
 
   return (
     <div className="p-8">
-      <h1 className="mb-1 text-2xl font-semibold">{organization.name}</h1>
-      <p className="mb-6 text-muted-foreground">Kunden-Portal (Agentur-Ansicht)</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="mb-1 text-2xl font-semibold">{organization.name}</h1>
+          <p className="text-muted-foreground">Kunden-Portal (Agentur-Ansicht)</p>
+        </div>
+        <Link href={`/dashboard/audit-log?orgId=${organization.id}`} className="text-sm text-muted-foreground underline">
+          Audit-Log ansehen →
+        </Link>
+      </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
@@ -90,7 +98,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
                 <TableHead>E-Mail</TableHead>
                 <TableHead>Rolle</TableHead>
                 <TableHead>Zugang</TableHead>
-                <TableHead>Pipeline-Zugriff</TableHead>
+                <TableHead>Kampagnen-Zugriff</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -124,7 +132,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
                           );
                         })}
                         {organization.pipelines.length === 0 && (
-                          <span className="text-sm text-muted-foreground">Keine Pipelines vorhanden</span>
+                          <span className="text-sm text-muted-foreground">Keine Kampagnen vorhanden</span>
                         )}
                       </div>
                     ) : (
@@ -141,7 +149,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Pipelines / Kampagnen</CardTitle>
+          <CardTitle>Kampagnen</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <NewPipelineForm organizationId={organization.id} />
@@ -168,7 +176,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
               {organization.pipelines.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    Noch keine Pipelines.
+                    Noch keine Kampagnen.
                   </TableCell>
                 </TableRow>
               )}
@@ -179,46 +187,30 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ o
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Kunden-Hub / Angebote</CardTitle>
+          <CardTitle>Schulung</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <NewOfferForm organizationId={organization.id} />
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Titel</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Interesse bekundet</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {organization.offers.map((offer) => (
-                <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.title}</TableCell>
-                  <TableCell>
-                    <OfferActiveToggle offerId={offer.id} active={offer.active} />
-                  </TableCell>
-                  <TableCell>
-                    {offer.interests.length === 0
-                      ? "Noch niemand"
-                      : offer.interests.map((i) => i.user.name).join(", ")}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {organization.offers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    Noch keine Angebote.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Wähle, welche Kurse dieser Kunde in seinem Schulungsbereich sehen kann.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {courses.map((course) => (
+              <label key={course.id} className="flex items-center gap-1.5 text-sm">
+                <CourseAssignmentToggle
+                  organizationId={organization.id}
+                  courseId={course.id}
+                  assigned={assignedCourseIds.has(course.id)}
+                />
+                {course.title}
+              </label>
+            ))}
+            {courses.length === 0 && <span className="text-sm text-muted-foreground">Noch keine Kurse angelegt.</span>}
+          </div>
         </CardContent>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        {staff.length} Mitarbeiter · {organization.pipelines.length} Pipelines · {organization.offers.length} Angebote im Kunden-Hub
+        {staff.length} Mitarbeiter · {organization.pipelines.length} Kampagnen
       </p>
     </div>
   );

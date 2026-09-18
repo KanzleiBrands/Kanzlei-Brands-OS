@@ -1,35 +1,27 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DisconnectButton } from "./disconnect-button";
+import { DisconnectButton } from "../mailbox/disconnect-button";
 
-export default async function MailboxPage({
-  searchParams,
+type EmailAccount = { id: string; email: string; provider: string };
+
+export function MailboxSection({
+  accounts,
+  connected,
+  error,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string }>;
+  accounts: EmailAccount[];
+  connected?: string;
+  error?: string;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-  const { connected, error } = await searchParams;
-
-  const accounts = await prisma.emailAccount.findMany({ where: { userId: session.user.id } });
   const googleConfigured = !!process.env.GOOGLE_CLIENT_ID;
   const microsoftConfigured = !!process.env.MICROSOFT_CLIENT_ID;
 
   return (
-    <div className="p-8">
-      <h1 className="mb-2 text-2xl font-semibold">E-Mail-Postfach</h1>
-      <p className="mb-6 text-muted-foreground">
-        Verbinde dein Postfach, um E-Mails direkt aus der Plattform an Leads zu senden. Sie werden automatisch am
-        jeweiligen Kontakt gespeichert.
-      </p>
+    <div className="flex flex-col gap-6">
+      {connected && <p className="text-sm text-green-600">Postfach erfolgreich verbunden.</p>}
+      {error && <p className="text-sm text-destructive">Verbindung fehlgeschlagen ({error}).</p>}
 
-      {connected && <p className="mb-4 text-sm text-green-600">Postfach erfolgreich verbunden.</p>}
-      {error && <p className="mb-4 text-sm text-destructive">Verbindung fehlgeschlagen ({error}).</p>}
-
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <CardTitle>Verbundene Postfächer</CardTitle>
         </CardHeader>
@@ -62,11 +54,7 @@ export default async function MailboxPage({
             <Button disabled>Gmail verbinden</Button>
           )}
           {microsoftConfigured ? (
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<a href="/api/mailbox/microsoft/connect" />}
-            >
+            <Button variant="outline" nativeButton={false} render={<a href="/api/mailbox/microsoft/connect" />}>
               Microsoft 365 verbinden
             </Button>
           ) : (

@@ -10,14 +10,14 @@ export default async function KundenHubPage() {
   if (session.user.role === "AGENCY_ADMIN") redirect("/dashboard/clients");
 
   const offers = await prisma.offer.findMany({
-    where: { organizationId: session.user.organizationId, active: true },
+    where: { active: true },
     include: { interests: { where: { userId: session.user.id } } },
     orderBy: { createdAt: "desc" },
   });
 
   return (
     <div className="p-8">
-      <h1 className="mb-2 text-2xl font-semibold">Kunden-Hub</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Angebote</h1>
       <p className="mb-6 text-muted-foreground">Aktuelle Angebote und Upsells von Kanzlei Brands für euch.</p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

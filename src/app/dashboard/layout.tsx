@@ -7,25 +7,21 @@ import { redirect } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
 
 function navFor(role: string) {
-  const common = [
-    { href: "/dashboard/courses", label: "Schulung" },
-  ];
+  const common = [{ href: "/dashboard/courses", label: "Schulung" }];
 
   if (role === "AGENCY_ADMIN") {
     return [
       { href: "/dashboard/clients", label: "Kunden" },
       ...common,
+      { href: "/dashboard/offers", label: "Angebote" },
       { href: "/dashboard/audit-log", label: "Audit-Log" },
     ];
   }
 
   return [
-    { href: "/dashboard/pipelines", label: "Pipelines" },
-    ...(role === "CLIENT_ADMIN" ? [{ href: "/dashboard/team", label: "Mitarbeiter" }] : []),
-    { href: "/dashboard/mailbox", label: "Postfach" },
+    { href: "/dashboard/pipelines", label: "Kampagnen" },
     ...common,
-    { href: "/dashboard/hub", label: "Kunden-Hub" },
-    ...(role === "CLIENT_ADMIN" ? [{ href: "/dashboard/audit-log", label: "Audit-Log" }] : []),
+    { href: "/dashboard/hub", label: "Angebote" },
   ];
 }
 
@@ -56,8 +52,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         <SidebarNav role={session.user.role} links={links} clients={clients} />
         <div className="mt-auto flex flex-col gap-2 px-2 pt-4">
-          <Link href="/dashboard/account" className="rounded px-1 py-1 text-sm hover:underline">
-            Mein Account
+          <Link href="/dashboard/settings" className="rounded px-1 py-1 text-sm hover:underline">
+            ⚙ Einstellungen
           </Link>
           <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
           <form

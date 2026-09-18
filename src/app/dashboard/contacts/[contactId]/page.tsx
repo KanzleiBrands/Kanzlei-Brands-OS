@@ -63,7 +63,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="p-8">
       <Link href={`/dashboard/pipelines/${contact.pipelineId}`} className="text-sm text-muted-foreground underline">
-        ← Zurück zur Pipeline
+        ← Zurück zur Kampagne
       </Link>
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
