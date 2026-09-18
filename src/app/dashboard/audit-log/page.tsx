@@ -13,6 +13,7 @@ const ACTION_LABELS: Record<string, string> = {
   "contact.stage_changed": "Kontakt-Status geändert",
   "contact.viewed": "Kontakt angesehen",
   "offer_interest.created": "Interesse an Angebot bekundet",
+  "user.password_changed": "Passwort geändert",
 };
 
 export default async function AuditLogPage() {

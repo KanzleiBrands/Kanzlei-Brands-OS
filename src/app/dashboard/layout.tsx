@@ -50,6 +50,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-2 px-2 pt-4">
+          <Link href="/dashboard/account" className="rounded px-1 py-1 text-sm hover:underline">
+            Mein Account
+          </Link>
           <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
           <form
             action={async () => {
