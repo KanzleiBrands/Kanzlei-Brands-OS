@@ -15,6 +15,35 @@ export type OverviewStats = {
 
 const DAY_MS = 86_400_000;
 
+export type CampaignCardStats = {
+  totalContacts: number;
+  unprocessed: number;
+  staleUnprocessed: number;
+  lastLeadAt: Date | null;
+  lastChangeAt: Date | null;
+};
+
+// Per-campaign metrics for the Kampagnenübersicht cards (Leads gesamt, Letzter
+// Lead, Letzte Änderung, Unbearbeitete/Überfällige Leads) used for sorting.
+export function computeCampaignCardStats(pipeline: StatPipeline): CampaignCardStats {
+  const overview = computeOverviewStats([pipeline]);
+  let lastLeadAt: Date | null = null;
+  let lastChangeAt: Date | null = null;
+
+  for (const contact of pipeline.contacts) {
+    if (!lastLeadAt || contact.createdAt > lastLeadAt) lastLeadAt = contact.createdAt;
+    if (!lastChangeAt || contact.updatedAt > lastChangeAt) lastChangeAt = contact.updatedAt;
+  }
+
+  return {
+    totalContacts: overview.totalContacts,
+    unprocessed: overview.unprocessed,
+    staleUnprocessed: overview.staleUnprocessed,
+    lastLeadAt,
+    lastChangeAt,
+  };
+}
+
 export function computeOverviewStats(pipelines: StatPipeline[]): OverviewStats {
   const now = Date.now();
   let totalContacts = 0;
