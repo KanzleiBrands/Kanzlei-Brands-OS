@@ -8,7 +8,7 @@ import { WebhookPanel } from "./webhook-panel";
 import { PipelineActiveToggle } from "./pipeline-active-toggle";
 import { DeletePipelineButton } from "./delete-pipeline-button";
 
-type Tab = "leads" | "settings";
+type Tab = "leads" | "settings" | "sources";
 
 export default async function PipelineDetailPage({
   params,
@@ -35,7 +35,13 @@ export default async function PipelineDetailPage({
 
   const { tab: tabParam } = await searchParams;
   const canManageSettings = session.user.role !== "CLIENT_STAFF";
-  const tab: Tab = tabParam === "settings" && canManageSettings ? "settings" : "leads";
+  const canManageSources = session.user.role === "AGENCY_ADMIN";
+  const tab: Tab =
+    tabParam === "settings" && canManageSettings
+      ? "settings"
+      : tabParam === "sources" && canManageSources
+        ? "sources"
+        : "leads";
 
   const pipeline = await prisma.pipeline.findUnique({
     where: { id: pipelineId },
@@ -79,6 +85,14 @@ export default async function PipelineDetailPage({
           >
             Kampagnen-Einstellungen
           </Link>
+          {canManageSources && (
+            <Link
+              href={`/dashboard/pipelines/${pipeline.id}?tab=sources`}
+              className={`border-b-2 px-3 py-2 text-sm ${tab === "sources" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              Lead-Quellen
+            </Link>
+          )}
         </div>
       )}
 
@@ -89,30 +103,28 @@ export default async function PipelineDetailPage({
       )}
 
       {tab === "settings" && (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-2">
-            <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
-            <DeletePipelineButton pipelineId={pipeline.id} pipelineName={pipeline.name} />
-          </div>
-
-          {session.user.role === "AGENCY_ADMIN" && (
-            <WebhookPanel
-              pipelineId={pipeline.id}
-              endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
-                id: endpoint.id,
-                source: endpoint.source,
-                url: `${baseUrl}/api/webhooks/${endpoint.token}`,
-                fieldMapping: endpoint.fieldMapping,
-                deliveries: endpoint.deliveries.map((d) => ({
-                  id: d.id,
-                  createdAt: d.createdAt.toLocaleString("de-DE"),
-                  error: d.error,
-                  contactId: d.contactId,
-                })),
-              }))}
-            />
-          )}
+        <div className="flex items-center gap-2">
+          <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
+          <DeletePipelineButton pipelineId={pipeline.id} pipelineName={pipeline.name} />
         </div>
+      )}
+
+      {tab === "sources" && canManageSources && (
+        <WebhookPanel
+          pipelineId={pipeline.id}
+          endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
+            id: endpoint.id,
+            source: endpoint.source,
+            url: `${baseUrl}/api/webhooks/${endpoint.token}`,
+            fieldMapping: endpoint.fieldMapping,
+            deliveries: endpoint.deliveries.map((d) => ({
+              id: d.id,
+              createdAt: d.createdAt.toLocaleString("de-DE"),
+              error: d.error,
+              contactId: d.contactId,
+            })),
+          }))}
+        />
       )}
     </div>
   );
