@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
@@ -34,10 +35,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-56 flex-col border-r bg-muted/30 p-4">
+      <aside className="flex w-56 flex-col border-r bg-card p-4">
         <div className="mb-6 px-2">
-          <p className="font-semibold leading-tight">Kanzlei Brands</p>
-          <p className="text-xs text-muted-foreground">Plattform</p>
+          <Image src="/brand/logo-on-dark.svg" alt="Kanzlei Brands" width={140} height={56} priority />
         </div>
         <nav className="flex flex-col gap-1">
           <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">

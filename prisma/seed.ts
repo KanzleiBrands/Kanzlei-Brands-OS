@@ -14,7 +14,8 @@ async function main() {
       type: "AGENCY",
       name: "Kanzlei Brands",
       slug: "kanzlei-brands",
-      primaryColor: "#0f172a",
+      logoUrl: "/brand/logo-on-dark.svg",
+      primaryColor: "#B9975B",
     },
   });
 
