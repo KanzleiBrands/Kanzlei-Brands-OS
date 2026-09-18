@@ -1,20 +1,185 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { accessiblePipelineIds } from "@/lib/access";
+import { computeOverviewStats } from "@/lib/dashboard-stats";
+import { avatarColorFor, initialsOf } from "@/lib/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { StatTile } from "@/components/stat-tile";
+import { StatusDistributionBar } from "@/components/status-distribution-bar";
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user) return null;
+  if (!session?.user) redirect("/login");
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: session.user.organizationId },
+  const isAgency = session.user.role === "AGENCY_ADMIN";
+
+  const organizationIds = isAgency
+    ? (
+        await prisma.organization.findMany({
+          where: { type: "CLIENT", parentId: session.user.organizationId },
+          select: { id: true },
+        })
+      ).map((o) => o.id)
+    : [session.user.organizationId];
+
+  const accessible =
+    session.user.role === "CLIENT_STAFF" ? await accessiblePipelineIds(session, session.user.organizationId) : "ALL";
+
+  const pipelines = await prisma.pipeline.findMany({
+    where: {
+      organizationId: { in: organizationIds },
+      ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
+    },
+    include: {
+      organization: { select: { name: true } },
+      stages: { orderBy: { order: "asc" } },
+      contacts: {
+        select: { id: true, stageId: true, createdAt: true, updatedAt: true },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const showOrgTag = isAgency && new Set(pipelines.map((p) => p.organizationId)).size > 1;
+
+  const stats = computeOverviewStats(pipelines);
+
+  const recentContacts = await prisma.contact.findMany({
+    where: {
+      pipeline: {
+        organizationId: { in: organizationIds },
+        ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    include: { stage: true, pipeline: { select: { name: true } } },
   });
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold">Willkommen, {session.user.name}</h1>
-      <p className="text-muted-foreground">
-        {organization?.name} · Rolle: {session.user.role}
-      </p>
+      <h1 className="mb-6 text-2xl font-semibold">Übersicht</h1>
+
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          label="Neu in 7 Tagen"
+          value={stats.newLast7Days}
+          subtext={`${stats.totalContacts} Kontakte gesamt`}
+        />
+        <StatTile
+          label="Unbearbeitet"
+          value={stats.unprocessed}
+          subtext={`${stats.staleUnprocessed} seit über 2 Tagen offen`}
+        />
+        <StatTile label="In Bearbeitung" value={stats.inProgress} subtext="aktuell in Bearbeitung" />
+        <StatTile
+          label="Abgeschlossen in 30 Tagen"
+          value={stats.completedLast30Days}
+          subtext={`${stats.completedTotal} gesamt`}
+        />
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Statusverteilung</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StatusDistributionBar segments={stats.statusDistribution} />
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Kampagnen</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-1">
+            {pipelines.map((pipeline) => {
+              const sortedStages = [...pipeline.stages].sort((a, b) => a.order - b.order);
+              const firstStageId = sortedStages[0]?.id;
+              const newCount = pipeline.contacts.filter((c) => c.stageId === firstStageId).length;
+              const lastContact = pipeline.contacts.reduce<Date | null>(
+                (latest, c) => (!latest || c.createdAt > latest ? c.createdAt : latest),
+                null,
+              );
+              return (
+                <Link
+                  key={pipeline.id}
+                  href={`/dashboard/pipelines/${pipeline.id}`}
+                  className="flex items-center justify-between rounded px-2 py-2 hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block size-2 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: sortedStages[0]?.color ?? "var(--muted-foreground)" }}
+                    />
+                    <div>
+                      <p className="font-medium">
+                        {pipeline.name}
+                        {showOrgTag && (
+                          <span className="ml-2 text-xs text-muted-foreground">{pipeline.organization.name}</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {lastContact
+                          ? `Letzter Eingang ${lastContact.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}`
+                          : "Noch keine Eingänge"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {!pipeline.active ? (
+                      <Badge variant="outline">Pausiert</Badge>
+                    ) : newCount > 0 ? (
+                      <Badge>{newCount} neu</Badge>
+                    ) : null}
+                    <span className="text-sm text-muted-foreground">{pipeline.contacts.length}</span>
+                  </div>
+                </Link>
+              );
+            })}
+            {pipelines.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Kampagnen.</p>}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Neueste Kontakte</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {recentContacts.map((contact) => {
+              const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
+              return (
+                <Link
+                  key={contact.id}
+                  href={`/dashboard/contacts/${contact.id}`}
+                  className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span
+                      className="flex size-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                      style={{ backgroundColor: avatarColorFor(fullName) }}
+                    >
+                      {initialsOf(contact.firstName, contact.lastName)}
+                    </span>
+                    <div className="overflow-hidden">
+                      <p className="truncate text-sm font-medium">{fullName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{contact.pipeline.name}</p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="flex-shrink-0">
+                    {contact.stage.name}
+                  </Badge>
+                </Link>
+              );
+            })}
+            {recentContacts.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Kontakte.</p>}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

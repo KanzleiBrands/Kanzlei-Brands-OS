@@ -3,19 +3,15 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
+import { formatCustomFields } from "@/lib/format-custom-fields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { NoteForm } from "./note-form";
 import { StageSelectForm } from "./stage-select-form";
 import { SendEmailForm } from "./send-email-form";
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  NOTE: "Notiz",
-  STAGE_CHANGE: "Statusänderung",
-  EMAIL_IN: "E-Mail (eingehend)",
-  EMAIL_OUT: "E-Mail (ausgehend)",
-  CALL: "Anruf",
-};
+import { ActivityTimeline } from "./activity-timeline";
+import { StarRating } from "@/components/star-rating";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = await params;
@@ -53,64 +49,98 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
   const hasMailbox = (await prisma.emailAccount.count({ where: { userId: session.user.id } })) > 0;
+  const customFields = formatCustomFields(contact.customFields);
+
+  const activities = contact.activities.map((activity) => ({
+    id: activity.id,
+    type: activity.type,
+    content: activity.content,
+    createdAt: activity.createdAt.toLocaleString("de-DE"),
+    userName: activity.user?.name ?? null,
+  }));
 
   return (
     <div className="p-8">
       <Link href={`/dashboard/pipelines/${contact.pipelineId}`} className="text-sm text-muted-foreground underline">
         ← Zurück zur Pipeline
       </Link>
-      <div className="mt-2 mb-6 flex items-center justify-between">
+      <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{fullName}</h1>
           <p className="text-muted-foreground">
             {contact.email ?? "Keine E-Mail"} · {contact.phone ?? "Kein Telefon"}
+            {contact.location ? ` · ${contact.location}` : ""}
           </p>
+          <div className="mt-1">
+            <StarRating contactId={contact.id} rating={contact.rating} size="default" />
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {contact.phone && (
+            <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
+              Anrufen
+            </Button>
+          )}
+          {contact.email && (
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a href={`mailto:${contact.email}`} />}
+            >
+              Mailto
+            </Button>
+          )}
           <Badge variant="secondary">{contact.source}</Badge>
           <StageSelectForm contactId={contact.id} currentStageId={contact.stageId} stages={contact.pipeline.stages} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Notiz hinzufügen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NoteForm contactId={contact.id} />
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-6">
+          {customFields.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Formular-Angaben</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                  {customFields.map((field) => (
+                    <div key={field.label} className="contents">
+                      <dt className="text-muted-foreground">{field.label}</dt>
+                      <dd className="break-words">{field.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>E-Mail senden</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SendEmailForm contactId={contact.id} hasMailbox={hasMailbox} />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Notiz / Anruf hinzufügen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NoteForm contactId={contact.id} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>E-Mail senden</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SendEmailForm contactId={contact.id} hasMailbox={hasMailbox} />
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Verlauf</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {contact.activities.map((activity) => (
-              <div key={activity.id} className="border-b pb-2 text-sm last:border-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{ACTIVITY_LABELS[activity.type] ?? activity.type}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {activity.createdAt.toLocaleString("de-DE")}
-                  </span>
-                </div>
-                {activity.content && <p className="text-muted-foreground">{activity.content}</p>}
-                {activity.user && <p className="text-xs text-muted-foreground">von {activity.user.name}</p>}
-              </div>
-            ))}
-            {contact.activities.length === 0 && (
-              <p className="text-sm text-muted-foreground">Noch keine Aktivitäten.</p>
-            )}
+          <CardContent>
+            <ActivityTimeline activities={activities} />
           </CardContent>
         </Card>
       </div>

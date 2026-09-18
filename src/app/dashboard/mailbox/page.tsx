@@ -55,12 +55,18 @@ export default async function MailboxPage({
         </CardHeader>
         <CardContent className="flex gap-3">
           {googleConfigured ? (
-            <Button render={<a href="/api/mailbox/google/connect" />}>Gmail verbinden</Button>
+            <Button nativeButton={false} render={<a href="/api/mailbox/google/connect" />}>
+              Gmail verbinden
+            </Button>
           ) : (
             <Button disabled>Gmail verbinden</Button>
           )}
           {microsoftConfigured ? (
-            <Button variant="outline" render={<a href="/api/mailbox/microsoft/connect" />}>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href="/api/mailbox/microsoft/connect" />}
+            >
               Microsoft 365 verbinden
             </Button>
           ) : (

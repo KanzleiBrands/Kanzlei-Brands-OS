@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
+import { ClientSwitcher } from "./client-switcher";
 
 function navFor(role: string) {
   const common = [
@@ -33,12 +35,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const links = navFor(session.user.role);
 
+  const clients =
+    session.user.role === "AGENCY_ADMIN"
+      ? await prisma.organization.findMany({
+          where: { type: "CLIENT", parentId: session.user.organizationId },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
+
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-56 flex-col border-r bg-card p-4">
         <div className="mb-6 px-2">
           <Image src="/brand/logo-on-dark.svg" alt="Kanzlei Brands" width={140} height={56} priority />
         </div>
+        {session.user.role === "AGENCY_ADMIN" && (
+          <div className="mb-4 px-2">
+            <ClientSwitcher currentLabel="Alle Kunden" clients={clients} />
+          </div>
+        )}
         <nav className="flex flex-col gap-1">
           <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">
             Übersicht

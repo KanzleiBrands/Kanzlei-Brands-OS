@@ -126,9 +126,9 @@ export async function createPipeline(_prevState: string | undefined, formData: F
       organizationId,
       stages: {
         create: [
-          { name: "Neu", order: 0 },
-          { name: "In Bearbeitung", order: 1 },
-          { name: "Abgeschlossen", order: 2 },
+          { name: "Neu", order: 0, color: "#3B82F6" },
+          { name: "In Bearbeitung", order: 1, color: "#F59E0B" },
+          { name: "Abgeschlossen", order: 2, color: "#22C55E" },
         ],
       },
     },
@@ -146,6 +146,21 @@ export async function createPipeline(_prevState: string | undefined, formData: F
     userId: session.user.id,
     metadata: { name, kind },
   });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/pipelines");
+}
+
+export async function togglePipelineActive(formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return;
+  assertOrganizationAccess(session, pipeline.organizationId);
+  if (session.user.role === "CLIENT_STAFF") return;
+
+  await prisma.pipeline.update({ where: { id: pipelineId }, data: { active: !pipeline.active } });
 
   revalidatePath("/dashboard/clients");
   revalidatePath("/dashboard/pipelines");

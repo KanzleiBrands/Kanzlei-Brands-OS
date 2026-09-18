@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertPipelineAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
+import { csvToObjects } from "@/lib/csv";
+import { extractContactFields } from "@/lib/webhook-ingest";
 
 export async function moveContactStage(formData: FormData) {
   const session = await requireSession();
@@ -41,6 +43,22 @@ export async function moveContactStage(formData: FormData) {
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
 }
 
+export async function setRating(formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const rating = Number(formData.get("rating") ?? 0);
+  if (rating < 0 || rating > 5) return;
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return;
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.contact.update({ where: { id: contactId }, data: { rating: rating || null } });
+
+  revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
 export async function createContact(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");
@@ -71,18 +89,87 @@ export async function createContact(_prevState: string | undefined, formData: Fo
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }
 
+function normalizeKey(key: string) {
+  return key
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+export async function importContactsCsv(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return "Bitte eine CSV-Datei auswählen.";
+  }
+
+  await assertPipelineAccess(session, pipelineId);
+
+  const firstStage = await prisma.stage.findFirst({
+    where: { pipelineId },
+    orderBy: { order: "asc" },
+  });
+  if (!firstStage) return "Diese Pipeline hat keine Stufen.";
+
+  const text = await file.text();
+  const rows = csvToObjects(text);
+  if (rows.length === 0) return "Die Datei enthält keine verwertbaren Zeilen.";
+  if (rows.length > 2000) return "Maximal 2000 Zeilen pro Import.";
+
+  let imported = 0;
+  for (const row of rows) {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(row)) {
+      normalized[normalizeKey(key)] = value;
+    }
+
+    const fields = extractContactFields(normalized);
+    if (!fields.firstName && !fields.lastName && !fields.email) continue;
+
+    await prisma.contact.create({
+      data: {
+        pipelineId,
+        stageId: firstStage.id,
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        email: fields.email,
+        phone: fields.phone,
+        location: fields.location,
+        source: "MANUAL",
+        customFields: row,
+      },
+    });
+    imported++;
+  }
+
+  await logAudit({
+    action: "contacts.csv_imported",
+    entityType: "Pipeline",
+    entityId: pipelineId,
+    organizationId: (await prisma.pipeline.findUnique({ where: { id: pipelineId } }))!.organizationId,
+    userId: session.user.id,
+    metadata: { imported, rows: rows.length },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+  return imported > 0 ? `${imported} Kontakt(e) importiert.` : "Keine gültigen Zeilen gefunden (Name oder E-Mail erforderlich).";
+}
+
 export async function addNote(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const contactId = String(formData.get("contactId") ?? "");
   const content = String(formData.get("content") ?? "").trim();
-  if (!content) return "Notiz darf nicht leer sein.";
+  const type = formData.get("type") === "CALL" ? "CALL" : "NOTE";
+  if (!content) return type === "CALL" ? "Notiz zum Anruf darf nicht leer sein." : "Notiz darf nicht leer sein.";
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });
   if (!contact) return "Kontakt nicht gefunden.";
   await assertPipelineAccess(session, contact.pipelineId);
 
   await prisma.activity.create({
-    data: { contactId, userId: session.user.id, type: "NOTE", content },
+    data: { contactId, userId: session.user.id, type, content },
   });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);

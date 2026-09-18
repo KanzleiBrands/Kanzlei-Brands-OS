@@ -56,30 +56,36 @@ async function main() {
     },
   });
 
-  const leadPipeline = await prisma.pipeline.create({
-    data: {
-      name: "Website Leads",
-      kind: "LEADS",
-      organizationId: demoClient.id,
-      stages: {
-        create: [
-          { name: "Neu", order: 0 },
-          { name: "Kontaktiert", order: 1 },
-          { name: "Termin vereinbart", order: 2 },
-          { name: "Gewonnen", order: 3 },
-          { name: "Verloren", order: 4 },
-        ],
-      },
-    },
+  const existingPipeline = await prisma.pipeline.findFirst({
+    where: { name: "Website Leads", organizationId: demoClient.id },
   });
 
-  await prisma.webhookEndpoint.create({
-    data: {
-      source: "GENERIC",
-      organizationId: demoClient.id,
-      pipelineId: leadPipeline.id,
-    },
-  });
+  if (!existingPipeline) {
+    const leadPipeline = await prisma.pipeline.create({
+      data: {
+        name: "Website Leads",
+        kind: "LEADS",
+        organizationId: demoClient.id,
+        stages: {
+          create: [
+            { name: "Neu", order: 0, color: "#3B82F6" },
+            { name: "Kontaktiert", order: 1, color: "#F59E0B" },
+            { name: "Termin vereinbart", order: 2, color: "#8B5CF6" },
+            { name: "Gewonnen", order: 3, color: "#22C55E" },
+            { name: "Verloren", order: 4, color: "#EF4444" },
+          ],
+        },
+      },
+    });
+
+    await prisma.webhookEndpoint.create({
+      data: {
+        source: "GENERIC",
+        organizationId: demoClient.id,
+        pipelineId: leadPipeline.id,
+      },
+    });
+  }
 
   await prisma.course.upsert({
     where: { id: "seed-onboarding-course" },
@@ -100,13 +106,18 @@ async function main() {
   });
 
   // Offers are scoped to the client organization that should see them in its Kunden-Hub.
-  await prisma.offer.create({
-    data: {
-      title: "Performance-Marketing Paket",
-      description: "Zusätzliche Meta & LinkedIn Kampagnen für mehr Leads.",
-      organizationId: demoClient.id,
-    },
+  const existingOffer = await prisma.offer.findFirst({
+    where: { title: "Performance-Marketing Paket", organizationId: demoClient.id },
   });
+  if (!existingOffer) {
+    await prisma.offer.create({
+      data: {
+        title: "Performance-Marketing Paket",
+        description: "Zusätzliche Meta & LinkedIn Kampagnen für mehr Leads.",
+        organizationId: demoClient.id,
+      },
+    });
+  }
 
   console.log("Seed complete.");
   console.log("Agency admin login: lukas@kanzlei-brands.de / changeme123");

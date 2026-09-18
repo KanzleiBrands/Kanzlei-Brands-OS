@@ -12,6 +12,7 @@ const AUTO_DETECT: Record<string, string[]> = {
   lastName: ["lastName", "last_name", "nachname", "lastname"],
   email: ["email", "e_mail", "mail"],
   phone: ["phone", "telefon", "phone_number", "tel"],
+  location: ["location", "ort", "stadt", "city", "wohnort"],
 };
 
 function toStringOrNull(value: unknown): string | null {
@@ -28,11 +29,18 @@ function toStringOrNull(value: unknown): string | null {
  * payload is always preserved in customFields for later reference.
  */
 export function extractContactFields(payload: Record<string, unknown>, fieldMapping?: FieldMapping | null) {
-  const result: { firstName: string | null; lastName: string | null; email: string | null; phone: string | null } = {
+  const result: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    location: string | null;
+  } = {
     firstName: null,
     lastName: null,
     email: null,
     phone: null,
+    location: null,
   };
 
   if (fieldMapping) {

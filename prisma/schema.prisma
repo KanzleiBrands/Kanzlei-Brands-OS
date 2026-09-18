@@ -100,9 +100,10 @@ enum PipelineKind {
 }
 
 model Pipeline {
-  id   String       @id @default(cuid())
-  name String
-  kind PipelineKind
+  id     String       @id @default(cuid())
+  name   String
+  kind   PipelineKind
+  active Boolean      @default(true)
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -150,6 +151,8 @@ model Contact {
   lastName  String?
   email     String?
   phone     String?
+  location  String?
+  rating    Int?          @db.SmallInt // 1-5 star qualification rating, null = not yet rated
   source    ContactSource @default(MANUAL)
   // Raw/extra fields that don't map to a fixed column (form-specific answers, CV links, UTM data, ...)
   customFields Json?
