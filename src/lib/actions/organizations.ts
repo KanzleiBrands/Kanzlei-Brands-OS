@@ -77,6 +77,49 @@ export async function updateClientName(_prevState: string | undefined, formData:
   revalidatePath(`/dashboard/clients/${organizationId}`);
 }
 
+/** Parses a quota input: empty string means "kein Limit gesetzt" (null), otherwise a non-negative integer. */
+function parseQuota(raw: FormDataEntryValue | null): number | null | "invalid" {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return "invalid";
+  return parsed;
+}
+
+export async function updateOrganizationQuotas(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") {
+    return "Nur Agentur-Admins können Kontingente ändern.";
+  }
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
+
+  const leadsQuota = parseQuota(formData.get("leadsQuota"));
+  const applicantsQuota = parseQuota(formData.get("applicantsQuota"));
+  if (leadsQuota === "invalid" || applicantsQuota === "invalid") {
+    return "Kontingente müssen leer (kein Limit) oder eine positive ganze Zahl sein.";
+  }
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { leadsQuota, applicantsQuota },
+  });
+
+  await logAudit({
+    action: "organization.quotas_updated",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+    metadata: { leadsQuota, applicantsQuota },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+}
+
 export type CreateUserResult = { status: "error"; message: string } | { status: "success"; link: string } | undefined;
 
 export async function createOrgUser(_prevState: CreateUserResult, formData: FormData): Promise<CreateUserResult> {

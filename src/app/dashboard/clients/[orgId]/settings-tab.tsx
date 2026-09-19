@@ -9,6 +9,7 @@ import { DeleteUserButton } from "./delete-user-button";
 import { ArchiveOrganizationButton } from "./archive-organization-button";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { EditClientNameForm } from "./edit-client-name-form";
+import { QuotaSettingsForm } from "./quota-settings-form";
 
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
@@ -33,6 +34,10 @@ export function SettingsTab({
   courses,
   assignedCourseIds,
   baseUrl,
+  leadsQuota,
+  applicantsQuota,
+  leadsUsed,
+  applicantsUsed,
 }: {
   organizationId: string;
   organizationName: string;
@@ -42,6 +47,10 @@ export function SettingsTab({
   courses: Course[];
   assignedCourseIds: Set<string>;
   baseUrl: string;
+  leadsQuota: number | null;
+  applicantsQuota: number | null;
+  leadsUsed: number;
+  applicantsUsed: number;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +60,21 @@ export function SettingsTab({
         </CardHeader>
         <CardContent className="text-sm">
           <EditClientNameForm organizationId={organizationId} name={organizationName} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kampagnen-Kontingente</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <QuotaSettingsForm
+            organizationId={organizationId}
+            leadsQuota={leadsQuota}
+            applicantsQuota={applicantsQuota}
+            leadsUsed={leadsUsed}
+            applicantsUsed={applicantsUsed}
+          />
         </CardContent>
       </Card>
 

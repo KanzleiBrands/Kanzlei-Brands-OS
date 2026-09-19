@@ -43,14 +43,36 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function QuotaBadge({ label, used, quota }: { label: string; used: number; quota: number | null }) {
+  const overQuota = quota !== null && used > quota;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+        overQuota ? "border-destructive/50 text-destructive" : "text-muted-foreground"
+      }`}
+    >
+      {label}: <span className="font-medium text-foreground">{used}</span>
+      {quota !== null && <> von {quota} in Gebrauch</>}
+    </span>
+  );
+}
+
 export function CampaignsTab({
   organizationId,
   campaigns,
   templates,
+  leadsQuota,
+  applicantsQuota,
+  leadsUsed,
+  applicantsUsed,
 }: {
   organizationId: string;
   campaigns: Campaign[];
   templates: { id: string; name: string }[];
+  leadsQuota: number | null;
+  applicantsQuota: number | null;
+  leadsUsed: number;
+  applicantsUsed: number;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("lastLead");
@@ -86,8 +108,12 @@ export function CampaignsTab({
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Kampagnenübersicht</h2>
+        <div className="flex flex-wrap gap-2">
+          <QuotaBadge label="Mandatsakquise" used={leadsUsed} quota={leadsQuota} />
+          <QuotaBadge label="Recruiting" used={applicantsUsed} quota={applicantsQuota} />
+        </div>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">Hier siehst du alle Kampagnen dieses Kunden.</p>
 

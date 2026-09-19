@@ -18,7 +18,22 @@ type ClientRow = {
   staleUnprocessed: number;
   newLast7Days: number;
   lastLeadAt: string | null;
+  leadsUsed: number;
+  applicantsUsed: number;
+  leadsQuota: number | null;
+  applicantsQuota: number | null;
 };
+
+function quotaLine(label: string, used: number, quota: number | null) {
+  if (used === 0 && quota === null) return null;
+  const overQuota = quota !== null && used > quota;
+  return (
+    <p key={label} className={overQuota ? "font-medium text-destructive" : undefined}>
+      {label}: {used}
+      {quota !== null && ` / ${quota}`}
+    </p>
+  );
+}
 
 const SORT_OPTIONS = [
   { value: "name", label: "Name" },
@@ -102,6 +117,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
             <TableHead>Kunde</TableHead>
             <TableHead>Leads</TableHead>
             <TableHead>Kampagnen</TableHead>
+            <TableHead>Kontingente</TableHead>
             <TableHead>Letzter Lead</TableHead>
             <TableHead>Unbearbeitet</TableHead>
             <TableHead>Überfällig</TableHead>
@@ -127,6 +143,15 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               <TableCell>
                 {client.activePipelines} / {client.totalPipelines}
               </TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                {(() => {
+                  const lines = [
+                    quotaLine("Mandatsakquise", client.leadsUsed, client.leadsQuota),
+                    quotaLine("Recruiting", client.applicantsUsed, client.applicantsQuota),
+                  ].filter(Boolean);
+                  return lines.length > 0 ? lines : "–";
+                })()}
+              </TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(client.lastLeadAt)}</TableCell>
               <TableCell>{client.unprocessed}</TableCell>
               <TableCell>
@@ -148,14 +173,14 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           ))}
           {sorted.length === 0 && clients.length > 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={9} className="text-center text-muted-foreground">
                 Kein Kunde passt zur Suche.
               </TableCell>
             </TableRow>
           )}
           {clients.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={9} className="text-center text-muted-foreground">
                 Noch keine Kunden angelegt.
               </TableCell>
             </TableRow>

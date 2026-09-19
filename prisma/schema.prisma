@@ -29,6 +29,14 @@ model Organization {
   // from the default Kunden-Übersicht and can be reactivated at any time.
   archivedAt DateTime?
 
+  // Gebuchte Kampagnen-Kontingente je Kampagnentyp - null bedeutet "kein
+  // Limit gesetzt". "In Gebrauch" wird nicht separat gespeichert, sondern
+  // immer live aus der Anzahl vorhandener Pipeline-Zeilen dieses Kunden
+  // je PipelineKind berechnet, damit Löschen einer Kampagne das Kontingent
+  // automatisch wieder freigibt.
+  leadsQuota      Int?
+  applicantsQuota Int?
+
   parentId String?
   parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
   children Organization[] @relation("OrgHierarchy")

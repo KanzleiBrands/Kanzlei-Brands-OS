@@ -45,6 +45,8 @@ export default async function ClientDetailPage({
 
   const stats = computeOverviewStats(organization.pipelines);
   const baseUrl = await getBaseUrl();
+  const leadsUsed = organization.pipelines.filter((p) => p.kind === "LEADS").length;
+  const applicantsUsed = organization.pipelines.filter((p) => p.kind === "APPLICANTS").length;
   const courses = await prisma.course.findMany({ orderBy: { createdAt: "desc" } });
   const stageTemplates = await prisma.stageTemplate.findMany({
     orderBy: { createdAt: "asc" },
@@ -119,7 +121,15 @@ export default async function ClientDetailPage({
             />
           </div>
 
-          <CampaignsTab organizationId={organization.id} campaigns={campaigns} templates={stageTemplates} />
+          <CampaignsTab
+            organizationId={organization.id}
+            campaigns={campaigns}
+            templates={stageTemplates}
+            leadsQuota={organization.leadsQuota}
+            applicantsQuota={organization.applicantsQuota}
+            leadsUsed={leadsUsed}
+            applicantsUsed={applicantsUsed}
+          />
         </>
       )}
 
@@ -133,6 +143,10 @@ export default async function ClientDetailPage({
           courses={courses}
           assignedCourseIds={assignedCourseIds}
           baseUrl={baseUrl}
+          leadsQuota={organization.leadsQuota}
+          applicantsQuota={organization.applicantsQuota}
+          leadsUsed={leadsUsed}
+          applicantsUsed={applicantsUsed}
         />
       )}
     </div>

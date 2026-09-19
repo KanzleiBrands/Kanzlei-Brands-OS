@@ -49,6 +49,7 @@ export default async function ClientsPage({
           select: {
             id: true,
             name: true,
+            kind: true,
             active: true,
             createdAt: true,
             stages: { select: { id: true, name: true, order: true, color: true } },
@@ -88,6 +89,10 @@ export default async function ClientsPage({
       staleUnprocessed: stats.staleUnprocessed,
       newLast7Days: stats.newLast7Days,
       lastLeadAt: lastLeadAt?.toISOString() ?? null,
+      leadsUsed: client.pipelines.filter((p) => p.kind === "LEADS").length,
+      applicantsUsed: client.pipelines.filter((p) => p.kind === "APPLICANTS").length,
+      leadsQuota: client.leadsQuota,
+      applicantsQuota: client.applicantsQuota,
     };
   });
 
