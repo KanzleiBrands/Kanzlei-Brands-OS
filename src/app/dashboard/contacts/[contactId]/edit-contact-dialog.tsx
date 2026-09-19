@@ -19,14 +19,12 @@ export function EditContactDialog({
   lastName,
   email,
   phone,
-  location,
 }: {
   contactId: string;
   firstName: string | null;
   lastName: string | null;
   email: string | null;
   phone: string | null;
-  location: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(updateContact, undefined);
@@ -56,7 +54,6 @@ export function EditContactDialog({
           </div>
           <Input name="email" type="email" placeholder="E-Mail" defaultValue={email ?? ""} />
           <Input name="phone" placeholder="Telefon" defaultValue={phone ?? ""} />
-          <Input name="location" placeholder="Ort" defaultValue={location ?? ""} />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
             {isPending ? "Speichern..." : "Speichern"}

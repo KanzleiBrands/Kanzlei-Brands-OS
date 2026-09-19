@@ -4,7 +4,7 @@ import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/a
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { objectsToCsv } from "@/lib/csv";
 
-const HEADERS = ["Vorname", "Nachname", "E-Mail", "Telefon", "Ort", "Status", "Quelle", "Bewertung", "Eingang"];
+const HEADERS = ["Vorname", "Nachname", "E-Mail", "Telefon", "Status", "Quelle", "Bewertung", "Eingang"];
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ pipelineId: string }> }) {
   const { pipelineId } = await params;
@@ -40,7 +40,6 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       Nachname: contact.lastName ?? "",
       "E-Mail": contact.email ?? "",
       Telefon: contact.phone ?? "",
-      Ort: contact.location ?? "",
       Status: stage.name,
       Quelle: CONTACT_SOURCE_LABELS[contact.source] ?? contact.source,
       Bewertung: contact.rating ? String(contact.rating) : "",

@@ -44,7 +44,6 @@ export default async function CrossPipelineLeadsPage({
       lastName: contact.lastName,
       email: contact.email,
       phone: contact.phone,
-      location: contact.location,
       source: contact.source,
       rating: contact.rating,
       createdAt: contact.createdAt.toISOString(),

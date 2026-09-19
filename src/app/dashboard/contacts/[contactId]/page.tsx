@@ -74,7 +74,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <h1 className="text-2xl font-semibold">{fullName}</h1>
           <p className="text-muted-foreground">
             {contact.email ?? "Keine E-Mail"} · {contact.phone ?? "Kein Telefon"}
-            {contact.location ? ` · ${contact.location}` : ""}
           </p>
           <div className="mt-1">
             <StarRating contactId={contact.id} rating={contact.rating} size="default" />
@@ -104,7 +103,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             lastName={contact.lastName}
             email={contact.email}
             phone={contact.phone}
-            location={contact.location}
           />
           <DeleteContactButton
             contactId={contact.id}

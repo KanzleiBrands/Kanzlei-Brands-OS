@@ -16,7 +16,6 @@ type Row = {
   lastName: string | null;
   email: string | null;
   phone: string | null;
-  location: string | null;
   source: string;
   rating: number | null;
   createdAt: string;
@@ -119,7 +118,6 @@ export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
             <TableHead>Status</TableHead>
             <TableHead>Quelle</TableHead>
             <TableHead>Bewertung</TableHead>
-            <TableHead>Ort</TableHead>
             <TableHead className="cursor-pointer" onClick={() => toggleSort("eingang")}>
               Eingang {sortKey === "eingang" ? (sortAsc ? "↑" : "↓") : ""}
             </TableHead>
@@ -165,7 +163,6 @@ export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
                 <TableCell>
                   <StarRating contactId={contact.id} rating={contact.rating} size="sm" />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{contact.location ?? "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(contact.createdAt).toLocaleDateString("de-DE", {
                     day: "2-digit",
@@ -181,14 +178,14 @@ export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
           })}
           {sorted.length === 0 && rows.length > 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={7} className="text-center text-muted-foreground">
                 Kein Kontakt passt zur Suche.
               </TableCell>
             </TableRow>
           )}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={7} className="text-center text-muted-foreground">
                 Noch keine Kontakte.
               </TableCell>
             </TableRow>

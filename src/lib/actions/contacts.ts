@@ -92,7 +92,6 @@ export async function updateContact(_prevState: string | undefined, formData: Fo
   const lastName = String(formData.get("lastName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  const location = String(formData.get("location") ?? "").trim();
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });
   if (!contact) return "Kontakt nicht gefunden.";
@@ -105,7 +104,6 @@ export async function updateContact(_prevState: string | undefined, formData: Fo
       lastName: lastName || null,
       email: email || null,
       phone: phone || null,
-      location: location || null,
     },
   });
 

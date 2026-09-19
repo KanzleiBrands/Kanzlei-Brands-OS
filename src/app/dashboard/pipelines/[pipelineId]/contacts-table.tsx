@@ -13,7 +13,6 @@ type Contact = {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
-  location: string | null;
   source: string;
   rating: number | null;
   createdAt: Date;
@@ -75,7 +74,6 @@ export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; du
           <TableHead>Status</TableHead>
           <TableHead>Quelle</TableHead>
           <TableHead>Bewertung</TableHead>
-          <TableHead>Ort</TableHead>
           <TableHead className="cursor-pointer" onClick={() => toggleSort("eingang")}>
             Eingang {sortKey === "eingang" ? (sortAsc ? "↑" : "↓") : ""}
           </TableHead>
@@ -126,7 +124,6 @@ export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; du
               <TableCell>
                 <StarRating contactId={contact.id} rating={contact.rating} size="sm" />
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">{contact.location ?? "-"}</TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {contact.createdAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
               </TableCell>
@@ -138,7 +135,7 @@ export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; du
         })}
         {sorted.length === 0 && (
           <TableRow>
-            <TableCell colSpan={7} className="text-center text-muted-foreground">
+            <TableCell colSpan={6} className="text-center text-muted-foreground">
               Noch keine Kontakte.
             </TableCell>
           </TableRow>
