@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { PencilIcon } from "lucide-react";
+import { FileTextIcon, PencilIcon } from "lucide-react";
 import { setCustomField } from "@/lib/actions/contacts";
+import { isFileUrl } from "@/lib/format-custom-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -33,7 +34,19 @@ export function CustomFieldRow({
       <div className="contents">
         <dt className="text-muted-foreground">{label}</dt>
         <dd className="flex items-center gap-2 break-words">
-          {value}
+          {isFileUrl(value) ? (
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-primary underline"
+            >
+              <FileTextIcon className="size-3.5" />
+              Datei öffnen
+            </a>
+          ) : (
+            value
+          )}
           {editable && (
             <button
               type="button"

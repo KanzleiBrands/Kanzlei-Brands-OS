@@ -225,7 +225,7 @@ export async function importContactsCsv(_prevState: string | undefined, formData
         location: fields.location,
         cvUrl: fields.cvUrl,
         source: "MANUAL",
-        customFields: row,
+        customFields: (fields.customFields as Prisma.InputJsonObject | null) ?? row,
       },
     });
     imported++;

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         location: fields.location,
         cvUrl: fields.cvUrl,
         source: CONTACT_SOURCE_BY_WEBHOOK_SOURCE[endpoint.source],
-        customFields: payload,
+        customFields: (fields.customFields as Prisma.InputJsonObject | null) ?? payload,
       },
     });
 

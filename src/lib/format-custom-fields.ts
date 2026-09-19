@@ -7,12 +7,21 @@ import { AUTO_DETECT, normalizeFieldKey } from "@/lib/webhook-ingest";
 const SKIP_KEYS = new Set([...Object.values(AUTO_DETECT).flat().map(normalizeFieldKey), "name", "full_name"]);
 
 function humanizeKey(key: string): string {
+  // Already a readable label/question (e.g. from extractFromTitledProfile) - leave casing alone.
+  if (key.includes(" ")) return key.trim();
+
   return key
     .replace(/[_.]+/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** True if a custom-field value is a link to an uploaded file (CV, photo, ...) rather than plain text. */
+export function isFileUrl(value: string): boolean {
+  if (!/^https?:\/\//i.test(value)) return false;
+  return /filename=|\/(download|uploads?|files?)\//i.test(value) || /\.(pdf|docx?|jpe?g|png|gif|webp|heic)(\?|$)/i.test(value);
 }
 
 function flatten(obj: Record<string, unknown>, prefix = ""): Record<string, string> {

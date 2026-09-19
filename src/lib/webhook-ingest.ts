@@ -28,11 +28,98 @@ function toStringOrNull(value: unknown): string | null {
   return null;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const EMAIL_HINT = /e-?mail/i;
+const PHONE_HINT = /telefon|phone|handy|mobil/i;
+const CV_HINT = /lebenslauf|resume|\bcv\b/i;
+const COMBINED_NAME_HINT = /vor.*nach|nach.*vor|full[\s_-]?name/i;
+const FIRST_NAME_HINT = /vorname|first[\s_-]?name/i;
+const LAST_NAME_HINT = /nachname|last[\s_-]?name|surname/i;
+const NAME_HINT = /name/i;
+
+/**
+ * Recursively collects `{ title, value }` leaf pairs from a nested object,
+ * e.g. `{ input: { ch1aim: { title, value } } }` -> one entry for "ch1aim"
+ * (slug "input.ch1aim"). A node is a leaf as soon as it has its own `value`
+ * key; anything without one is a grouping object to recurse into.
+ */
+function collectTitledEntries(node: unknown, path: string[] = []): { slug: string; title: string; value: string }[] {
+  if (!isPlainObject(node)) return [];
+  if ("value" in node) {
+    const value = toStringOrNull(node.value);
+    if (!value) return [];
+    return [{ slug: path.join("."), title: toStringOrNull(node.title) ?? path.join(" "), value }];
+  }
+  return Object.entries(node).flatMap(([key, child]) => collectTitledEntries(child, [...path, key]));
+}
+
+/**
+ * Some funnel builders (e.g. Perspektive) submit every answer as a
+ * `{ title, value }` pair nested under a `profile` object, keyed by an
+ * opaque, per-funnel field id (e.g. "file-87adc40beb..."). The human-readable
+ * `title` is the only reliable signal for what a field actually is - the key
+ * itself is arbitrary and regenerated per funnel, so it can't be matched
+ * against AUTO_DETECT. This walks that shape once, recognizes the fields we
+ * already show as structured columns (name/email/phone/CV) by matching on
+ * the title, and turns everything else into a clean question -> answer map
+ * instead of the raw payload, which also repeats every answer under
+ * separate "titles"/"values"/tracking-metadata trees.
+ */
+function extractFromTitledProfile(profile: Record<string, unknown>): {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  cvUrl: string | null;
+  customFields: Record<string, string>;
+} | null {
+  const entries = collectTitledEntries(profile);
+  if (entries.length === 0) return null;
+
+  let firstName: string | null = null;
+  let lastName: string | null = null;
+  let email: string | null = null;
+  let phone: string | null = null;
+  let cvUrl: string | null = null;
+  const customFields: Record<string, string> = {};
+
+  for (const entry of entries) {
+    const haystack = `${entry.slug} ${entry.title}`;
+    if (!email && EMAIL_HINT.test(haystack)) {
+      email = entry.value;
+    } else if (!phone && PHONE_HINT.test(haystack)) {
+      phone = entry.value;
+    } else if (!cvUrl && CV_HINT.test(haystack)) {
+      cvUrl = entry.value;
+    } else if (!firstName && !lastName && COMBINED_NAME_HINT.test(haystack)) {
+      const [first, ...rest] = entry.value.split(" ");
+      firstName = first || null;
+      lastName = rest.join(" ") || null;
+    } else if (!firstName && FIRST_NAME_HINT.test(haystack) && !LAST_NAME_HINT.test(haystack)) {
+      firstName = entry.value;
+    } else if (!lastName && LAST_NAME_HINT.test(haystack)) {
+      lastName = entry.value;
+    } else if (!firstName && !lastName && NAME_HINT.test(haystack)) {
+      const [first, ...rest] = entry.value.split(" ");
+      firstName = first || null;
+      lastName = rest.join(" ") || null;
+    } else {
+      customFields[entry.title] = entry.value;
+    }
+  }
+
+  return { firstName, lastName, email, phone, cvUrl, customFields };
+}
+
 /**
  * Maps an arbitrary inbound JSON payload (OnePage, Perspektive, Zapier, ...) onto
  * Contact fields. Explicit `fieldMapping` entries (dot-path -> Contact field) win;
- * anything not mapped falls back to common key auto-detection, and the full raw
- * payload is always preserved in customFields for later reference.
+ * anything not mapped falls back to common key auto-detection. `customFields` is
+ * null unless a cleaner, derived answer set (see extractFromTitledProfile) should
+ * replace the raw payload - otherwise the caller keeps storing the raw payload.
  */
 export function extractContactFields(payload: Record<string, unknown>, fieldMapping?: FieldMapping | null) {
   const result: {
@@ -42,6 +129,7 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
     phone: string | null;
     location: string | null;
     cvUrl: string | null;
+    customFields: Record<string, string> | null;
   } = {
     firstName: null,
     lastName: null,
@@ -49,6 +137,7 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
     phone: null,
     location: null,
     cvUrl: null,
+    customFields: null,
   };
 
   if (fieldMapping) {
@@ -57,6 +146,14 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
         (result as Record<string, string | null>)[contactField] = toStringOrNull(getByPath(payload, path));
       }
     }
+  }
+
+  const titledProfile = isPlainObject(payload.profile) ? extractFromTitledProfile(payload.profile) : null;
+  if (titledProfile) {
+    for (const field of ["firstName", "lastName", "email", "phone", "cvUrl"] as const) {
+      if (!result[field]) result[field] = titledProfile[field];
+    }
+    result.customFields = titledProfile.customFields;
   }
 
   for (const [field, candidates] of Object.entries(AUTO_DETECT)) {
