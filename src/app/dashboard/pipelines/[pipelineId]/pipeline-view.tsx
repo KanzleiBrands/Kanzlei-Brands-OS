@@ -21,6 +21,7 @@ type Contact = {
   rating: number | null;
   createdAt: Date;
   customFields: unknown;
+  rejectionReason: string | null;
   _count: { activities: number };
 };
 

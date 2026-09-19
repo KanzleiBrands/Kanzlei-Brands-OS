@@ -220,6 +220,11 @@ model Contact {
   website     String? // manually set, or auto-derived from the email domain
   address     String?
 
+  // Set when moved into an isRejected stage, cleared again on reactivation.
+  // One of the fixed, kind-specific options in src/lib/rejection-reasons.ts -
+  // lets the agency analyze per client why leads/applicants don't convert.
+  rejectionReason String?
+
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   stageId    String

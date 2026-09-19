@@ -36,6 +36,7 @@ export async function moveContactStage(formData: FormData) {
   const session = await requireSession();
   const contactId = String(formData.get("contactId") ?? "");
   const stageId = String(formData.get("stageId") ?? "");
+  const rejectionReason = String(formData.get("rejectionReason") ?? "").trim() || null;
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });
   if (!contact) return;
@@ -44,14 +45,21 @@ export async function moveContactStage(formData: FormData) {
   const stage = await prisma.stage.findUnique({ where: { id: stageId } });
   if (!stage || stage.pipelineId !== contact.pipelineId) return;
 
+  // Only ever keep a reason while the contact actually sits in a rejected
+  // stage - moving it anywhere else (including reactivating it) clears any
+  // stale reason from a previous rejection.
+  const nextRejectionReason = stage.isRejected ? rejectionReason : null;
+
   await prisma.$transaction([
-    prisma.contact.update({ where: { id: contactId }, data: { stageId } }),
+    prisma.contact.update({ where: { id: contactId }, data: { stageId, rejectionReason: nextRejectionReason } }),
     prisma.activity.create({
       data: {
         contactId,
         userId: session.user.id,
         type: "STAGE_CHANGE",
-        content: `Stage geändert zu "${stage.name}"`,
+        content: nextRejectionReason
+          ? `Stage geändert zu "${stage.name}" (Grund: ${nextRejectionReason})`
+          : `Stage geändert zu "${stage.name}"`,
       },
     }),
   ]);
@@ -62,7 +70,7 @@ export async function moveContactStage(formData: FormData) {
     entityId: contactId,
     organizationId: (await prisma.pipeline.findUnique({ where: { id: contact.pipelineId } }))!.organizationId,
     userId: session.user.id,
-    metadata: { stageId },
+    metadata: { stageId, rejectionReason: nextRejectionReason },
   });
 
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);

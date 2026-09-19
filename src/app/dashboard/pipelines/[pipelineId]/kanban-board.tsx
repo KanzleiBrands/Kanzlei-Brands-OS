@@ -11,6 +11,7 @@ import { CONTACT_SOURCE_LABELS, CONTACT_SOURCE_COLORS } from "@/lib/contact-sour
 import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
+import { RejectionReasonDialog } from "@/components/rejection-reason-dialog";
 
 type Contact = {
   id: string;
@@ -71,6 +72,7 @@ export function KanbanBoard({
   const rejectLabel = pipelineKind === "LEADS" ? "Als ungeeignet markieren" : "Absagen";
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const [rejectingContactId, setRejectingContactId] = useState<string | null>(null);
 
   function handleDrop(stageId: string, contactId: string) {
     const formData = new FormData();
@@ -82,14 +84,16 @@ export function KanbanBoard({
     setDragOverStageId(null);
   }
 
-  function handleReject(contactId: string) {
-    if (!rejectStageId) return;
+  function handleRejectConfirm(reason: string) {
+    if (!rejectStageId || !rejectingContactId) return;
     const formData = new FormData();
-    formData.set("contactId", contactId);
+    formData.set("contactId", rejectingContactId);
     formData.set("stageId", rejectStageId);
+    formData.set("rejectionReason", reason);
     startTransition(() => {
       moveContactStage(formData);
     });
+    setRejectingContactId(null);
   }
 
   return (
@@ -152,7 +156,7 @@ export function KanbanBoard({
                           className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           onClick={(e) => {
                             e.preventDefault();
-                            handleReject(contact.id);
+                            setRejectingContactId(contact.id);
                           }}
                         >
                           <BanIcon className="size-3.5" />
@@ -216,6 +220,15 @@ export function KanbanBoard({
           </div>
         ))}
       </div>
+      <RejectionReasonDialog
+        open={!!rejectingContactId}
+        onOpenChange={(open) => {
+          if (!open) setRejectingContactId(null);
+        }}
+        pipelineKind={pipelineKind}
+        onConfirm={handleRejectConfirm}
+        isPending={isPending}
+      />
     </div>
   );
 }

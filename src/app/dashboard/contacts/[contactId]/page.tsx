@@ -84,6 +84,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <div className="mt-1">
             <StarRating contactId={contact.id} rating={contact.rating} size="default" />
           </div>
+          {contact.rejectionReason && (
+            <p className="mt-1 text-sm text-destructive">Absagegrund: {contact.rejectionReason}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {contact.phone && (
@@ -102,7 +105,12 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </Button>
           )}
           <Badge variant="secondary">{CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}</Badge>
-          <StageSelectForm contactId={contact.id} currentStageId={contact.stageId} stages={contact.pipeline.stages} />
+          <StageSelectForm
+            contactId={contact.id}
+            currentStageId={contact.stageId}
+            pipelineKind={contact.pipeline.kind}
+            stages={contact.pipeline.stages}
+          />
           <EditContactDialog
             contactId={contact.id}
             firstName={contact.firstName}

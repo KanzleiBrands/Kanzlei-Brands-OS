@@ -16,6 +16,7 @@ type Contact = {
   email: string | null;
   source: string;
   createdAt: Date;
+  rejectionReason: string | null;
 };
 
 type Stage = {
@@ -71,6 +72,7 @@ export function ExcludedContactsTable({
         <TableRow>
           <TableHead>Kontakt</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead>Grund</TableHead>
           <TableHead>Quelle</TableHead>
           <TableHead>Eingang</TableHead>
           <TableHead />
@@ -104,6 +106,7 @@ export function ExcludedContactsTable({
                   {contact.stageName}
                 </span>
               </TableCell>
+              <TableCell className="text-sm text-muted-foreground">{contact.rejectionReason ?? "-"}</TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}
               </TableCell>
@@ -121,7 +124,7 @@ export function ExcludedContactsTable({
         })}
         {rows.length === 0 && (
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground">
+            <TableCell colSpan={6} className="text-center text-muted-foreground">
               {pipelineKind === "LEADS" ? "Keine ungeeigneten Kontakte." : "Keine ausgeschlossenen Kontakte."}
             </TableCell>
           </TableRow>
