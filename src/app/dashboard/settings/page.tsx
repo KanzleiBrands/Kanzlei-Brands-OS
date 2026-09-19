@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/base-url";
 import { AccountSection } from "./account-section";
 import { TeamSection } from "./team-section";
+import { AgencyTeamSection } from "./agency-team-section";
 import { MailboxSection } from "./mailbox-section";
 
 type Tab = "account" | "team" | "mailbox";
@@ -18,8 +19,9 @@ export default async function SettingsPage({
   if (!session?.user) redirect("/login");
 
   const { tab: tabParam, connected, error } = await searchParams;
-  const canManageTeam = session.user.role === "CLIENT_ADMIN";
-  const canUseMailbox = session.user.role !== "AGENCY_ADMIN";
+  const isAgency = session.user.role === "AGENCY_ADMIN";
+  const canManageTeam = session.user.role === "CLIENT_ADMIN" || isAgency;
+  const canUseMailbox = !isAgency;
 
   const validTabs: Tab[] = ["account", ...(canManageTeam ? (["team"] as const) : []), ...(canUseMailbox ? (["mailbox"] as const) : [])];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
@@ -66,7 +68,11 @@ export default async function SettingsPage({
       )}
 
       {tab === "team" && canManageTeam && (
-        <TeamSectionData organizationId={session.user.organizationId} currentUserId={session.user.id} />
+        <TeamSectionData
+          organizationId={session.user.organizationId}
+          currentUserId={session.user.id}
+          isAgency={isAgency}
+        />
       )}
 
       {tab === "mailbox" && canUseMailbox && (
@@ -76,7 +82,15 @@ export default async function SettingsPage({
   );
 }
 
-async function TeamSectionData({ organizationId, currentUserId }: { organizationId: string; currentUserId: string }) {
+async function TeamSectionData({
+  organizationId,
+  currentUserId,
+  isAgency,
+}: {
+  organizationId: string;
+  currentUserId: string;
+  isAgency: boolean;
+}) {
   const [organization, baseUrl] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: organizationId },
@@ -88,6 +102,17 @@ async function TeamSectionData({ organizationId, currentUserId }: { organization
     getBaseUrl(),
   ]);
   if (!organization) return null;
+
+  if (isAgency) {
+    return (
+      <AgencyTeamSection
+        organizationId={organization.id}
+        users={organization.users}
+        baseUrl={baseUrl}
+        currentUserId={currentUserId}
+      />
+    );
+  }
 
   return (
     <TeamSection

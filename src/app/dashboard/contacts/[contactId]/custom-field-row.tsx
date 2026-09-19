@@ -1,0 +1,71 @@
+"use client";
+
+import { useActionState, useEffect, useRef, useState } from "react";
+import { PencilIcon } from "lucide-react";
+import { setCustomField } from "@/lib/actions/contacts";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export function CustomFieldRow({
+  contactId,
+  fieldKey,
+  label,
+  value,
+  editable,
+}: {
+  contactId: string;
+  fieldKey: string;
+  label: string;
+  value: string;
+  editable: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [error, formAction, isPending] = useActionState(setCustomField, undefined);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && !error) setEditing(false);
+    wasPending.current = isPending;
+  }, [isPending, error]);
+
+  if (!editing) {
+    return (
+      <div className="contents">
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd className="flex items-center gap-2 break-words">
+          {value}
+          {editable && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              aria-label={`${label} bearbeiten`}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <PencilIcon className="size-3.5" />
+            </button>
+          )}
+        </dd>
+      </div>
+    );
+  }
+
+  return (
+    <div className="contents">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>
+        <form action={formAction} className="flex items-center gap-2">
+          <input type="hidden" name="contactId" value={contactId} />
+          <input type="hidden" name="key" value={fieldKey} />
+          <Input key={value} name="value" defaultValue={value} autoFocus className="max-w-xs" />
+          <Button type="submit" size="sm" disabled={isPending}>
+            {isPending ? "..." : "Speichern"}
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>
+            Abbrechen
+          </Button>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </form>
+      </dd>
+    </div>
+  );
+}

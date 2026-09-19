@@ -1,5 +1,10 @@
 type FieldMapping = Record<string, string>;
 
+/** Lowercases and replaces whitespace/hyphens with underscores, so "E-Mail" and "e_mail" are recognized as the same key. */
+export function normalizeFieldKey(key: string): string {
+  return key.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
 function getByPath(obj: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {
     if (acc === null || acc === undefined || typeof acc !== "object") return undefined;
@@ -7,7 +12,7 @@ function getByPath(obj: unknown, path: string): unknown {
   }, obj);
 }
 
-const AUTO_DETECT: Record<string, string[]> = {
+export const AUTO_DETECT: Record<string, string[]> = {
   firstName: ["firstName", "first_name", "vorname", "firstname"],
   lastName: ["lastName", "last_name", "nachname", "lastname"],
   email: ["email", "e_mail", "mail"],

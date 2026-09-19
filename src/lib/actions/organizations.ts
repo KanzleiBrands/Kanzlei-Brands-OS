@@ -101,7 +101,12 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
 
   // CLIENT_ADMIN may only create staff in their own org, never other admins.
   const role = session.user.role === "AGENCY_ADMIN" ? requestedRole : "CLIENT_STAFF";
-  if (role !== "CLIENT_ADMIN" && role !== "CLIENT_STAFF") {
+  if (role === "AGENCY_ADMIN") {
+    // Agency staff accounts may only be created directly in the agency's own org.
+    if (organizationId !== session.user.organizationId) {
+      return { status: "error", message: "Agentur-Mitarbeiter können nur in der eigenen Organisation angelegt werden." };
+    }
+  } else if (role !== "CLIENT_ADMIN" && role !== "CLIENT_STAFF") {
     return { status: "error", message: "Ungültige Rolle." };
   }
 

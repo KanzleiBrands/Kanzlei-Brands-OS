@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertPipelineAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
-import { extractContactFields } from "@/lib/webhook-ingest";
+import { extractContactFields, normalizeFieldKey } from "@/lib/webhook-ingest";
 
 export async function deleteContact(formData: FormData) {
   const session = await requireSession();
@@ -80,6 +81,58 @@ export async function setRating(formData: FormData) {
   revalidatePath(`/dashboard/contacts/${contactId}`);
 }
 
+export async function updateContact(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: {
+      firstName: firstName || null,
+      lastName: lastName || null,
+      email: email || null,
+      phone: phone || null,
+      location: location || null,
+    },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
+export async function setCustomField(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const key = String(formData.get("key") ?? "").trim();
+  const value = String(formData.get("value") ?? "").trim();
+  if (!key) return "Feldname ist erforderlich.";
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  const existing =
+    contact.customFields && typeof contact.customFields === "object" && !Array.isArray(contact.customFields)
+      ? (contact.customFields as Record<string, unknown>)
+      : {};
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: { customFields: { ...existing, [key]: value } as Prisma.InputJsonValue },
+  });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
 export async function createContact(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");
@@ -110,13 +163,6 @@ export async function createContact(_prevState: string | undefined, formData: Fo
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }
 
-function normalizeKey(key: string) {
-  return key
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-}
-
 export async function importContactsCsv(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");
@@ -143,7 +189,7 @@ export async function importContactsCsv(_prevState: string | undefined, formData
   for (const row of rows) {
     const normalized: Record<string, string> = {};
     for (const [key, value] of Object.entries(row)) {
-      normalized[normalizeKey(key)] = value;
+      normalized[normalizeFieldKey(key)] = value;
     }
 
     const fields = extractContactFields(normalized);

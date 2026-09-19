@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
-import { formatCustomFields } from "@/lib/format-custom-fields";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { customFieldEntries } from "@/lib/format-custom-fields";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NoteForm } from "./note-form";
@@ -13,6 +13,9 @@ import { SendEmailForm } from "./send-email-form";
 import { ActivityTimeline } from "./activity-timeline";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
+import { EditContactDialog } from "./edit-contact-dialog";
+import { CustomFieldRow } from "./custom-field-row";
+import { AddCustomFieldDialog } from "./add-custom-field-dialog";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = await params;
@@ -50,7 +53,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
   const hasMailbox = (await prisma.emailAccount.count({ where: { userId: session.user.id } })) > 0;
-  const customFields = formatCustomFields(contact.customFields);
+  const customFields = customFieldEntries(contact.customFields);
 
   const activities = contact.activities.map((activity) => ({
     id: activity.id,
@@ -94,6 +97,14 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           )}
           <Badge variant="secondary">{contact.source}</Badge>
           <StageSelectForm contactId={contact.id} currentStageId={contact.stageId} stages={contact.pipeline.stages} />
+          <EditContactDialog
+            contactId={contact.id}
+            firstName={contact.firstName}
+            lastName={contact.lastName}
+            email={contact.email}
+            phone={contact.phone}
+            location={contact.location}
+          />
           <DeleteContactButton
             contactId={contact.id}
             contactName={fullName}
@@ -105,23 +116,32 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
-          {customFields.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Formular-Angaben</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Zusätzliche Angaben</CardTitle>
+              <CardAction>
+                <AddCustomFieldDialog contactId={contact.id} />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              {customFields.length > 0 ? (
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                   {customFields.map((field) => (
-                    <div key={field.label} className="contents">
-                      <dt className="text-muted-foreground">{field.label}</dt>
-                      <dd className="break-words">{field.value}</dd>
-                    </div>
+                    <CustomFieldRow
+                      key={field.key}
+                      contactId={contact.id}
+                      fieldKey={field.key}
+                      label={field.label}
+                      value={field.value}
+                      editable={field.editable}
+                    />
                   ))}
                 </dl>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine zusätzlichen Angaben.</p>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
