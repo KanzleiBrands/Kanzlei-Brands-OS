@@ -37,6 +37,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const contactFirstName = normalize(body.hauptApVorname);
   const contactLastName = normalize(body.hauptApNachname);
   const contactEmail = normalize(body.hauptApEmail)?.toLowerCase() ?? null;
+  // Set for bulk-backfilling already-known clients, so re-creating their
+  // portal accounts here doesn't blast out unsolicited invite emails - a
+  // genuinely new client arriving via the live Airtable automation never
+  // sets this, so that path still emails immediately as intended.
+  const skipEmail = body.skipEmail === true;
 
   const agency = await prisma.organization.findFirst({ where: { type: "AGENCY" } });
   if (!agency) {
@@ -88,12 +93,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       });
       userCreated = true;
 
-      const baseUrl = await getBaseUrl();
-      await sendSystemEmail({
-        to: contactEmail,
-        subject: "Zugang zu eurem Kanzlei Brands Kundenportal",
-        text: `Hallo ${contactFirstName},\n\neuer Zugang zum Kanzlei Brands Kundenportal ist bereit. Aktiviere ihn hier:\n${baseUrl}/activate/${activationToken}\n\nViele Grüße\nKanzlei Brands`,
-      });
+      if (!skipEmail) {
+        const baseUrl = await getBaseUrl();
+        await sendSystemEmail({
+          to: contactEmail,
+          subject: "Zugang zu eurem Kanzlei Brands Kundenportal",
+          text: `Hallo ${contactFirstName},\n\neuer Zugang zum Kanzlei Brands Kundenportal ist bereit. Aktiviere ihn hier:\n${baseUrl}/activate/${activationToken}\n\nViele Grüße\nKanzlei Brands`,
+        });
+      }
     }
   }
 
