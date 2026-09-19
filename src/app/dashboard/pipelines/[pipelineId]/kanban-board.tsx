@@ -7,7 +7,6 @@ import { moveContactStage } from "@/lib/actions/contacts";
 import { formatCustomFields } from "@/lib/format-custom-fields";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
-import { CONTACT_SOURCE_LABELS, CONTACT_SOURCE_COLORS } from "@/lib/contact-source-labels";
 import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
@@ -131,8 +130,6 @@ export function KanbanBoard({
               {stage.contacts.map((contact) => {
                 const fullName = contactDisplayName(contact);
                 const highlight = formatCustomFields(contact.customFields)[0];
-                const sourceLabel = CONTACT_SOURCE_LABELS[contact.source] ?? contact.source;
-                const sourceColor = CONTACT_SOURCE_COLORS[contact.source] ?? "#6B7280";
                 const isDuplicate = !!contact.email && duplicateEmails.has(contact.email.trim().toLowerCase());
                 return (
                   <Link
@@ -164,22 +161,14 @@ export function KanbanBoard({
                       )}
                       <DeleteContactButton contactId={contact.id} contactName={fullName} />
                     </div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <span
-                          className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                          style={{ backgroundColor: avatarColorFor(fullName) }}
-                        >
-                          {initialsOf(contact.firstName, contact.lastName)}
-                        </span>
-                        <p className="truncate font-medium">{fullName}</p>
-                      </div>
+                    <div className="flex items-center gap-2 overflow-hidden pr-14">
                       <span
-                        className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-white"
-                        style={{ backgroundColor: sourceColor }}
+                        className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: avatarColorFor(fullName) }}
                       >
-                        {sourceLabel}
+                        {initialsOf(contact.firstName, contact.lastName)}
                       </span>
+                      <p className="truncate font-medium">{fullName}</p>
                     </div>
 
                     {isDuplicate && (
