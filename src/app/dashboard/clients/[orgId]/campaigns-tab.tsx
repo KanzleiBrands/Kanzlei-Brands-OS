@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { SettingsIcon, PlusIcon } from "lucide-react";
+import { SettingsIcon, PlusIcon, LockIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -18,7 +18,6 @@ import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 type Campaign = {
   id: string;
   name: string;
-  kind: string;
   location: string | null;
   totalContacts: number;
   unprocessed: number;
@@ -43,7 +42,7 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function QuotaBadge({ label, used, quota }: { label: string; used: number; quota: number | null }) {
+function QuotaBadge({ used, quota }: { used: number; quota: number | null }) {
   const overQuota = quota !== null && used > quota;
   return (
     <span
@@ -51,28 +50,28 @@ function QuotaBadge({ label, used, quota }: { label: string; used: number; quota
         overQuota ? "border-destructive/50 text-destructive" : "text-muted-foreground"
       }`}
     >
-      {label}: <span className="font-medium text-foreground">{used}</span>
-      {quota !== null && <> von {quota} in Gebrauch</>}
+      <span className="font-medium text-foreground">{used}</span>
+      {quota !== null ? <> von {quota} in Gebrauch</> : <> Kampagne{used === 1 ? "" : "n"}</>}
     </span>
   );
 }
 
 export function CampaignsTab({
   organizationId,
+  kind,
   campaigns,
   templates,
-  leadsQuota,
-  applicantsQuota,
-  leadsUsed,
-  applicantsUsed,
+  quota,
+  used,
+  booked,
 }: {
   organizationId: string;
+  kind: "LEADS" | "APPLICANTS";
   campaigns: Campaign[];
   templates: { id: string; name: string }[];
-  leadsQuota: number | null;
-  applicantsQuota: number | null;
-  leadsUsed: number;
-  applicantsUsed: number;
+  quota: number | null;
+  used: number;
+  booked: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("lastLead");
@@ -106,16 +105,33 @@ export function CampaignsTab({
     return copy;
   }, [filtered, sortKey]);
 
+  if (!booked) {
+    return (
+      <div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+        <LockIcon className="mx-auto mb-3 size-6 text-muted-foreground" />
+        <p className="mb-1 font-medium">
+          Dieser Kunde hat aktuell keine {CAMPAIGN_KIND_LABELS[kind]}-Kampagne gebucht.
+        </p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Lege ein Kontingent in den Kundeneinstellungen fest, um diesen Reiter freizuschalten.
+        </p>
+        <Link
+          href={`/dashboard/clients/${organizationId}?tab=settings`}
+          className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-muted/50"
+        >
+          Kontingent festlegen
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Kampagnenübersicht</h2>
-        <div className="flex flex-wrap gap-2">
-          <QuotaBadge label="Mandatsakquise" used={leadsUsed} quota={leadsQuota} />
-          <QuotaBadge label="Recruiting" used={applicantsUsed} quota={applicantsQuota} />
-        </div>
+        <h2 className="text-lg font-semibold">{CAMPAIGN_KIND_LABELS[kind]}</h2>
+        <QuotaBadge used={used} quota={quota} />
       </div>
-      <p className="mb-4 text-sm text-muted-foreground">Hier siehst du alle Kampagnen dieses Kunden.</p>
+      <p className="mb-4 text-sm text-muted-foreground">Hier siehst du alle {CAMPAIGN_KIND_LABELS[kind]}-Kampagnen dieses Kunden.</p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
@@ -146,10 +162,7 @@ export function CampaignsTab({
                 <Link href={`/dashboard/pipelines/${campaign.id}`} className="truncate font-medium hover:underline">
                   {campaign.name}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {CAMPAIGN_KIND_LABELS[campaign.kind] ?? campaign.kind}
-                  {campaign.location && ` · ${campaign.location}`}
-                </p>
+                {campaign.location && <p className="text-xs text-muted-foreground">{campaign.location}</p>}
               </div>
               <Link
                 href={`/dashboard/pipelines/${campaign.id}?tab=settings`}
@@ -204,6 +217,7 @@ export function CampaignsTab({
             </DialogHeader>
             <NewPipelineForm
               organizationId={organizationId}
+              kind={kind}
               templates={templates}
               onSuccess={() => setCreateOpen(false)}
             />

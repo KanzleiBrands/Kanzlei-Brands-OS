@@ -9,7 +9,14 @@ import { CampaignsTab } from "./campaigns-tab";
 import { SettingsTab } from "./settings-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 
-type Tab = "campaigns" | "settings";
+type Tab = "overview" | "jobs" | "leads" | "settings";
+
+const TAB_ORDER: { value: Tab; label: string }[] = [
+  { value: "overview", label: "Übersicht" },
+  { value: "jobs", label: "Stellenanzeigen" },
+  { value: "leads", label: "Mandatsakquise" },
+  { value: "settings", label: "Kundeneinstellungen" },
+];
 
 export default async function ClientDetailPage({
   params,
@@ -24,7 +31,8 @@ export default async function ClientDetailPage({
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");
 
   const { tab: tabParam } = await searchParams;
-  const tab: Tab = tabParam === "settings" ? "settings" : "campaigns";
+  const tab: Tab =
+    tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" ? tabParam : "overview";
 
   const organization = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -43,10 +51,15 @@ export default async function ClientDetailPage({
 
   if (!organization || organization.type !== "CLIENT") notFound();
 
-  const stats = computeOverviewStats(organization.pipelines);
+  const jobPipelines = organization.pipelines.filter((p) => p.kind === "APPLICANTS");
+  const leadPipelines = organization.pipelines.filter((p) => p.kind === "LEADS");
+  const jobsStats = computeOverviewStats(jobPipelines);
+  const leadsStats = computeOverviewStats(leadPipelines);
   const baseUrl = await getBaseUrl();
-  const leadsUsed = organization.pipelines.filter((p) => p.kind === "LEADS").length;
-  const applicantsUsed = organization.pipelines.filter((p) => p.kind === "APPLICANTS").length;
+  const leadsUsed = leadPipelines.length;
+  const applicantsUsed = jobPipelines.length;
+  const jobsBooked = organization.applicantsQuota !== null || applicantsUsed > 0;
+  const leadsBooked = organization.leadsQuota !== null || leadsUsed > 0;
   const courses = await prisma.course.findMany({ orderBy: { createdAt: "desc" } });
   const stageTemplates = await prisma.stageTemplate.findMany({
     orderBy: { createdAt: "asc" },
@@ -62,12 +75,11 @@ export default async function ClientDetailPage({
         })
       : [];
 
-  const campaigns = organization.pipelines.map((pipeline) => {
+  function toCampaign(pipeline: NonNullable<typeof organization>["pipelines"][number]) {
     const cardStats = computeCampaignCardStats(pipeline);
     return {
       id: pipeline.id,
       name: pipeline.name,
-      kind: pipeline.kind,
       location: pipeline.location,
       totalContacts: cardStats.totalContacts,
       unprocessed: cardStats.unprocessed,
@@ -75,7 +87,10 @@ export default async function ClientDetailPage({
       lastLeadAt: cardStats.lastLeadAt?.toISOString() ?? null,
       lastChangeAt: cardStats.lastChangeAt?.toISOString() ?? null,
     };
-  });
+  }
+
+  const jobCampaigns = jobPipelines.map(toCampaign);
+  const leadCampaigns = leadPipelines.map(toCampaign);
 
   return (
     <div className="p-8">
@@ -94,51 +109,95 @@ export default async function ClientDetailPage({
       )}
 
       <div className="mb-6 flex gap-1 border-b">
-        <Link
-          href={`/dashboard/clients/${organization.id}?tab=campaigns`}
-          className={`border-b-2 px-3 py-2 text-sm ${tab === "campaigns" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-        >
-          Kampagnen
-        </Link>
-        <Link
-          href={`/dashboard/clients/${organization.id}?tab=settings`}
-          className={`border-b-2 px-3 py-2 text-sm ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-        >
-          Kundeneinstellungen
-        </Link>
+        {TAB_ORDER.map((item) => (
+          <Link
+            key={item.value}
+            href={`/dashboard/clients/${organization.id}?tab=${item.value}`}
+            className={`border-b-2 px-3 py-2 text-sm ${tab === item.value ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {item.label}
+          </Link>
+        ))}
       </div>
 
-      {tab === "campaigns" && (
-        <>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile
-              label="Neu in 7 Tagen"
-              value={stats.newLast7Days}
-              subtext={`${stats.totalContacts} Kontakte gesamt`}
-            />
-            <StatTile
-              label="Unbearbeitet"
-              value={stats.unprocessed}
-              subtext={`${stats.staleUnprocessed} seit über 2 Tagen offen`}
-            />
-            <StatTile label="In Bearbeitung" value={stats.inProgress} subtext="aktuell in Bearbeitung" />
-            <StatTile
-              label="Abgeschlossen in 30 Tagen"
-              value={stats.completedLast30Days}
-              subtext={`${stats.completedTotal} gesamt`}
-            />
-          </div>
+      {tab === "overview" && (
+        <div className="flex flex-col gap-8">
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Stellenanzeigen</h2>
+            {jobsBooked ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatTile
+                  label="Neu in 30 Tagen"
+                  value={jobsStats.newLast30Days}
+                  subtext={`${jobsStats.totalContacts} Kontakte gesamt`}
+                />
+                <StatTile
+                  label="Unbearbeitet"
+                  value={jobsStats.unprocessed}
+                  subtext={`${jobsStats.staleUnprocessed} seit über 3 Tagen offen`}
+                />
+                <StatTile label="In Bearbeitung" value={jobsStats.inProgress} subtext="aktuell in Bearbeitung" />
+                <StatTile
+                  label="Eingestellt in 12 Monaten"
+                  value={jobsStats.completedLast365Days}
+                  subtext={`${jobsStats.completedTotal} gesamt`}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Stellenanzeigen sind für diesen Kunden nicht gebucht.</p>
+            )}
+          </section>
 
-          <CampaignsTab
-            organizationId={organization.id}
-            campaigns={campaigns}
-            templates={stageTemplates}
-            leadsQuota={organization.leadsQuota}
-            applicantsQuota={organization.applicantsQuota}
-            leadsUsed={leadsUsed}
-            applicantsUsed={applicantsUsed}
-          />
-        </>
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Mandatsakquise</h2>
+            {leadsBooked ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatTile
+                  label="Neu in 30 Tagen"
+                  value={leadsStats.newLast30Days}
+                  subtext={`${leadsStats.totalContacts} Kontakte gesamt`}
+                />
+                <StatTile
+                  label="Unbearbeitet"
+                  value={leadsStats.unprocessed}
+                  subtext={`${leadsStats.staleUnprocessed} seit über 3 Tagen offen`}
+                />
+                <StatTile label="In Bearbeitung" value={leadsStats.inProgress} subtext="aktuell in Bearbeitung" />
+                <StatTile
+                  label="Abgeschlossen in 12 Monaten"
+                  value={leadsStats.completedLast365Days}
+                  subtext={`${leadsStats.completedTotal} gesamt`}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Mandatsakquise ist für diesen Kunden nicht gebucht.</p>
+            )}
+          </section>
+        </div>
+      )}
+
+      {tab === "jobs" && (
+        <CampaignsTab
+          organizationId={organization.id}
+          kind="APPLICANTS"
+          campaigns={jobCampaigns}
+          templates={stageTemplates}
+          quota={organization.applicantsQuota}
+          used={applicantsUsed}
+          booked={jobsBooked}
+        />
+      )}
+
+      {tab === "leads" && (
+        <CampaignsTab
+          organizationId={organization.id}
+          kind="LEADS"
+          campaigns={leadCampaigns}
+          templates={stageTemplates}
+          quota={organization.leadsQuota}
+          used={leadsUsed}
+          booked={leadsBooked}
+        />
       )}
 
       {tab === "settings" && (

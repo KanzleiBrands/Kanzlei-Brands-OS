@@ -5,14 +5,15 @@ import { createPipeline } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 export function NewPipelineForm({
   organizationId,
+  kind,
   templates,
   onSuccess,
 }: {
   organizationId: string;
+  kind: "LEADS" | "APPLICANTS";
   templates: { id: string; name: string }[];
   onSuccess?: () => void;
 }) {
@@ -31,16 +32,8 @@ export function NewPipelineForm({
   return (
     <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="organizationId" value={organizationId} />
+      <input type="hidden" name="kind" value={kind} />
       <Input name="name" placeholder="Kampagnen-Name (z.B. Kampagne X)" required className="max-w-xs" />
-      <Select name="kind" defaultValue="LEADS">
-        <SelectTrigger className="w-44">
-          <SelectValue>{(value: string) => CAMPAIGN_KIND_LABELS[value] ?? value}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="LEADS">{CAMPAIGN_KIND_LABELS.LEADS}</SelectItem>
-          <SelectItem value="APPLICANTS">{CAMPAIGN_KIND_LABELS.APPLICANTS}</SelectItem>
-        </SelectContent>
-      </Select>
       <Select name="templateId" defaultValue={templates[0]?.id}>
         <SelectTrigger className="w-48">
           <SelectValue>{(value: string) => templates.find((t) => t.id === value)?.name ?? "Statusvorlage"}</SelectValue>

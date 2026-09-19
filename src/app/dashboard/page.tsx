@@ -50,19 +50,19 @@ export default async function DashboardPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
-          label="Neu in 7 Tagen"
-          value={stats.newLast7Days}
+          label="Neu in 30 Tagen"
+          value={stats.newLast30Days}
           subtext={`${stats.totalContacts} Kontakte gesamt`}
         />
         <StatTile
           label="Unbearbeitet"
           value={stats.unprocessed}
-          subtext={`${stats.staleUnprocessed} seit über 2 Tagen offen`}
+          subtext={`${stats.staleUnprocessed} seit über 3 Tagen offen`}
         />
         <StatTile label="In Bearbeitung" value={stats.inProgress} subtext="aktuell in Bearbeitung" />
         <StatTile
-          label="Abgeschlossen in 30 Tagen"
-          value={stats.completedLast30Days}
+          label="Abgeschlossen in 12 Monaten"
+          value={stats.completedLast365Days}
           subtext={`${stats.completedTotal} gesamt`}
         />
       </div>
