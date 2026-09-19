@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
 import { SettingsLink } from "./settings-link";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function navFor(role: string, campaignKinds: Set<string>) {
   const common = [{ href: "/dashboard/courses", label: "Schulung" }];
@@ -66,10 +67,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="flex min-h-screen">
       <aside className="flex w-56 flex-col border-r bg-card p-4">
         <div className="mb-6 px-2">
-          <Image src="/brand/logo-on-dark.svg" alt="Kanzlei Brands" width={140} height={56} priority />
+          <Image
+            src="/brand/logo-on-dark.svg"
+            alt="Kanzlei Brands"
+            width={140}
+            height={56}
+            priority
+            className="hidden dark:block"
+          />
+          <Image
+            src="/brand/logo-on-light.svg"
+            alt="Kanzlei Brands"
+            width={140}
+            height={56}
+            priority
+            className="block dark:hidden"
+          />
         </div>
         <SidebarNav role={session.user.role} links={links} clients={clients} />
         <div className="mt-auto flex flex-col gap-2 pt-4">
+          <ThemeToggle />
           <SettingsLink />
           <p className="truncate px-3 text-xs text-muted-foreground">{session.user.email}</p>
           <form

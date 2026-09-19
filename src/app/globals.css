@@ -50,43 +50,41 @@
 
 /*
  * Kanzlei Brands Markenfarben.
- * Hintergrund: #0c111a, Flächen (Cards/Sidebar): #101A26, Akzent: #b9975b.
- * Aktuell gibt es keinen Light/Dark-Umschalter, :root und .dark sind daher
- * identisch - sobald ein Umschalter gebraucht wird, hier eine echte helle
- * Variante ergänzen.
+ * Dunkler Modus (.dark): Hintergrund #0c111a, Flächen #101A26, Akzent #b9975b.
+ * Heller Modus (:root, Standard): #0c111a wird zu Weiß, der Akzent bleibt gleich.
  */
 :root {
-  --background: #0c111a;
-  --foreground: #ffffff;
-  --card: #101a26;
-  --card-foreground: #ffffff;
-  --popover: #101a26;
-  --popover-foreground: #ffffff;
+  --background: #ffffff;
+  --foreground: #0c111a;
+  --card: #ffffff;
+  --card-foreground: #0c111a;
+  --popover: #ffffff;
+  --popover-foreground: #0c111a;
   --primary: #b9975b;
   --primary-foreground: #0c111a;
-  --secondary: #1b2735;
-  --secondary-foreground: #ffffff;
-  --muted: #17212e;
-  --muted-foreground: #9aa5b1;
-  --accent: #1b2735;
-  --accent-foreground: #ffffff;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
+  --secondary: #f1f3f6;
+  --secondary-foreground: #0c111a;
+  --muted: #f4f5f7;
+  --muted-foreground: #5b6572;
+  --accent: #f1f3f6;
+  --accent-foreground: #0c111a;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 12%);
   --ring: #b9975b;
   --chart-1: #b9975b;
-  --chart-2: #8fa3b8;
-  --chart-3: #5c7186;
-  --chart-4: #3a4a5c;
-  --chart-5: #1b2735;
+  --chart-2: #5c7186;
+  --chart-3: #3a4a5c;
+  --chart-4: #8fa3b8;
+  --chart-5: #0c111a;
   --radius: 0.625rem;
-  --sidebar: #101a26;
-  --sidebar-foreground: #ffffff;
+  --sidebar: #f7f8fa;
+  --sidebar-foreground: #0c111a;
   --sidebar-primary: #b9975b;
   --sidebar-primary-foreground: #0c111a;
-  --sidebar-accent: #1b2735;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-accent: #eef0f3;
+  --sidebar-accent-foreground: #0c111a;
+  --sidebar-border: oklch(0 0 0 / 10%);
   --sidebar-ring: #b9975b;
 }
 
@@ -132,6 +130,11 @@
     @apply bg-background text-foreground;
   }
   html {
+    /* Team feedback: the whole UI read as too small/hard to make out.
+       Bumping the root size scales every rem-based Tailwind utility
+       (text, padding, icons) proportionally instead of overriding
+       hundreds of individual classes. */
+    font-size: 17.5px;
     @apply font-sans;
   }
 }
