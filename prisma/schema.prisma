@@ -76,6 +76,7 @@ model User {
   enrollments    Enrollment[]
   auditLogs      AuditLog[]
   offerInterests OfferInterest[]
+  automationRules AutomationRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -135,6 +136,7 @@ model Pipeline {
   contacts        Contact[]
   access          PipelineAccess[]
   webhookEndpoints WebhookEndpoint[]
+  automationRules AutomationRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -206,6 +208,7 @@ model Contact {
   activities          Activity[]
   emailMessages       EmailMessage[]
   additionalContacts  AdditionalContact[]
+  automationLogs      AutomationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -317,6 +320,57 @@ model WebhookDelivery {
   createdAt   DateTime @default(now())
 
   @@index([endpointId])
+}
+
+// ---------------------------------------------------------------------------
+// Automatisierungen: reminder emails for stale leads/applicants
+// ---------------------------------------------------------------------------
+
+enum AutomationTrigger {
+  NEW_LEAD // fires once, shortly after a contact is created
+  UNPROCESSED_24H // fires once if no activity was logged within 24h of creation
+  UNPROCESSED_72H // fires once if no activity was logged within 72h of creation
+}
+
+// One row per (pipeline, trigger) - a fixed set of reminder rules a campaign
+// can turn on and assign a recipient to, evaluated by a periodic cron job.
+// Sent "from" a fixed system address (see src/lib/email/resend.ts), not a
+// per-rule sender, since delivery must work with no user session present.
+model AutomationRule {
+  id      String            @id @default(cuid())
+  trigger AutomationTrigger
+  active  Boolean           @default(false)
+
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  recipientUserId String?
+  recipientUser   User?   @relation(fields: [recipientUserId], references: [id], onDelete: SetNull)
+
+  logs AutomationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pipelineId, trigger])
+  @@index([pipelineId])
+}
+
+// Records that a rule already fired for a contact, so a reminder is sent at
+// most once per contact per trigger even though the cron job re-scans
+// everything on every run.
+model AutomationLog {
+  id     String @id @default(cuid())
+  ruleId String
+  rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  sentAt DateTime @default(now())
+
+  @@unique([ruleId, contactId])
+  @@index([contactId])
 }
 
 // ---------------------------------------------------------------------------

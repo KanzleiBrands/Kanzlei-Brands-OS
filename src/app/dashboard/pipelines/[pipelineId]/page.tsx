@@ -10,6 +10,7 @@ import { DeletePipelineButton } from "./delete-pipeline-button";
 import { EditPipelineNameForm } from "./edit-pipeline-name-form";
 import { EditPipelineLocationForm } from "./edit-pipeline-location-form";
 import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
+import { AutomationsPanel } from "./automations-panel";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 type Tab = "leads" | "settings" | "sources";
@@ -64,6 +65,7 @@ export default async function PipelineDetailPage({
       webhookEndpoints: {
         include: { deliveries: { orderBy: { createdAt: "desc" }, take: 5 } },
       },
+      automationRules: true,
     },
   });
   if (!pipeline) notFound();
@@ -74,6 +76,15 @@ export default async function PipelineDetailPage({
       ? await prisma.pipeline.findMany({
           where: { organizationId: pipeline.organizationId, kind: pipeline.kind, id: { not: pipeline.id } },
           select: { id: true, name: true, location: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
+
+  const orgUsers =
+    tab === "settings" && canManageSettings
+      ? await prisma.user.findMany({
+          where: { organizationId: pipeline.organizationId },
+          select: { id: true, name: true },
           orderBy: { name: "asc" },
         })
       : [];
@@ -141,6 +152,18 @@ export default async function PipelineDetailPage({
           )}
 
           <DuplicateWarningToggle pipelineId={pipeline.id} enabled={pipeline.showDuplicateWarning} />
+
+          <AutomationsPanel
+            pipelineId={pipeline.id}
+            pipelineKind={pipeline.kind}
+            rules={pipeline.automationRules.map((rule) => ({
+              trigger: rule.trigger,
+              active: rule.active,
+              recipientUserId: rule.recipientUserId,
+            }))}
+            users={orgUsers}
+            senderEmail={process.env.RESEND_FROM_EMAIL ?? "automatisierung@kanzlei-brands.de"}
+          />
 
           <div className="flex items-center gap-2">
             <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
