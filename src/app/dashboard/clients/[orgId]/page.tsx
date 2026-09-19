@@ -94,7 +94,7 @@ export default async function ClientDetailPage({
 
   return (
     <div className="p-4 sm:p-8">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{organization.name}</h1>
         <Link href={`/dashboard/audit-log?orgId=${organization.id}`} className="text-sm text-muted-foreground underline">
           Audit-Log ansehen →
@@ -108,7 +108,7 @@ export default async function ClientDetailPage({
         </div>
       )}
 
-      <div className="mb-6 flex gap-1 border-b">
+      <div className="mb-6 flex flex-wrap gap-1 border-b">
         {TAB_ORDER.map((item) => (
           <Link
             key={item.value}

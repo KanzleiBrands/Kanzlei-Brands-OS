@@ -27,7 +27,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
 
   return (
     <div className="p-4 sm:p-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold">{course.title}</h1>
           {course.description && <p className="text-muted-foreground">{course.description}</p>}

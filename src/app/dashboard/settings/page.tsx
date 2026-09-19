@@ -40,7 +40,7 @@ export default async function SettingsPage({
       <h1 className="mb-2 text-2xl font-semibold">Einstellungen</h1>
       <p className="mb-6 text-muted-foreground">Account, Team und Postfach verwalten.</p>
 
-      <div className="mb-6 flex gap-1 border-b">
+      <div className="mb-6 flex flex-wrap gap-1 border-b">
         <Link
           href="/dashboard/settings?tab=account"
           className={`border-b-2 px-3 py-2 text-sm ${tab === "account" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}

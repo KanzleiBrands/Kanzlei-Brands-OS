@@ -18,7 +18,7 @@ export default async function OffersPage() {
 
   return (
     <div className="p-4 sm:p-8">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Angebote</h1>
         <NewOfferForm />
       </div>

@@ -34,7 +34,7 @@ export function ActivityTimeline({ activities }: { activities: Activity[] }) {
 
   return (
     <div>
-      <div className="mb-3 flex gap-1 border-b">
+      <div className="mb-3 flex flex-wrap gap-1 border-b">
         {TABS.map((t) => (
           <button
             key={t.key}

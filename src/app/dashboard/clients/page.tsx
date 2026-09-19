@@ -108,7 +108,7 @@ export default async function ClientsPage({
         {trendCard("Abschlüsse", leadsCompleted.total, leadsCompleted.last30Days)}
       </div>
 
-      <div className="mb-6 flex gap-1 border-b">
+      <div className="mb-6 flex flex-wrap gap-1 border-b">
         <Link
           href="/dashboard/clients?tab=active"
           className={`border-b-2 px-3 py-2 text-sm ${tab === "active" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
@@ -125,7 +125,7 @@ export default async function ClientsPage({
 
       {tab === "active" && (
         <>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-semibold">Kunden</h2>
               <p className="text-sm text-muted-foreground">Hier siehst du all deine Kunden.</p>
