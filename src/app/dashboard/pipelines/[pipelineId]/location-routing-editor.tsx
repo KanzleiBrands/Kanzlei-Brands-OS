@@ -41,7 +41,7 @@ export function LocationRoutingEditor({
 
   if (siblings.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Lege zuerst eine weitere Kampagne für einen anderen Standort an, um Bewerbungen aus diesem einen Webhook
         automatisch zuzuordnen.
       </p>
@@ -54,7 +54,7 @@ export function LocationRoutingEditor({
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="endpointId" value={endpointId} />
       <input type="hidden" name="locationRouting" value={jsonValue} />
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Antwortet ein Bewerber im Funnel mit einem der folgenden Standorte, landet er automatisch in der jeweiligen
         Kampagne statt hier.
       </p>

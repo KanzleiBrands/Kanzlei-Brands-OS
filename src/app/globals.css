@@ -130,11 +130,11 @@
     @apply bg-background text-foreground;
   }
   html {
-    /* Team feedback: the whole UI read as too small/hard to make out.
-       Bumping the root size scales every rem-based Tailwind utility
-       (text, padding, icons) proportionally instead of overriding
-       hundreds of individual classes. */
-    font-size: 17.5px;
+    /* Team feedback: the whole UI read as too small/hard to make out
+       (client base skews 45+). Bumping the root size scales every
+       rem-based Tailwind utility (text, padding, icons) proportionally
+       instead of overriding hundreds of individual classes. */
+    font-size: 19px;
     @apply font-sans;
   }
 }

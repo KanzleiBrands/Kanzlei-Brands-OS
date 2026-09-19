@@ -27,7 +27,7 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
       <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? "Wird geändert..." : "E-Mail ändern"}
       </Button>
-      <p className="text-xs text-muted-foreground">Nach der Änderung wirst du abgemeldet und musst dich neu anmelden.</p>
+      <p className="text-sm text-muted-foreground">Nach der Änderung wirst du abgemeldet und musst dich neu anmelden.</p>
     </form>
   );
 }

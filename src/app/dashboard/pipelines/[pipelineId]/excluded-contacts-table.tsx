@@ -84,14 +84,14 @@ export function ExcludedContactsTable({
               <TableCell>
                 <Link href={`/dashboard/contacts/${contact.id}`} className="flex items-center gap-2">
                   <span
-                    className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                     style={{ backgroundColor: avatarColorFor(fullName) }}
                   >
                     {initialsOf(contact.firstName, contact.lastName)}
                   </span>
                   <span>
                     <span className="block font-medium">{fullName}</span>
-                    <span className="block text-xs text-muted-foreground">{contact.email}</span>
+                    <span className="block text-sm text-muted-foreground">{contact.email}</span>
                   </span>
                 </Link>
               </TableCell>

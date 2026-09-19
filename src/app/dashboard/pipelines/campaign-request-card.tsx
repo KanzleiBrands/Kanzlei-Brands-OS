@@ -80,7 +80,7 @@ export function CampaignRequestCard({
                 </form>
               )
             ) : (
-              <p className="text-xs text-muted-foreground">Nur Admins können weitere Kampagnen beauftragen.</p>
+              <p className="text-sm text-muted-foreground">Nur Admins können weitere Kampagnen beauftragen.</p>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </>

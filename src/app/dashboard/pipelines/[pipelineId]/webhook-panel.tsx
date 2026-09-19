@@ -60,7 +60,7 @@ function EndpointCard({ endpoint, siblings }: { endpoint: Endpoint; siblings: Si
       </div>
 
       <details className="mb-3">
-        <summary className="cursor-pointer text-xs text-muted-foreground">Feld-Mapping (optional)</summary>
+        <summary className="cursor-pointer text-sm text-muted-foreground">Feld-Mapping (optional)</summary>
         <form action={formAction} className="mt-2 flex flex-col gap-2">
           <input type="hidden" name="endpointId" value={endpoint.id} />
           <Textarea
@@ -79,7 +79,7 @@ function EndpointCard({ endpoint, siblings }: { endpoint: Endpoint; siblings: Si
 
       {siblings.length > 0 && (
         <details className="mb-3">
-          <summary className="cursor-pointer text-xs text-muted-foreground">Standort-Zuordnung (optional)</summary>
+          <summary className="cursor-pointer text-sm text-muted-foreground">Standort-Zuordnung (optional)</summary>
           <div className="mt-2">
             <LocationRoutingEditor endpointId={endpoint.id} routing={endpoint.locationRouting} siblings={siblings} />
           </div>
@@ -87,7 +87,7 @@ function EndpointCard({ endpoint, siblings }: { endpoint: Endpoint; siblings: Si
       )}
 
       <div>
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Letzte Eingänge</p>
+        <p className="mb-2 text-sm font-medium text-muted-foreground">Letzte Eingänge</p>
         <div className="flex flex-col gap-1">
           {endpoint.deliveries.map((delivery) => (
             <div key={delivery.id} className="flex items-center justify-between text-xs">
@@ -97,7 +97,7 @@ function EndpointCard({ endpoint, siblings }: { endpoint: Endpoint; siblings: Si
               <span className="text-muted-foreground">{delivery.createdAt}</span>
             </div>
           ))}
-          {endpoint.deliveries.length === 0 && <p className="text-xs text-muted-foreground">Noch keine Eingänge.</p>}
+          {endpoint.deliveries.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Eingänge.</p>}
         </div>
       </div>
     </div>

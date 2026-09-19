@@ -94,7 +94,7 @@ export default async function DashboardPage() {
                     />
                     <div>
                       <p className="font-medium">{pipeline.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         {lastContact
                           ? `Letzter Eingang ${lastContact.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}`
                           : "Noch keine Eingänge"}
@@ -131,14 +131,14 @@ export default async function DashboardPage() {
                 >
                   <div className="flex items-center gap-2 overflow-hidden">
                     <span
-                      className="flex size-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                      className="flex size-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                       style={{ backgroundColor: avatarColorFor(fullName) }}
                     >
                       {initialsOf(contact.firstName, contact.lastName)}
                     </span>
                     <div className="overflow-hidden">
                       <p className="truncate text-sm font-medium">{fullName}</p>
-                      <p className="truncate text-xs text-muted-foreground">{contact.pipeline.name}</p>
+                      <p className="truncate text-sm text-muted-foreground">{contact.pipeline.name}</p>
                     </div>
                   </div>
                   <Badge variant="secondary" className="flex-shrink-0">

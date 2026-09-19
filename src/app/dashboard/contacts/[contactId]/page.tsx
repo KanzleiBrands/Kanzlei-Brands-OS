@@ -183,7 +183,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                       <div key={person.id} className="flex items-center justify-between gap-2 text-sm">
                         <div>
                           <p className="font-medium">{person.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             {[person.role, person.email, person.phone].filter(Boolean).join(" · ")}
                           </p>
                         </div>

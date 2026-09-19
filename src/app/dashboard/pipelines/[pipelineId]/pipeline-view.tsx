@@ -123,7 +123,7 @@ export function PipelineView({
               statusTab === "qualified" ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Qualifiziert <span className="ml-1 text-xs text-muted-foreground">{qualifiedCount}</span>
+            Qualifiziert <span className="ml-1 text-sm text-muted-foreground">{qualifiedCount}</span>
           </button>
           <button
             type="button"
@@ -132,7 +132,7 @@ export function PipelineView({
               statusTab === "excluded" ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {excludedTabLabel(pipelineKind)} <span className="ml-1 text-xs text-muted-foreground">{excludedCount}</span>
+            {excludedTabLabel(pipelineKind)} <span className="ml-1 text-sm text-muted-foreground">{excludedCount}</span>
           </button>
         </div>
       )}

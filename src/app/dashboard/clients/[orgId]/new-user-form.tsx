@@ -78,7 +78,7 @@ function NewUserFormInner({
         ) : (
           <input type="hidden" name="role" value="CLIENT_STAFF" />
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig.
         </p>
         {result?.status === "error" && <p className="text-sm text-destructive">{result.message}</p>}

@@ -88,7 +88,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="mt-auto flex flex-col gap-2 pt-4">
         <ThemeToggle />
         <SettingsLink />
-        <p className="truncate px-3 text-xs text-muted-foreground">{session.user.email}</p>
+        <p className="truncate px-3 text-sm text-muted-foreground">{session.user.email}</p>
         <form
           action={async () => {
             "use server";

@@ -54,7 +54,7 @@ function TimeBadge({ createdAt, isFirstStage }: { createdAt: Date; isFirstStage:
       ? "bg-green-500/10 text-green-500"
       : "bg-muted text-muted-foreground";
 
-  return <span className={`rounded-full px-1.5 py-0.5 text-[11px] whitespace-nowrap ${classes}`}>{label}</span>;
+  return <span className={`rounded-full px-1.5 py-0.5 text-xs whitespace-nowrap ${classes}`}>{label}</span>;
 }
 
 export function KanbanBoard({
@@ -163,7 +163,7 @@ export function KanbanBoard({
                     </div>
                     <div className="flex items-center gap-2 overflow-hidden pr-14">
                       <span
-                        className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                        className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                         style={{ backgroundColor: avatarColorFor(fullName) }}
                       >
                         {initialsOf(contact.firstName, contact.lastName)}
@@ -172,7 +172,7 @@ export function KanbanBoard({
                     </div>
 
                     {isDuplicate && (
-                      <span className="mt-1 inline-block rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
+                      <span className="mt-1 inline-block rounded-full bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500">
                         ⚠ Mögliches Duplikat
                       </span>
                     )}

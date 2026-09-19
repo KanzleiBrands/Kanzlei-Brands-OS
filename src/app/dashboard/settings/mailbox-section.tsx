@@ -30,7 +30,7 @@ export function MailboxSection({
             <div key={account.id} className="flex items-center justify-between rounded border p-3">
               <div>
                 <p className="font-medium">{account.email}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {account.provider === "GOOGLE" ? "Google / Gmail" : "Microsoft 365"}
                 </p>
               </div>
@@ -65,7 +65,7 @@ export function MailboxSection({
         </CardContent>
         {(!googleConfigured || !microsoftConfigured) && (
           <CardContent className="pt-0">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Hinweis: OAuth-Zugangsdaten sind noch nicht konfiguriert (GOOGLE_CLIENT_ID / MICROSOFT_CLIENT_ID in den
               Umgebungsvariablen).
             </p>

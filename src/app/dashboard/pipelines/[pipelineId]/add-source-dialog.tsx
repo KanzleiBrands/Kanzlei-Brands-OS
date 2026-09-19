@@ -45,7 +45,7 @@ function SourceTile({
         {WEBHOOK_SOURCE_LABELS[source][0]}
       </span>
       <span className="text-sm font-medium">{WEBHOOK_SOURCE_LABELS[source]}</span>
-      <span className="text-xs text-muted-foreground">{WEBHOOK_SOURCE_DESCRIPTIONS[source]}</span>
+      <span className="text-sm text-muted-foreground">{WEBHOOK_SOURCE_DESCRIPTIONS[source]}</span>
     </button>
   );
 }
@@ -100,7 +100,7 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
           {availableFormSources.length > 0 && (
             <div>
               <p className="mb-1 text-sm font-medium">Webhook</p>
-              <p className="mb-2 text-xs text-muted-foreground">
+              <p className="mb-2 text-sm text-muted-foreground">
                 Quelle auswählen und danach die Webhook-URL in deinem Tool hinterlegen.
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -119,7 +119,7 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
           {availableDirectSources.length > 0 && (
             <div>
               <p className="mb-1 text-sm font-medium">Direktintegrationen</p>
-              <p className="mb-2 text-xs text-muted-foreground">Native Anbindung ohne manuelles Webhook-Setup.</p>
+              <p className="mb-2 text-sm text-muted-foreground">Native Anbindung ohne manuelles Webhook-Setup.</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {availableDirectSources.map((source) => (
                   <SourceTile
@@ -149,7 +149,7 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
 
           <div className="border-t pt-4">
             <p className="mb-1 text-sm font-medium">CSV Upload</p>
-            <p className="mb-2 text-xs text-muted-foreground">
+            <p className="mb-2 text-sm text-muted-foreground">
               Spalten wie Vorname, Nachname, E-Mail, Telefon und Ort werden automatisch erkannt. Alle Kontakte landen
               in der ersten Stufe dieser Pipeline (max. 2000 Zeilen).
             </p>
@@ -163,7 +163,7 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
                 onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
                 className="rounded-md border border-input px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
               />
-              {fileName && <p className="text-xs text-muted-foreground">Ausgewählt: {fileName}</p>}
+              {fileName && <p className="text-sm text-muted-foreground">Ausgewählt: {fileName}</p>}
               {csvResult && (
                 <p className={`text-sm ${csvIsSuccess ? "text-emerald-500" : "text-destructive"}`}>{csvResult}</p>
               )}

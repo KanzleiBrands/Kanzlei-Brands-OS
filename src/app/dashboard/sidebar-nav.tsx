@@ -52,7 +52,7 @@ export function SidebarNav({
           </span>
           <span className="overflow-hidden">
             <span className="block truncate text-sm font-semibold">{clientOrg.name}</span>
-            <span className="block text-xs text-muted-foreground">Kunde</span>
+            <span className="block text-sm text-muted-foreground">Kunde</span>
           </span>
         </Link>
 
@@ -60,7 +60,7 @@ export function SidebarNav({
           <BackLink href="/dashboard/clients">Zurück zur Kunden-Übersicht</BackLink>
         </div>
 
-        <p className="mb-1 px-2 text-xs font-medium tracking-wide text-muted-foreground">KAMPAGNEN</p>
+        <p className="mb-1 px-2 text-sm font-medium tracking-wide text-muted-foreground">KAMPAGNEN</p>
         <div className="flex flex-col gap-0.5">
           {clientOrg.pipelines.map((pipeline) => (
             <Link
@@ -77,7 +77,7 @@ export function SidebarNav({
             </Link>
           ))}
           {clientOrg.pipelines.length === 0 && (
-            <p className="px-3 text-xs text-muted-foreground">Keine Kampagnen vorhanden</p>
+            <p className="px-3 text-sm text-muted-foreground">Keine Kampagnen vorhanden</p>
           )}
         </div>
       </nav>

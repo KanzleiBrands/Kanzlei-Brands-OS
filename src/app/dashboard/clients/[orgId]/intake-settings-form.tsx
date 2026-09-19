@@ -43,7 +43,7 @@ export function IntakeSettingsForm({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Bekommt eine Anfrage, wenn dieser Kunde weitere Kontingente beauftragen möchte. Ohne Zuweisung geht die
           Anfrage an alle Agentur-Admins.
         </p>

@@ -57,10 +57,10 @@ export function ActivityTimeline({ activities }: { activities: Activity[] }) {
             <div key={activity.id} className="border-b pb-2 text-sm last:border-0">
               <div className="flex items-center justify-between">
                 <Badge variant={meta.variant}>{meta.label}</Badge>
-                <span className="text-xs text-muted-foreground">{activity.createdAt}</span>
+                <span className="text-sm text-muted-foreground">{activity.createdAt}</span>
               </div>
               {activity.content && <p className="mt-1 text-muted-foreground">{activity.content}</p>}
-              {activity.userName && <p className="text-xs text-muted-foreground">von {activity.userName}</p>}
+              {activity.userName && <p className="text-sm text-muted-foreground">von {activity.userName}</p>}
             </div>
           );
         })}

@@ -24,7 +24,7 @@ function trendCard(label: string, value: number, deltaLast30Days: number) {
         <span className="text-2xl font-semibold">{value}</span>
         {deltaLast30Days > 0 && <span className="text-sm font-medium text-emerald-500">↗</span>}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">+{deltaLast30Days} in 30 Tagen</p>
+      <p className="mt-1 text-sm text-muted-foreground">+{deltaLast30Days} in 30 Tagen</p>
     </div>
   );
 }

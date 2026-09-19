@@ -50,7 +50,7 @@ function NewAgencyUserFormInner({ organizationId, onDone }: { organizationId: st
         <input type="hidden" name="role" value="AGENCY_ADMIN" />
         <Input name="name" placeholder="Name" required />
         <Input name="email" type="email" placeholder="E-Mail" required />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig. Hat vollen Zugriff auf
           alle Kunden.
         </p>

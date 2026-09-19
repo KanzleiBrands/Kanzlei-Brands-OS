@@ -31,7 +31,7 @@ function RuleRow({
         <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
           {automationTriggerLabel(rule.trigger, pipelineKind)}
         </span>
-        <span className="text-xs text-muted-foreground">von: {senderEmail}</span>
+        <span className="text-sm text-muted-foreground">von: {senderEmail}</span>
       </div>
 
       <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ export function AutomationsPanel({
           />
         ))}
         {users.length === 0 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Noch keine Mitarbeiter in diesem Kunden angelegt, um sie als Empfänger auszuwählen.
           </p>
         )}

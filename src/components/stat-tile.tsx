@@ -6,7 +6,7 @@ export function StatTile({ label, value, subtext }: { label: string; value: numb
       <CardContent>
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="mt-1 text-3xl font-semibold">{value}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{subtext}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{subtext}</p>
       </CardContent>
     </Card>
   );

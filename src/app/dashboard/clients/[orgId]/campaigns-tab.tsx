@@ -162,7 +162,7 @@ export function CampaignsTab({
                 <Link href={`/dashboard/pipelines/${campaign.id}`} className="truncate font-medium hover:underline">
                   {campaign.name}
                 </Link>
-                {campaign.location && <p className="text-xs text-muted-foreground">{campaign.location}</p>}
+                {campaign.location && <p className="text-sm text-muted-foreground">{campaign.location}</p>}
               </div>
               <Link
                 href={`/dashboard/pipelines/${campaign.id}?tab=settings`}

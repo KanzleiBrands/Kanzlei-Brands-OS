@@ -24,7 +24,7 @@ export function StageListEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         <BanIcon className="mr-1 inline size-3 align-[-1px]" />
         markiert eine Ausschluss-Stufe (z.B. Absage): erscheint nicht im Kanban, sondern im Reiter „Ungeeignet“.
       </p>

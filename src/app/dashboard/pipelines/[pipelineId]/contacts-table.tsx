@@ -103,7 +103,7 @@ export function ContactsTable({
               <TableCell>
                 <Link href={`/dashboard/contacts/${contact.id}`} className="flex items-center gap-2">
                   <span
-                    className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                     style={{ backgroundColor: avatarColorFor(fullName) }}
                   >
                     {initialsOf(contact.firstName, contact.lastName)}
@@ -113,14 +113,14 @@ export function ContactsTable({
                       <span className="font-medium">{fullName}</span>
                       {contact.email && duplicateEmails.has(contact.email.trim().toLowerCase()) && (
                         <span
-                          className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500"
+                          className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500"
                           title="Mögliches Duplikat: E-Mail existiert mehrfach in dieser Pipeline"
                         >
                           ⚠ Duplikat
                         </span>
                       )}
                     </span>
-                    <span className="block text-xs text-muted-foreground">{contact.email}</span>
+                    <span className="block text-sm text-muted-foreground">{contact.email}</span>
                   </span>
                 </Link>
               </TableCell>
