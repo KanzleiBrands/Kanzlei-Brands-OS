@@ -8,6 +8,7 @@ import { ContactsTable } from "./contacts-table";
 import { ExcludedContactsTable } from "./excluded-contacts-table";
 import { NewContactForm } from "./new-contact-form";
 import { findDuplicateEmails } from "@/lib/duplicate-contacts";
+import { excludedTabLabel } from "@/lib/campaign-kind-labels";
 
 type Contact = {
   id: string;
@@ -130,15 +131,24 @@ export function PipelineView({
               statusTab === "excluded" ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Ausgeschlossen <span className="ml-1 text-xs text-muted-foreground">{excludedCount}</span>
+            {excludedTabLabel(pipelineKind)} <span className="ml-1 text-xs text-muted-foreground">{excludedCount}</span>
           </button>
         </div>
       )}
 
       {statusTab === "excluded" && hasRejectedStages ? (
-        <ExcludedContactsTable stages={excludedStages} reactivateStageId={firstQualifiedStageId} />
+        <ExcludedContactsTable
+          stages={excludedStages}
+          reactivateStageId={firstQualifiedStageId}
+          pipelineKind={pipelineKind}
+        />
       ) : view === "board" ? (
-        <KanbanBoard stages={qualifiedStages} duplicateEmails={duplicateEmails} rejectStageId={firstRejectedStageId} />
+        <KanbanBoard
+          stages={qualifiedStages}
+          duplicateEmails={duplicateEmails}
+          rejectStageId={firstRejectedStageId}
+          pipelineKind={pipelineKind}
+        />
       ) : (
         <ContactsTable stages={qualifiedStages} duplicateEmails={duplicateEmails} />
       )}

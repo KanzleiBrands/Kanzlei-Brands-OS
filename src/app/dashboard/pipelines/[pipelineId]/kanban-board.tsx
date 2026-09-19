@@ -61,11 +61,14 @@ export function KanbanBoard({
   stages,
   duplicateEmails,
   rejectStageId,
+  pipelineKind,
 }: {
   stages: Stage[];
   duplicateEmails: Set<string>;
   rejectStageId?: string;
+  pipelineKind: string;
 }) {
+  const rejectLabel = pipelineKind === "LEADS" ? "Als ungeeignet markieren" : "Absagen";
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
@@ -144,8 +147,8 @@ export function KanbanBoard({
                       {rejectStageId && stage.id !== rejectStageId && (
                         <button
                           type="button"
-                          title="Absagen"
-                          aria-label="Absagen"
+                          title={rejectLabel}
+                          aria-label={rejectLabel}
                           className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           onClick={(e) => {
                             e.preventDefault();

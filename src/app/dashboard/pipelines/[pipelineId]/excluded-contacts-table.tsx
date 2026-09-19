@@ -51,9 +51,11 @@ function ReactivateButton({ contactId, reactivateStageId }: { contactId: string;
 export function ExcludedContactsTable({
   stages,
   reactivateStageId,
+  pipelineKind,
 }: {
   stages: Stage[];
   reactivateStageId: string | undefined;
+  pipelineKind: string;
 }) {
   const rows = useMemo(
     () =>
@@ -120,7 +122,7 @@ export function ExcludedContactsTable({
         {rows.length === 0 && (
           <TableRow>
             <TableCell colSpan={5} className="text-center text-muted-foreground">
-              Keine ausgeschlossenen Kontakte.
+              {pipelineKind === "LEADS" ? "Keine ungeeigneten Kontakte." : "Keine ausgeschlossenen Kontakte."}
             </TableCell>
           </TableRow>
         )}
