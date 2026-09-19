@@ -7,8 +7,10 @@ import { AccountSection } from "./account-section";
 import { TeamSection } from "./team-section";
 import { AgencyTeamSection } from "./agency-team-section";
 import { MailboxSection } from "./mailbox-section";
+import { StageTemplatesSection } from "./stage-templates-section";
+import type { EditableStage } from "./stage-list-editor";
 
-type Tab = "account" | "team" | "mailbox";
+type Tab = "account" | "team" | "mailbox" | "templates";
 
 export default async function SettingsPage({
   searchParams,
@@ -23,7 +25,12 @@ export default async function SettingsPage({
   const canManageTeam = session.user.role === "CLIENT_ADMIN" || isAgency;
   const canUseMailbox = !isAgency;
 
-  const validTabs: Tab[] = ["account", ...(canManageTeam ? (["team"] as const) : []), ...(canUseMailbox ? (["mailbox"] as const) : [])];
+  const validTabs: Tab[] = [
+    "account",
+    ...(canManageTeam ? (["team"] as const) : []),
+    ...(canUseMailbox ? (["mailbox"] as const) : []),
+    ...(isAgency ? (["templates"] as const) : []),
+  ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
 
   const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
@@ -56,6 +63,14 @@ export default async function SettingsPage({
             Postfach
           </Link>
         )}
+        {isAgency && (
+          <Link
+            href="/dashboard/settings?tab=templates"
+            className={`border-b-2 px-3 py-2 text-sm ${tab === "templates" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Vorlagen
+          </Link>
+        )}
       </div>
 
       {tab === "account" && (
@@ -78,7 +93,18 @@ export default async function SettingsPage({
       {tab === "mailbox" && canUseMailbox && (
         <MailboxSectionData userId={session.user.id} connected={connected} error={error} />
       )}
+
+      {tab === "templates" && isAgency && <StageTemplatesSectionData />}
     </div>
+  );
+}
+
+async function StageTemplatesSectionData() {
+  const templates = await prisma.stageTemplate.findMany({ orderBy: { createdAt: "asc" } });
+  return (
+    <StageTemplatesSection
+      templates={templates.map((t) => ({ id: t.id, name: t.name, stages: t.stages as unknown as EditableStage[] }))}
+    />
   );
 }
 

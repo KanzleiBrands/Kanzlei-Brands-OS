@@ -34,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const clients =
     session.user.role === "AGENCY_ADMIN"
       ? await prisma.organization.findMany({
-          where: { type: "CLIENT", parentId: session.user.organizationId },
+          where: { type: "CLIENT", parentId: session.user.organizationId, archivedAt: null },
           select: {
             id: true,
             name: true,

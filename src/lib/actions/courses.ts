@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
-import { storeLessonVideo } from "@/lib/video-storage";
+import { storeFile } from "@/lib/file-storage";
 
 export async function setCourseAssignment(formData: FormData) {
   const session = await requireSession();
@@ -69,7 +69,7 @@ export async function addLesson(_prevState: string | undefined, formData: FormDa
 
   let videoUrl: string | null = null;
   if (video instanceof File && video.size > 0) {
-    videoUrl = await storeLessonVideo(video);
+    videoUrl = await storeFile(video, "lessons");
   }
 
   const lessonCount = await prisma.lesson.count({ where: { courseId } });

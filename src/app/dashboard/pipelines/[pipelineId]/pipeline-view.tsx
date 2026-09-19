@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { KanbanBoard } from "./kanban-board";
 import { ContactsTable } from "./contacts-table";
 import { NewContactForm } from "./new-contact-form";
@@ -39,15 +40,39 @@ export function PipelineView({
   showDuplicateWarning: boolean;
 }) {
   const [view, setView] = useState<"board" | "list">("board");
+  const [search, setSearch] = useState("");
   const duplicateEmails = useMemo(
     () => (showDuplicateWarning ? findDuplicateEmails(stages) : new Set<string>()),
     [stages, showDuplicateWarning],
   );
 
+  const filteredStages = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return stages;
+    return stages.map((stage) => ({
+      ...stage,
+      contacts: stage.contacts.filter((contact) => {
+        const haystack = [contact.firstName, contact.lastName, contact.email, contact.phone]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query);
+      }),
+    }));
+  }, [stages, search]);
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <NewContactForm pipelineId={pipelineId} stages={stages} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <NewContactForm pipelineId={pipelineId} stages={stages} />
+          <Input
+            placeholder="Lead/Bewerber suchen..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-56"
+          />
+        </div>
         <div className="inline-flex flex-shrink-0 rounded-lg border p-0.5">
           <Button
             type="button"
@@ -64,9 +89,9 @@ export function PipelineView({
       </div>
 
       {view === "board" ? (
-        <KanbanBoard stages={stages} duplicateEmails={duplicateEmails} />
+        <KanbanBoard stages={filteredStages} duplicateEmails={duplicateEmails} />
       ) : (
-        <ContactsTable stages={stages} duplicateEmails={duplicateEmails} />
+        <ContactsTable stages={filteredStages} duplicateEmails={duplicateEmails} />
       )}
     </div>
   );

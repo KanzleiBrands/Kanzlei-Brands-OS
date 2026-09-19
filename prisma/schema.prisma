@@ -25,6 +25,10 @@ model Organization {
   logoUrl      String?
   primaryColor String?
 
+  // Client orgs can be archived instead of deleted; archived orgs are hidden
+  // from the default Kunden-Übersicht and can be reactivated at any time.
+  archivedAt DateTime?
+
   parentId String?
   parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
   children Organization[] @relation("OrgHierarchy")
@@ -99,8 +103,21 @@ model PipelineAccess {
 // ---------------------------------------------------------------------------
 
 enum PipelineKind {
-  LEADS      // Sales / CRM pipeline
-  APPLICANTS // Recruiting / ATS pipeline
+  LEADS      // Sales / CRM pipeline ("Mandatsakquise")
+  APPLICANTS // Recruiting / ATS pipeline ("Recruiting")
+}
+
+// Admin-managed, named blueprint for a pipeline's initial stage list (e.g.
+// "CRM", "ATS", or a client-specific custom workflow). Only used to seed a
+// new Pipeline's Stage rows at creation time — editing a template afterwards
+// does not retroactively change pipelines already created from it.
+model StageTemplate {
+  id     String @id @default(cuid())
+  name   String
+  stages Json // [{ name: string, order: number, color: string }]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Pipeline {
@@ -167,7 +184,8 @@ model Contact {
   location  String?
   rating    Int?          @db.SmallInt // 1-5 star qualification rating, null = not yet rated
   source    ContactSource @default(MANUAL)
-  // Raw/extra fields that don't map to a fixed column (form-specific answers, CV links, UTM data, ...)
+  cvUrl     String? // Uploaded manually or filled from a webhook payload (e.g. Perspektive/OnePage CV upload link)
+  // Raw/extra fields that don't map to a fixed column (form-specific answers, UTM data, ...)
   customFields Json?
 
   pipelineId String

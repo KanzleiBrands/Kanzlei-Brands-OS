@@ -16,6 +16,7 @@ import { DeleteContactButton } from "@/components/delete-contact-button";
 import { EditContactDialog } from "./edit-contact-dialog";
 import { CustomFieldRow } from "./custom-field-row";
 import { AddCustomFieldDialog } from "./add-custom-field-dialog";
+import { CvUploadForm } from "./cv-upload-form";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = await params;
@@ -116,6 +117,17 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
+          {contact.pipeline.kind === "APPLICANTS" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Lebenslauf</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CvUploadForm contactId={contact.id} cvUrl={contact.cvUrl} />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Zusätzliche Angaben</CardTitle>

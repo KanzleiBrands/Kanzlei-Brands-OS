@@ -7,6 +7,7 @@ import { requireSession, assertPipelineAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
 import { extractContactFields, normalizeFieldKey } from "@/lib/webhook-ingest";
+import { storeFile } from "@/lib/file-storage";
 
 export async function deleteContact(formData: FormData) {
   const session = await requireSession();
@@ -133,6 +134,22 @@ export async function setCustomField(_prevState: string | undefined, formData: F
   revalidatePath(`/dashboard/contacts/${contactId}`);
 }
 
+export async function uploadContactCv(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const file = formData.get("cv");
+  if (!(file instanceof File) || file.size === 0) return "Bitte eine Datei auswählen.";
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  const cvUrl = await storeFile(file, "cvs");
+  await prisma.contact.update({ where: { id: contactId }, data: { cvUrl } });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
 export async function createContact(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");
@@ -204,6 +221,7 @@ export async function importContactsCsv(_prevState: string | undefined, formData
         email: fields.email,
         phone: fields.phone,
         location: fields.location,
+        cvUrl: fields.cvUrl,
         source: "MANUAL",
         customFields: row,
       },

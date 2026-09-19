@@ -18,6 +18,7 @@ export const AUTO_DETECT: Record<string, string[]> = {
   email: ["email", "e_mail", "mail"],
   phone: ["phone", "telefon", "phone_number", "tel"],
   location: ["location", "ort", "stadt", "city", "wohnort"],
+  cvUrl: ["cv_url", "cvurl", "lebenslauf", "resume_url", "resume", "cv"],
 };
 
 function toStringOrNull(value: unknown): string | null {
@@ -40,12 +41,14 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
     email: string | null;
     phone: string | null;
     location: string | null;
+    cvUrl: string | null;
   } = {
     firstName: null,
     lastName: null,
     email: null,
     phone: null,
     location: null,
+    cvUrl: null,
   };
 
   if (fieldMapping) {

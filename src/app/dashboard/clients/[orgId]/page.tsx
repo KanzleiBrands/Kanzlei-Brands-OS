@@ -7,6 +7,7 @@ import { StatTile } from "@/components/stat-tile";
 import { getBaseUrl } from "@/lib/base-url";
 import { CampaignsTab } from "./campaigns-tab";
 import { SettingsTab } from "./settings-tab";
+import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 
 type Tab = "campaigns" | "settings";
 
@@ -45,6 +46,10 @@ export default async function ClientDetailPage({
   const stats = computeOverviewStats(organization.pipelines);
   const baseUrl = await getBaseUrl();
   const courses = await prisma.course.findMany({ orderBy: { createdAt: "desc" } });
+  const stageTemplates = await prisma.stageTemplate.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true },
+  });
   const assignedCourseIds = new Set(organization.courseAssignments.map((a) => a.courseId));
 
   const campaigns = organization.pipelines.map((pipeline) => {
@@ -69,6 +74,13 @@ export default async function ClientDetailPage({
           Audit-Log ansehen →
         </Link>
       </div>
+
+      {organization.archivedAt && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/5 px-4 py-3">
+          <p className="text-sm">Dieser Kunde ist archiviert und in der Kunden-Übersicht ausgeblendet.</p>
+          <ReactivateOrganizationButton organizationId={organization.id} />
+        </div>
+      )}
 
       <div className="mb-6 flex gap-1 border-b">
         <Link
@@ -106,7 +118,7 @@ export default async function ClientDetailPage({
             />
           </div>
 
-          <CampaignsTab organizationId={organization.id} campaigns={campaigns} />
+          <CampaignsTab organizationId={organization.id} campaigns={campaigns} templates={stageTemplates} />
         </>
       )}
 
@@ -114,6 +126,7 @@ export default async function ClientDetailPage({
         <SettingsTab
           organizationId={organization.id}
           organizationName={organization.name}
+          archivedAt={organization.archivedAt}
           users={organization.users}
           pipelines={organization.pipelines}
           courses={courses}

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 export default async function PipelinesPage() {
   const session = await auth();
@@ -32,7 +33,7 @@ export default async function PipelinesPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {pipeline.kind === "LEADS" ? "Leads (CRM)" : "Bewerber (ATS)"} · {pipeline._count.contacts} Kontakte
+                  {CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind} · {pipeline._count.contacts} Kontakte
                 </p>
               </CardContent>
             </Card>

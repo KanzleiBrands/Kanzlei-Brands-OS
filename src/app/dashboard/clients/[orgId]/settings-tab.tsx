@@ -6,7 +6,8 @@ import { PipelineAccessToggle } from "./pipeline-access-toggle";
 import { CourseAssignmentToggle } from "./course-assignment-toggle";
 import { ActivationStatus } from "@/components/activation-status";
 import { DeleteUserButton } from "./delete-user-button";
-import { DeleteOrganizationDialog } from "./delete-organization-dialog";
+import { ArchiveOrganizationButton } from "./archive-organization-button";
+import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { EditClientNameForm } from "./edit-client-name-form";
 
 type Pipeline = { id: string; name: string };
@@ -26,6 +27,7 @@ type OrgUser = {
 export function SettingsTab({
   organizationId,
   organizationName,
+  archivedAt,
   users,
   pipelines,
   courses,
@@ -34,6 +36,7 @@ export function SettingsTab({
 }: {
   organizationId: string;
   organizationName: string;
+  archivedAt: Date | null;
   users: OrgUser[];
   pipelines: Pipeline[];
   courses: Course[];
@@ -148,12 +151,27 @@ export function SettingsTab({
           <CardTitle>Gefahrenzone</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
-            Löscht diesen Kunden inklusive aller Kampagnen, Kontakte, Mitarbeiter und Lead-Quellen unwiderruflich.
-          </p>
-          <div>
-            <DeleteOrganizationDialog organizationId={organizationId} organizationName={organizationName} />
-          </div>
+          {archivedAt ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Dieser Kunde ist archiviert und in der Kunden-Übersicht ausgeblendet. Alle Daten sind weiterhin
+                vorhanden.
+              </p>
+              <div>
+                <ReactivateOrganizationButton organizationId={organizationId} />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Archiviert diesen Kunden. Er verschwindet aus der Kunden-Übersicht, alle Daten (Kampagnen, Kontakte,
+                Mitarbeiter, Lead-Quellen) bleiben erhalten und du kannst ihn jederzeit wieder reaktivieren.
+              </p>
+              <div>
+                <ArchiveOrganizationButton organizationId={organizationId} organizationName={organizationName} />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

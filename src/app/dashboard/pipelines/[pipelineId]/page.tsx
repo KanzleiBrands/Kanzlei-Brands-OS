@@ -9,6 +9,7 @@ import { PipelineActiveToggle } from "./pipeline-active-toggle";
 import { DeletePipelineButton } from "./delete-pipeline-button";
 import { EditPipelineNameForm } from "./edit-pipeline-name-form";
 import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
+import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 type Tab = "leads" | "settings" | "sources";
 
@@ -72,7 +73,7 @@ export default async function PipelineDetailPage({
     <div className="p-8">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold">{pipeline.name}</h1>
-        <p className="text-muted-foreground">{pipeline.kind === "LEADS" ? "Leads (CRM)" : "Bewerber (ATS)"}</p>
+        <p className="text-muted-foreground">{CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind}</p>
       </div>
 
       {canManageSettings && (

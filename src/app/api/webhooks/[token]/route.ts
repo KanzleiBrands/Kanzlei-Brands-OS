@@ -58,6 +58,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         email: fields.email,
         phone: fields.phone,
         location: fields.location,
+        cvUrl: fields.cvUrl,
         source: CONTACT_SOURCE_BY_WEBHOOK_SOURCE[endpoint.source],
         customFields: payload,
       },

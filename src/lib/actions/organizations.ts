@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertOrganizationAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
-import { STAGE_TEMPLATES } from "@/lib/pipeline-stage-templates";
 import { generateActivationToken } from "@/lib/invite";
 import { getBaseUrl } from "@/lib/base-url";
 
@@ -209,7 +208,10 @@ export async function deleteUser(formData: FormData) {
   revalidatePath("/dashboard/settings");
 }
 
-export async function deleteOrganization(formData: FormData) {
+// Client orgs are never hard-deleted from the UI — only archived (hidden
+// from the default Kunden-Übersicht, reversible) — so their data, audit
+// trail, and staff logins are never destroyed.
+export async function archiveOrganization(formData: FormData) {
   const session = await requireSession();
   const organizationId = String(formData.get("organizationId") ?? "");
 
@@ -218,22 +220,45 @@ export async function deleteOrganization(formData: FormData) {
   const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
   if (!organization || organization.type !== "CLIENT") return;
 
-  await prisma.organization.delete({ where: { id: organizationId } });
+  await prisma.organization.update({ where: { id: organizationId }, data: { archivedAt: new Date() } });
 
-  // The client's own audit trail is deleted along with it, so record this
-  // under the agency's org instead.
   await logAudit({
-    action: "organization.deleted",
+    action: "organization.archived",
     entityType: "Organization",
     entityId: organizationId,
-    organizationId: session.user.organizationId,
+    organizationId,
     userId: session.user.id,
     metadata: { name: organization.name },
   });
 
   revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${organizationId}`);
 
   redirect("/dashboard/clients");
+}
+
+export async function reactivateOrganization(formData: FormData) {
+  const session = await requireSession();
+  const organizationId = String(formData.get("organizationId") ?? "");
+
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return;
+
+  await prisma.organization.update({ where: { id: organizationId }, data: { archivedAt: null } });
+
+  await logAudit({
+    action: "organization.reactivated",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId,
+    userId: session.user.id,
+    metadata: { name: organization.name },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${organizationId}`);
 }
 
 export async function createPipeline(_prevState: string | undefined, formData: FormData) {
@@ -242,9 +267,10 @@ export async function createPipeline(_prevState: string | undefined, formData: F
   const organizationId = String(formData.get("organizationId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const kind = String(formData.get("kind") ?? "LEADS");
+  const templateId = String(formData.get("templateId") ?? "");
 
-  if (!organizationId || !name) return "Alle Felder sind erforderlich.";
-  if (kind !== "LEADS" && kind !== "APPLICANTS") return "Ungültiger Pipeline-Typ.";
+  if (!organizationId || !name || !templateId) return "Alle Felder sind erforderlich.";
+  if (kind !== "LEADS" && kind !== "APPLICANTS") return "Ungültiger Kampagnentyp.";
 
   try {
     assertOrganizationAccess(session, organizationId);
@@ -253,8 +279,12 @@ export async function createPipeline(_prevState: string | undefined, formData: F
     throw error;
   }
   if (session.user.role === "CLIENT_STAFF") {
-    return "Nur Admins können Pipelines anlegen.";
+    return "Nur Admins können Kampagnen anlegen.";
   }
+
+  const template = await prisma.stageTemplate.findUnique({ where: { id: templateId } });
+  if (!template) return "Statusvorlage nicht gefunden.";
+  const templateStages = template.stages as { name: string; order: number; color: string }[];
 
   const pipeline = await prisma.pipeline.create({
     data: {
@@ -262,7 +292,7 @@ export async function createPipeline(_prevState: string | undefined, formData: F
       kind,
       organizationId,
       stages: {
-        create: [...STAGE_TEMPLATES[kind as keyof typeof STAGE_TEMPLATES]],
+        create: templateStages.map((stage) => ({ name: stage.name, order: stage.order, color: stage.color })),
       },
     },
   });

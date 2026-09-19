@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { NewPipelineForm } from "./new-pipeline-form";
+import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 type Campaign = {
   id: string;
@@ -41,7 +42,15 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function CampaignsTab({ organizationId, campaigns }: { organizationId: string; campaigns: Campaign[] }) {
+export function CampaignsTab({
+  organizationId,
+  campaigns,
+  templates,
+}: {
+  organizationId: string;
+  campaigns: Campaign[];
+  templates: { id: string; name: string }[];
+}) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("lastLead");
   const [createOpen, setCreateOpen] = useState(false);
@@ -106,9 +115,12 @@ export function CampaignsTab({ organizationId, campaigns }: { organizationId: st
         {sorted.map((campaign) => (
           <div key={campaign.id} className="rounded-lg border bg-card p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <Link href={`/dashboard/pipelines/${campaign.id}`} className="truncate font-medium hover:underline">
-                {campaign.name}
-              </Link>
+              <div className="min-w-0">
+                <Link href={`/dashboard/pipelines/${campaign.id}`} className="truncate font-medium hover:underline">
+                  {campaign.name}
+                </Link>
+                <p className="text-xs text-muted-foreground">{CAMPAIGN_KIND_LABELS[campaign.kind] ?? campaign.kind}</p>
+              </div>
               <Link
                 href={`/dashboard/pipelines/${campaign.id}?tab=settings`}
                 aria-label="Kampagnen-Einstellungen"
@@ -160,7 +172,7 @@ export function CampaignsTab({ organizationId, campaigns }: { organizationId: st
             <DialogHeader>
               <DialogTitle>Kampagne anlegen</DialogTitle>
             </DialogHeader>
-            <NewPipelineForm organizationId={organizationId} />
+            <NewPipelineForm organizationId={organizationId} templates={templates} />
           </DialogContent>
         </Dialog>
 
