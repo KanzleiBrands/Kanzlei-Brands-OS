@@ -20,7 +20,6 @@ type ClientRow = {
   applicantsUsed: number;
   leadsQuota: number | null;
   applicantsQuota: number | null;
-  locationsCount: number;
 };
 
 function QuotaCell({ used, quota }: { used: number; quota: number | null }) {
@@ -115,7 +114,6 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
             <TableHead>Kunde</TableHead>
             <TableHead>Stellenanzeigen</TableHead>
             <TableHead>Mandatsakquise</TableHead>
-            <TableHead>Standorte</TableHead>
             <TableHead>Leads</TableHead>
             <TableHead>Letzter Lead</TableHead>
             <TableHead>Unbearbeitet</TableHead>
@@ -144,7 +142,6 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               <TableCell className="text-sm text-muted-foreground">
                 <QuotaCell used={client.leadsUsed} quota={client.leadsQuota} />
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">{client.locationsCount}</TableCell>
               <TableCell>{client.totalContacts}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(client.lastLeadAt)}</TableCell>
               <TableCell>{client.unprocessed}</TableCell>
@@ -170,14 +167,14 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           ))}
           {sorted.length === 0 && clients.length > 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Kein Kunde passt zur Suche.
               </TableCell>
             </TableRow>
           )}
           {clients.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Noch keine Kunden angelegt.
               </TableCell>
             </TableRow>

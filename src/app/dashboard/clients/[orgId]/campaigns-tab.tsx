@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { SettingsIcon, PlusIcon, LockIcon } from "lucide-react";
+import { SettingsIcon, PlusIcon, LockIcon, TriangleAlertIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -76,6 +76,8 @@ export function CampaignsTab({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("lastLead");
   const [createOpen, setCreateOpen] = useState(false);
+  const effectiveQuota = quota ?? 0;
+  const nextCampaignExceedsQuota = used >= effectiveQuota;
 
   const filtered = useMemo(
     () => campaigns.filter((c) => c.name.toLowerCase().includes(search.toLowerCase())),
@@ -215,6 +217,20 @@ export function CampaignsTab({
             <DialogHeader>
               <DialogTitle>Kampagne anlegen</DialogTitle>
             </DialogHeader>
+            {nextCampaignExceedsQuota && (
+              <div className="mb-2 flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+                <TriangleAlertIcon className="mt-0.5 size-4 flex-shrink-0" />
+                <p>
+                  Kontingent ausgeschöpft ({used}/{effectiveQuota} {CAMPAIGN_KIND_LABELS[kind]}-Kampagnen gebucht).
+                  Eine weitere Kampagne (z.B. für einen zusätzlichen Standort) überschreitet das gebuchte Kontingent –
+                  bitte vorher mit dem Kunden abklären und das{" "}
+                  <Link href={`/dashboard/clients/${organizationId}?tab=settings`} className="underline">
+                    Kontingent in den Kundeneinstellungen erhöhen
+                  </Link>
+                  .
+                </p>
+              </div>
+            )}
             <NewPipelineForm
               organizationId={organizationId}
               kind={kind}
