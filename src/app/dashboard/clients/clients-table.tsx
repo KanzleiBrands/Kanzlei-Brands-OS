@@ -23,10 +23,11 @@ type ClientRow = {
 };
 
 function QuotaCell({ used, quota }: { used: number; quota: number | null }) {
-  const overQuota = quota !== null && used > quota;
+  const effectiveQuota = quota ?? 0;
+  const overQuota = used > effectiveQuota;
   return (
     <span className={overQuota ? "font-medium text-destructive" : undefined}>
-      {quota !== null ? `${used}/${quota} verfügbar` : `${used} (kein Limit)`}
+      {used}/{effectiveQuota} verfügbar
     </span>
   );
 }
@@ -127,7 +128,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               <TableCell>
                 <Link href={`/dashboard/clients/${client.id}`} className="flex items-center gap-2 font-medium hover:underline">
                   <span
-                    className="flex size-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                    className="flex size-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                     style={{ backgroundColor: avatarColorFor(client.name) }}
                   >
                     {avatarFor(client.name)}
