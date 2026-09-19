@@ -72,7 +72,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   }));
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <BackLink href={`/dashboard/pipelines/${contact.pipelineId}`}>Zurück zur Kampagne</BackLink>
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -88,7 +88,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <p className="mt-1 text-sm text-destructive">Absagegrund: {contact.rejectionReason}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {contact.phone && (
             <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
               Anrufen

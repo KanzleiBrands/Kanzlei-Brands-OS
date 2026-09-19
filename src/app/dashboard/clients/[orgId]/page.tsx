@@ -93,7 +93,7 @@ export default async function ClientDetailPage({
   const leadCampaigns = leadPipelines.map(toCampaign);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{organization.name}</h1>
         <Link href={`/dashboard/audit-log?orgId=${organization.id}`} className="text-sm text-muted-foreground underline">

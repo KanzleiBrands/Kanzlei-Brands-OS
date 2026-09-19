@@ -85,8 +85,8 @@ export function PipelineView({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <NewContactForm
             pipelineId={pipelineId}
             pipelineKind={pipelineKind}
@@ -96,7 +96,7 @@ export function PipelineView({
             placeholder={pipelineKind === "APPLICANTS" ? "Bewerber suchen..." : "Lead suchen..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-56"
+            className="w-full sm:w-56"
           />
         </div>
         <div className="inline-flex flex-shrink-0 rounded-lg border p-0.5">
@@ -104,11 +104,18 @@ export function PipelineView({
             type="button"
             size="sm"
             variant={view === "board" ? "default" : "ghost"}
+            className="flex-1 sm:flex-none"
             onClick={() => setView("board")}
           >
             Board
           </Button>
-          <Button type="button" size="sm" variant={view === "list" ? "default" : "ghost"} onClick={() => setView("list")}>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "list" ? "default" : "ghost"}
+            className="flex-1 sm:flex-none"
+            onClick={() => setView("list")}
+          >
             Liste
           </Button>
         </div>

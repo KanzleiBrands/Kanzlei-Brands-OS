@@ -39,7 +39,7 @@ export default async function PipelinesPage() {
   const canRequest = session.user.role === "CLIENT_ADMIN";
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Kampagnen</h1>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {pipelines.map((pipeline) => (

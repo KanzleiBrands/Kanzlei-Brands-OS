@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma, WebhookSource, ContactSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { extractContactFields, resolveLocationRoutingPipelineId } from "@/lib/webhook-ingest";
+import { extractContactFields, resolveLocationRoutingPipelineId, stripTrackingFields } from "@/lib/webhook-ingest";
 import { isFileUrl } from "@/lib/format-custom-fields";
 import { storeFileFromUrl } from "@/lib/file-storage";
 import { deriveWebsiteFromEmail } from "@/lib/company";
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         address: fields.address,
         cvUrl,
         source: CONTACT_SOURCE_BY_WEBHOOK_SOURCE[endpoint.source],
-        customFields: (customFields as Prisma.InputJsonObject | null) ?? payload,
+        customFields: stripTrackingFields((customFields as Prisma.InputJsonObject | null) ?? payload),
       },
     });
 

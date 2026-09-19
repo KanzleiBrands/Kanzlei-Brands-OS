@@ -102,7 +102,7 @@ export function KanbanBoard({
           <div
             key={stage.id}
             data-testid={`stage-column-${stage.id}`}
-            className={`flex w-72 flex-shrink-0 flex-col rounded-lg border bg-muted/30 p-2 ${
+            className={`flex w-[260px] flex-shrink-0 flex-col rounded-lg border bg-muted/30 p-2 sm:w-72 ${
               dragOverStageId === stage.id ? "ring-2 ring-primary" : ""
             }`}
             onDragOver={(e) => {
@@ -126,7 +126,7 @@ export function KanbanBoard({
                 {stage.contacts.length}
               </span>
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               {stage.contacts.map((contact) => {
                 const fullName = contactDisplayName(contact);
                 const highlight = formatCustomFields(contact.customFields)[0];
@@ -140,7 +140,7 @@ export function KanbanBoard({
                     onDragStart={(e) => {
                       e.dataTransfer.setData("text/contact-id", contact.id);
                     }}
-                    className={`group relative block cursor-grab rounded-md border bg-background p-3 text-sm shadow-sm transition-shadow hover:border-primary hover:shadow-md ${
+                    className={`group relative block cursor-grab rounded-md border bg-background p-3.5 text-sm shadow-sm transition-shadow hover:border-primary hover:shadow-md ${
                       isPending ? "opacity-60" : ""
                     }`}
                   >
@@ -168,21 +168,22 @@ export function KanbanBoard({
                       >
                         {initialsOf(contact.firstName, contact.lastName)}
                       </span>
-                      <p className="truncate font-medium">{fullName}</p>
+                      <p className="min-w-0 flex-1 truncate font-medium">{fullName}</p>
+                      <TimeBadge createdAt={contact.createdAt} isFirstStage={stageIndex === 0} />
                     </div>
 
                     {isDuplicate && (
-                      <span className="mt-1 inline-block rounded-full bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500">
+                      <span className="mt-1.5 inline-block rounded-full bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500">
                         ⚠ Mögliches Duplikat
                       </span>
                     )}
 
-                    <div className="mt-1.5 flex flex-col gap-0.5 text-xs text-muted-foreground">
-                      <span>
+                    <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
+                      <span className="truncate">
                         Eingang{" "}
                         {new Date(contact.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                        {contact.phone && ` · ${contact.phone}`}
                       </span>
-                      {contact.phone && <span>{contact.phone}</span>}
                       {highlight && (
                         <span className="truncate">
                           {highlight.label}: {highlight.value}
@@ -190,17 +191,13 @@ export function KanbanBoard({
                       )}
                     </div>
 
-                    <div className="mt-2">
+                    <div className="mt-2.5 flex items-center justify-between">
                       <StarRating contactId={contact.id} rating={contact.rating} size="sm" />
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {contact._count.activities > 0
-                          ? `${contact._count.activities} ${contact._count.activities === 1 ? "Aktivität" : "Aktivitäten"}`
-                          : ""}
-                      </span>
-                      <TimeBadge createdAt={contact.createdAt} isFirstStage={stageIndex === 0} />
+                      {contact._count.activities > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {contact._count.activities} {contact._count.activities === 1 ? "Aktivität" : "Aktivitäten"}
+                        </span>
+                      )}
                     </div>
                   </Link>
                 );

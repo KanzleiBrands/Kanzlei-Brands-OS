@@ -36,7 +36,7 @@ export default async function SettingsPage({
   const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <h1 className="mb-2 text-2xl font-semibold">Einstellungen</h1>
       <p className="mb-6 text-muted-foreground">Account, Team und Postfach verwalten.</p>
 

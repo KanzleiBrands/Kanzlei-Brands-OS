@@ -26,7 +26,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
   const progressByLessonId = new Map(course.enrollments[0]?.progress.map((p) => [p.lessonId, !!p.completedAt]));
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{course.title}</h1>

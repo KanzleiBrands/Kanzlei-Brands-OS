@@ -34,6 +34,31 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Ad-platform click/attribution tracking noise (fbclid, gclid, utm_*, ...) -
+// never useful to an account manager looking at a lead, so it's dropped
+// before customFields is stored, not just hidden at display time.
+const TRACKING_KEY_HINT = /^(fbclid|gclid|gbraid|wbraid|msclkid|ttclid|li_fat_id|utm_.+)$/i;
+
+export function isTrackingKey(key: string): boolean {
+  return TRACKING_KEY_HINT.test(normalizeFieldKey(key));
+}
+
+/** Recursively drops ad-tracking keys from a webhook payload/customFields object before it's stored. */
+export function stripTrackingFields<T>(node: T): T {
+  if (Array.isArray(node)) {
+    return node.map((item) => stripTrackingFields(item)) as unknown as T;
+  }
+  if (isPlainObject(node)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(node)) {
+      if (isTrackingKey(key)) continue;
+      result[key] = stripTrackingFields(value);
+    }
+    return result as T;
+  }
+  return node;
+}
+
 const EMAIL_HINT = /e-?mail/i;
 const PHONE_HINT = /telefon|phone|handy|mobil/i;
 const CV_HINT = /lebenslauf|resume|\bcv\b/i;

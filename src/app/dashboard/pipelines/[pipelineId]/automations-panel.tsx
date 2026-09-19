@@ -34,7 +34,7 @@ function RuleRow({
         <span className="text-sm text-muted-foreground">von: {senderEmail}</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Select
           value={rule.recipientUserId ?? ""}
           onValueChange={(value) => {
@@ -47,7 +47,7 @@ function RuleRow({
             });
           }}
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-40 sm:w-48">
             <SelectValue>{(value: string) => users.find((u) => u.id === value)?.name ?? "Empfänger wählen"}</SelectValue>
           </SelectTrigger>
           <SelectContent>

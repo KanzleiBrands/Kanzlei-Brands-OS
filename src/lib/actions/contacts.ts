@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, assertPipelineAccess } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
-import { extractContactFields, normalizeFieldKey } from "@/lib/webhook-ingest";
+import { extractContactFields, normalizeFieldKey, stripTrackingFields } from "@/lib/webhook-ingest";
 import { storeFile } from "@/lib/file-storage";
 import { deriveWebsiteFromEmail } from "@/lib/company";
 
@@ -246,7 +246,7 @@ export async function importContactsCsv(_prevState: string | undefined, formData
         address: fields.address,
         cvUrl: fields.cvUrl,
         source: "MANUAL",
-        customFields: (fields.customFields as Prisma.InputJsonObject | null) ?? row,
+        customFields: stripTrackingFields((fields.customFields as Prisma.InputJsonObject | null) ?? row),
       },
     });
     imported++;

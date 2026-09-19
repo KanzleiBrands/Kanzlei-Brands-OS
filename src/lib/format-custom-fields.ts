@@ -1,4 +1,4 @@
-import { AUTO_DETECT, normalizeFieldKey } from "@/lib/webhook-ingest";
+import { AUTO_DETECT, normalizeFieldKey, isTrackingKey } from "@/lib/webhook-ingest";
 
 // Mirrors the synonym lists used to extract structured Contact columns from a
 // raw payload/CSV row (webhook-ingest.ts), so anything already shown as
@@ -46,7 +46,8 @@ function flatten(obj: Record<string, unknown>, prefix = ""): Record<string, stri
 }
 
 function isSkipped(key: string): boolean {
-  return SKIP_KEYS.has(normalizeFieldKey(key.split(".").pop() ?? key));
+  const leaf = key.split(".").pop() ?? key;
+  return SKIP_KEYS.has(normalizeFieldKey(leaf)) || isTrackingKey(leaf);
 }
 
 /** Turns the raw webhook payload into a readable label/value list, skipping fields already shown as structured Contact columns. */
