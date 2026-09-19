@@ -10,6 +10,7 @@ import { ArchiveOrganizationButton } from "./archive-organization-button";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { EditClientNameForm } from "./edit-client-name-form";
 import { QuotaSettingsForm } from "./quota-settings-form";
+import { IntakeSettingsForm } from "./intake-settings-form";
 
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
@@ -38,6 +39,10 @@ export function SettingsTab({
   applicantsQuota,
   leadsUsed,
   applicantsUsed,
+  accountManagerId,
+  leadsFormUrl,
+  applicantsFormUrl,
+  agencyUsers,
 }: {
   organizationId: string;
   organizationName: string;
@@ -51,6 +56,10 @@ export function SettingsTab({
   applicantsQuota: number | null;
   leadsUsed: number;
   applicantsUsed: number;
+  accountManagerId: string | null;
+  leadsFormUrl: string | null;
+  applicantsFormUrl: string | null;
+  agencyUsers: { id: string; name: string }[];
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -74,6 +83,21 @@ export function SettingsTab({
             applicantsQuota={applicantsQuota}
             leadsUsed={leadsUsed}
             applicantsUsed={applicantsUsed}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kundenboard: weitere Kampagnen beauftragen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <IntakeSettingsForm
+            organizationId={organizationId}
+            accountManagerId={accountManagerId}
+            leadsFormUrl={leadsFormUrl}
+            applicantsFormUrl={applicantsFormUrl}
+            agencyUsers={agencyUsers}
           />
         </CardContent>
       </Card>

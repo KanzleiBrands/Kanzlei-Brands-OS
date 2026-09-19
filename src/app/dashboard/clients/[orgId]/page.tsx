@@ -53,6 +53,14 @@ export default async function ClientDetailPage({
     select: { id: true, name: true },
   });
   const assignedCourseIds = new Set(organization.courseAssignments.map((a) => a.courseId));
+  const agencyUsers =
+    tab === "settings"
+      ? await prisma.user.findMany({
+          where: { role: "AGENCY_ADMIN", organizationId: session.user.organizationId },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
 
   const campaigns = organization.pipelines.map((pipeline) => {
     const cardStats = computeCampaignCardStats(pipeline);
@@ -147,6 +155,10 @@ export default async function ClientDetailPage({
           applicantsQuota={organization.applicantsQuota}
           leadsUsed={leadsUsed}
           applicantsUsed={applicantsUsed}
+          accountManagerId={organization.accountManagerId}
+          leadsFormUrl={organization.leadsFormUrl}
+          applicantsFormUrl={organization.applicantsFormUrl}
+          agencyUsers={agencyUsers}
         />
       )}
     </div>

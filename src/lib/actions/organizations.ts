@@ -120,6 +120,38 @@ export async function updateOrganizationQuotas(_prevState: string | undefined, f
   revalidatePath(`/dashboard/clients/${organizationId}`);
 }
 
+/**
+ * Configures how a client can self-serve order more campaigns from their own
+ * board: which Jotform to send them to per campaign kind, and who gets
+ * notified when they've run out of quota and need to order more.
+ */
+export async function updateOrganizationIntakeSettings(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") {
+    return "Nur Agentur-Admins können diese Einstellungen ändern.";
+  }
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
+
+  const accountManagerId = String(formData.get("accountManagerId") ?? "").trim() || null;
+  const leadsFormUrl = String(formData.get("leadsFormUrl") ?? "").trim() || null;
+  const applicantsFormUrl = String(formData.get("applicantsFormUrl") ?? "").trim() || null;
+
+  if (accountManagerId) {
+    const manager = await prisma.user.findUnique({ where: { id: accountManagerId } });
+    if (!manager || manager.role !== "AGENCY_ADMIN") return "Ungültiger Account Manager.";
+  }
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { accountManagerId, leadsFormUrl, applicantsFormUrl },
+  });
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+}
+
 export type CreateUserResult = { status: "error"; message: string } | { status: "success"; link: string } | undefined;
 
 export async function createOrgUser(_prevState: CreateUserResult, formData: FormData): Promise<CreateUserResult> {
