@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma, WebhookSource, ContactSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { extractContactFields } from "@/lib/webhook-ingest";
+import { isFileUrl } from "@/lib/format-custom-fields";
+import { storeFileFromUrl } from "@/lib/file-storage";
+
+/** Re-hosts a file the source platform linked to under our own storage; keeps the original link if the download fails. */
+async function mirrorExternalFile(url: string): Promise<string> {
+  try {
+    return await storeFileFromUrl(url, "leads");
+  } catch {
+    return url;
+  }
+}
 
 const CONTACT_SOURCE_BY_WEBHOOK_SOURCE: Record<WebhookSource, ContactSource> = {
   GENERIC: "WEBHOOK_GENERIC",
@@ -49,6 +60,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const fields = extractContactFields(payload, endpoint.fieldMapping as Record<string, string> | null);
 
+    const cvUrl = fields.cvUrl ? await mirrorExternalFile(fields.cvUrl) : null;
+
+    let customFields = fields.customFields;
+    if (customFields) {
+      const mirrored: Record<string, string> = {};
+      for (const [key, value] of Object.entries(customFields)) {
+        mirrored[key] = isFileUrl(value) ? await mirrorExternalFile(value) : value;
+      }
+      customFields = mirrored;
+    }
+
     const contact = await prisma.contact.create({
       data: {
         pipelineId: endpoint.pipelineId,
@@ -58,9 +80,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         email: fields.email,
         phone: fields.phone,
         location: fields.location,
-        cvUrl: fields.cvUrl,
+        cvUrl,
         source: CONTACT_SOURCE_BY_WEBHOOK_SOURCE[endpoint.source],
-        customFields: (fields.customFields as Prisma.InputJsonObject | null) ?? payload,
+        customFields: (customFields as Prisma.InputJsonObject | null) ?? payload,
       },
     });
 
