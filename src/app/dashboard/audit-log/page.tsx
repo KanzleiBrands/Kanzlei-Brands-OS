@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { BackLink } from "@/components/back-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -54,9 +54,9 @@ export default async function AuditLogPage({
         Nachvollziehbarkeit für DSGVO-Zwecke: wer hat wann welche Aktion durchgeführt.
       </p>
       {scopedOrg && (
-        <Link href="/dashboard/audit-log" className="mb-4 inline-block text-sm text-muted-foreground underline">
-          ← Alle Kunden anzeigen
-        </Link>
+        <div className="mb-4">
+          <BackLink href="/dashboard/audit-log">Alle Kunden anzeigen</BackLink>
+        </div>
       )}
 
       <Card>

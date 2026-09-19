@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +5,7 @@ import { accessiblePipelineIds } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
+import { SettingsLink } from "./settings-link";
 
 function navFor(role: string, campaignKinds: Set<string>) {
   const common = [{ href: "/dashboard/courses", label: "Schulung" }];
@@ -69,11 +69,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Image src="/brand/logo-on-dark.svg" alt="Kanzlei Brands" width={140} height={56} priority />
         </div>
         <SidebarNav role={session.user.role} links={links} clients={clients} />
-        <div className="mt-auto flex flex-col gap-2 px-2 pt-4">
-          <Link href="/dashboard/settings" className="rounded px-1 py-1 text-sm hover:underline">
-            ⚙ Einstellungen
-          </Link>
-          <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
+        <div className="mt-auto flex flex-col gap-2 pt-4">
+          <SettingsLink />
+          <p className="truncate px-3 text-xs text-muted-foreground">{session.user.email}</p>
           <form
             action={async () => {
               "use server";

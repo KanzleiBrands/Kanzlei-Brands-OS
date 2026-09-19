@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { BackLink } from "@/components/back-link";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { customFieldEntries } from "@/lib/format-custom-fields";
@@ -66,9 +66,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="p-8">
-      <Link href={`/dashboard/pipelines/${contact.pipelineId}`} className="text-sm text-muted-foreground underline">
-        ← Zurück zur Kampagne
-      </Link>
+      <BackLink href={`/dashboard/pipelines/${contact.pipelineId}`}>Zurück zur Kampagne</BackLink>
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{fullName}</h1>

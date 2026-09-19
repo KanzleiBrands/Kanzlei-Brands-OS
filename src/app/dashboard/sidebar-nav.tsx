@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { BackLink } from "@/components/back-link";
 
 type Pipeline = { id: string; name: string; active: boolean };
 type ClientOrg = { id: string; name: string; pipelines: Pipeline[] };
@@ -17,6 +18,16 @@ export function SidebarNav({
   clients: ClientOrg[];
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function isActive(href: string) {
+    const [hrefPath, hrefQuery] = href.split("?");
+    if (hrefPath === "/dashboard") return pathname === "/dashboard";
+    if (!pathname.startsWith(hrefPath)) return false;
+    if (!hrefQuery) return true;
+    const hrefParams = new URLSearchParams(hrefQuery);
+    return Array.from(hrefParams.entries()).every(([key, value]) => searchParams.get(key) === value);
+  }
 
   const clientOrg =
     role === "AGENCY_ADMIN"
@@ -45,12 +56,9 @@ export function SidebarNav({
           </span>
         </Link>
 
-        <Link
-          href="/dashboard/clients"
-          className="mb-4 flex items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground hover:underline"
-        >
-          ← Zurück zur Kunden-Übersicht
-        </Link>
+        <div className="mb-4 px-2">
+          <BackLink href="/dashboard/clients">Zurück zur Kunden-Übersicht</BackLink>
+        </div>
 
         <p className="mb-1 px-2 text-xs font-medium tracking-wide text-muted-foreground">KAMPAGNEN</p>
         <div className="flex flex-col gap-0.5">
@@ -80,12 +88,23 @@ export function SidebarNav({
     <nav className="flex flex-1 flex-col">
       <div className="flex flex-col gap-1">
         {role !== "AGENCY_ADMIN" && (
-          <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">
+          <Link
+            href="/dashboard"
+            className={`rounded-md px-3 py-2 text-sm transition-colors ${
+              isActive("/dashboard") ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
             Übersicht
           </Link>
         )}
         {links.map((link) => (
-          <Link key={link.href} href={link.href} className="rounded px-3 py-2 text-sm hover:bg-muted">
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`rounded-md px-3 py-2 text-sm transition-colors ${
+              isActive(link.href) ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
             {link.label}
           </Link>
         ))}
