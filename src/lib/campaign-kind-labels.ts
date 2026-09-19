@@ -3,7 +3,7 @@ export const CAMPAIGN_KIND_LABELS: Record<string, string> = {
   APPLICANTS: "Recruiting",
 };
 
-/** "Ungeeignet" for Mandatsakquise, "Ausgeschlossen" for Recruiting - the rejected-stage tab/label wording per campaign kind. */
-export function excludedTabLabel(pipelineKind: string): string {
-  return pipelineKind === "LEADS" ? "Ungeeignet" : "Ausgeschlossen";
+/** The rejected-stage tab/label wording, unified across all campaign kinds. */
+export function excludedTabLabel(_pipelineKind: string): string {
+  return "Ungeeignet";
 }

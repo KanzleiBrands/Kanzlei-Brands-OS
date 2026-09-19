@@ -26,7 +26,7 @@ export function StageListEditor({
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
         <BanIcon className="mr-1 inline size-3 align-[-1px]" />
-        markiert eine Ausschluss-Stufe (z.B. Absage): erscheint nicht im Kanban, sondern im Reiter „Ausgeschlossen“.
+        markiert eine Ausschluss-Stufe (z.B. Absage): erscheint nicht im Kanban, sondern im Reiter „Ungeeignet“.
       </p>
       {stages.map((stage, index) => (
         <div key={index} className="flex items-center gap-2">
@@ -63,7 +63,7 @@ export function StageListEditor({
             type="button"
             size="icon-sm"
             variant={stage.isRejected ? "default" : "ghost"}
-            title="Als Ausschluss-Stufe markieren (z.B. Absage) - erscheint nicht im Kanban, sondern im Reiter „Ausgeschlossen“"
+            title="Als Ausschluss-Stufe markieren (z.B. Absage) - erscheint nicht im Kanban, sondern im Reiter „Ungeeignet“"
             aria-label="Als Ausschluss-Stufe markieren"
             onClick={() => {
               const next = [...stages];

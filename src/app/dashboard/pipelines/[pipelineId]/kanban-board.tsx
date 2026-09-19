@@ -69,7 +69,7 @@ export function KanbanBoard({
   rejectStageId?: string;
   pipelineKind: string;
 }) {
-  const rejectLabel = pipelineKind === "LEADS" ? "Als ungeeignet markieren" : "Absagen";
+  const rejectLabel = "Als ungeeignet markieren";
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [rejectingContactId, setRejectingContactId] = useState<string | null>(null);

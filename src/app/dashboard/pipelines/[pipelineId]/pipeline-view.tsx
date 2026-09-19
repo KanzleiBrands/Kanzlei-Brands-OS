@@ -138,11 +138,7 @@ export function PipelineView({
       )}
 
       {statusTab === "excluded" && hasRejectedStages ? (
-        <ExcludedContactsTable
-          stages={excludedStages}
-          reactivateStageId={firstQualifiedStageId}
-          pipelineKind={pipelineKind}
-        />
+        <ExcludedContactsTable stages={excludedStages} reactivateStageId={firstQualifiedStageId} />
       ) : view === "board" ? (
         <KanbanBoard
           stages={qualifiedStages}
