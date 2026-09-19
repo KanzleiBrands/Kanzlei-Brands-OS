@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClientSwitcher } from "./client-switcher";
 
 type Pipeline = { id: string; name: string; active: boolean };
 type ClientOrg = { id: string; name: string; pipelines: Pipeline[] };
@@ -79,11 +78,6 @@ export function SidebarNav({
 
   return (
     <nav className="flex flex-1 flex-col">
-      {role === "AGENCY_ADMIN" && (
-        <div className="mb-4 px-2">
-          <ClientSwitcher currentLabel="Alle Kunden" clients={clients} />
-        </div>
-      )}
       <div className="flex flex-col gap-1">
         {role !== "AGENCY_ADMIN" && (
           <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">

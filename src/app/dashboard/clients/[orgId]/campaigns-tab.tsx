@@ -172,7 +172,11 @@ export function CampaignsTab({
             <DialogHeader>
               <DialogTitle>Kampagne anlegen</DialogTitle>
             </DialogHeader>
-            <NewPipelineForm organizationId={organizationId} templates={templates} />
+            <NewPipelineForm
+              organizationId={organizationId}
+              templates={templates}
+              onSuccess={() => setCreateOpen(false)}
+            />
           </DialogContent>
         </Dialog>
 

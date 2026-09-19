@@ -7,6 +7,7 @@ import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Row = {
@@ -29,17 +30,27 @@ type SortKey = "name" | "eingang" | "kampagne";
 
 export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
   const [search, setSearch] = useState("");
+  const [pipelineFilter, setPipelineFilter] = useState("ALL");
   const [sortKey, setSortKey] = useState<SortKey>("eingang");
   const [sortAsc, setSortAsc] = useState(false);
 
+  const campaigns = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of rows) map.set(row.pipelineId, row.pipelineName);
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return rows;
     return rows.filter((row) => {
+      if (pipelineFilter !== "ALL" && row.pipelineId !== pipelineFilter) return false;
+      if (!query) return true;
       const haystack = [row.firstName, row.lastName, row.email, row.phone].filter(Boolean).join(" ").toLowerCase();
       return haystack.includes(query);
     });
-  }, [rows, search]);
+  }, [rows, search, pipelineFilter]);
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
@@ -70,13 +81,30 @@ export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
 
   return (
     <div>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         <Input
           placeholder="Suchen..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
+        <Select value={pipelineFilter} onValueChange={(value) => value && setPipelineFilter(value)}>
+          <SelectTrigger className="w-56">
+            <SelectValue>
+              {(value: string) =>
+                value === "ALL" ? "Alle Kampagnen" : (campaigns.find((c) => c.id === value)?.name ?? "Alle Kampagnen")
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Kampagnen</SelectItem>
+            {campaigns.map((campaign) => (
+              <SelectItem key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Table>

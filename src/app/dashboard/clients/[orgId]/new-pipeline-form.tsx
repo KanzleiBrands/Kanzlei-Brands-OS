@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { createPipeline } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,14 +10,26 @@ import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 export function NewPipelineForm({
   organizationId,
   templates,
+  onSuccess,
 }: {
   organizationId: string;
   templates: { id: string; name: string }[];
+  onSuccess?: () => void;
 }) {
   const [error, formAction, isPending] = useActionState(createPipeline, undefined);
+  const formRef = useRef<HTMLFormElement>(null);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && !error) {
+      formRef.current?.reset();
+      onSuccess?.();
+    }
+    wasPending.current = isPending;
+  }, [isPending, error, onSuccess]);
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2">
+    <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="organizationId" value={organizationId} />
       <Input name="name" placeholder="Kampagnen-Name (z.B. Kampagne X)" required className="max-w-xs" />
       <Select name="kind" defaultValue="LEADS">
