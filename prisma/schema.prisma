@@ -48,6 +48,10 @@ model Organization {
   accountManagerId String?
   accountManager   User?   @relation("AccountManagerFor", fields: [accountManagerId], references: [id], onDelete: SetNull)
 
+  // Set when this org was created or matched by the Airtable "Kunden" sync,
+  // so re-deliveries of the same Airtable record update instead of duplicate.
+  airtableRecordId String? @unique
+
   parentId String?
   parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
   children Organization[] @relation("OrgHierarchy")

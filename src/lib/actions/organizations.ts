@@ -8,16 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { generateActivationToken } from "@/lib/invite";
 import { getBaseUrl } from "@/lib/base-url";
 
-function slugify(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-") + "-" + Math.random().toString(36).slice(2, 6)
-  );
-}
+import { slugify } from "@/lib/slugify";
 
 export async function createClientOrganization(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
