@@ -138,11 +138,18 @@ function valueFromFieldsMapEntry(raw: unknown): string | null {
   return null;
 }
 
-/** Strips OnePage's step-number prefix and control-type suffix, e.g. "Step 7. Frage 5: Umsatz -> Select" -> "Frage 5: Umsatz". */
+/**
+ * Strips OnePage's step-number prefix and control-type suffix, e.g.
+ * "Step 7. Frage 5: Umsatz -> Select" -> "Frage 5: Umsatz". Only generic,
+ * non-semantic widget-type suffixes are stripped here - a suffix like
+ * "-> E-Mail" or "-> Vorname" is left in place on purpose, since that's
+ * OnePage's own field-purpose label and the hint regexes below match
+ * against it to recognize the field.
+ */
 function cleanFieldsMapLabel(key: string): string {
   return key
     .replace(/^Step\s*\d+\.\s*/i, "")
-    .replace(/\s*->\s*(Select|Text|Input)$/i, "")
+    .replace(/\s*->\s*(Select|MultiSelect|Multi-Select|Checkbox|Checkboxes|Radio|Dropdown|Text|Textarea|Input)$/i, "")
     .trim();
 }
 
