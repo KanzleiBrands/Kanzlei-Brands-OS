@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
 import { extractContactFields, normalizeFieldKey } from "@/lib/webhook-ingest";
 import { storeFile } from "@/lib/file-storage";
+import { deriveWebsiteFromEmail } from "@/lib/company";
 
 export async function deleteContact(formData: FormData) {
   const session = await requireSession();
@@ -92,6 +93,9 @@ export async function updateContact(_prevState: string | undefined, formData: Fo
   const lastName = String(formData.get("lastName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const companyName = String(formData.get("companyName") ?? "").trim();
+  const website = String(formData.get("website") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });
   if (!contact) return "Kontakt nicht gefunden.";
@@ -104,6 +108,9 @@ export async function updateContact(_prevState: string | undefined, formData: Fo
       lastName: lastName || null,
       email: email || null,
       phone: phone || null,
+      companyName: companyName || null,
+      website: website || deriveWebsiteFromEmail(email || null),
+      address: address || null,
     },
   });
 
@@ -160,9 +167,10 @@ export async function createContact(_prevState: string | undefined, formData: Fo
   const lastName = String(formData.get("lastName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const companyName = String(formData.get("companyName") ?? "").trim();
 
-  if (!firstName && !lastName && !email) {
-    return "Mindestens Name oder E-Mail ist erforderlich.";
+  if (!firstName && !lastName && !email && !companyName) {
+    return "Mindestens Name, Firma oder E-Mail ist erforderlich.";
   }
 
   await assertPipelineAccess(session, pipelineId);
@@ -175,6 +183,8 @@ export async function createContact(_prevState: string | undefined, formData: Fo
       lastName: lastName || null,
       email: email || null,
       phone: phone || null,
+      companyName: companyName || null,
+      website: deriveWebsiteFromEmail(email || null),
       source: "MANUAL",
     },
   });
@@ -223,6 +233,9 @@ export async function importContactsCsv(_prevState: string | undefined, formData
         email: fields.email,
         phone: fields.phone,
         location: fields.location,
+        companyName: fields.companyName,
+        website: deriveWebsiteFromEmail(fields.email),
+        address: fields.address,
         cvUrl: fields.cvUrl,
         source: "MANUAL",
         customFields: (fields.customFields as Prisma.InputJsonObject | null) ?? row,
@@ -260,4 +273,37 @@ export async function addNote(_prevState: string | undefined, formData: FormData
   });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
+export async function addAdditionalContact(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  if (!name) return "Name ist erforderlich.";
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.additionalContact.create({
+    data: { contactId, name, role: role || null, email: email || null, phone: phone || null },
+  });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
+export async function deleteAdditionalContact(formData: FormData) {
+  const session = await requireSession();
+  const id = String(formData.get("id") ?? "");
+
+  const additionalContact = await prisma.additionalContact.findUnique({ where: { id }, include: { contact: true } });
+  if (!additionalContact) return;
+  await assertPipelineAccess(session, additionalContact.contact.pipelineId);
+
+  await prisma.additionalContact.delete({ where: { id } });
+
+  revalidatePath(`/dashboard/contacts/${additionalContact.contactId}`);
 }

@@ -126,6 +126,7 @@ model Pipeline {
   kind                 PipelineKind
   active               Boolean      @default(true)
   showDuplicateWarning Boolean      @default(true)
+  location             String? // Recruiting: which office/site this specific job posting is for
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -189,19 +190,46 @@ model Contact {
   // Raw/extra fields that don't map to a fixed column (form-specific answers, UTM data, ...)
   customFields Json?
 
+  // B2B ("Mandatsakquise") only: set companyName to mark this lead as a
+  // company rather than a private individual - the company name becomes the
+  // primary display name, and additionalContacts holds other people at the
+  // same company. Left null for B2C leads and all Recruiting contacts.
+  companyName String?
+  website     String? // manually set, or auto-derived from the email domain
+  address     String?
+
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   stageId    String
   stage      Stage    @relation(fields: [stageId], references: [id])
 
-  activities    Activity[]
-  emailMessages EmailMessage[]
+  activities          Activity[]
+  emailMessages       EmailMessage[]
+  additionalContacts  AdditionalContact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([pipelineId])
   @@index([stageId])
+}
+
+// Extra people at the same B2B company (Contact.companyName set). Kept
+// separate from Contact so a company lead can have several without
+// overloading the single-person Contact columns.
+model AdditionalContact {
+  id     String  @id @default(cuid())
+  name   String
+  role   String?
+  email  String?
+  phone  String?
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
 }
 
 enum ActivityType {
@@ -257,6 +285,12 @@ model WebhookEndpoint {
   token  String        @unique @default(cuid())
   source WebhookSource
   fieldMapping Json? // e.g. { "firstName": "data.first_name", "email": "data.email" }
+  // Recruiting, multi-location jobs sharing one funnel/webhook: maps a
+  // location answer value (as it appears anywhere in the payload) to the
+  // Pipeline id it should actually be filed under, e.g.
+  // { "Hamburg": "clx...pipelineIdHH", "Berlin": "clx...pipelineIdB" }.
+  // Falls back to this endpoint's own pipelineId when nothing matches.
+  locationRouting Json?
   active Boolean       @default(true)
 
   organizationId String

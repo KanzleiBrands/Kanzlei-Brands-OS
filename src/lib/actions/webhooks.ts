@@ -35,6 +35,35 @@ export async function updateFieldMapping(_prevState: string | undefined, formDat
   revalidatePath(`/dashboard/pipelines/${endpoint.pipelineId}`);
 }
 
+export async function updateLocationRouting(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const endpointId = String(formData.get("endpointId") ?? "");
+  const raw = String(formData.get("locationRouting") ?? "").trim();
+
+  const endpoint = await prisma.webhookEndpoint.findUnique({ where: { id: endpointId } });
+  if (!endpoint) return "Webhook nicht gefunden.";
+  await assertPipelineAccess(session, endpoint.pipelineId);
+
+  let parsed: Record<string, string> = {};
+  if (raw) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return "Ungültiges Format.";
+    }
+    if (typeof parsed !== "object" || Array.isArray(parsed)) {
+      return "Ungültiges Format.";
+    }
+  }
+
+  await prisma.webhookEndpoint.update({
+    where: { id: endpointId },
+    data: { locationRouting: parsed },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${endpoint.pipelineId}`);
+}
+
 export async function createWebhookEndpoint(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WEBHOOK_SOURCE_COLORS, WEBHOOK_SOURCE_LABELS } from "@/lib/webhook-source-labels";
 import { AddSourceDialog } from "./add-source-dialog";
+import { LocationRoutingEditor } from "./location-routing-editor";
 
 type Delivery = {
   id: string;
@@ -20,10 +21,13 @@ type Endpoint = {
   source: string;
   url: string;
   fieldMapping: unknown;
+  locationRouting: unknown;
   deliveries: Delivery[];
 };
 
-function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
+type SiblingPipeline = { id: string; name: string; location: string | null };
+
+function EndpointCard({ endpoint, siblings }: { endpoint: Endpoint; siblings: SiblingPipeline[] }) {
   const [error, formAction, isPending] = useActionState(updateFieldMapping, undefined);
   const [copied, setCopied] = useState(false);
 
@@ -73,6 +77,15 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
         </form>
       </details>
 
+      {siblings.length > 0 && (
+        <details className="mb-3">
+          <summary className="cursor-pointer text-xs text-muted-foreground">Standort-Zuordnung (optional)</summary>
+          <div className="mt-2">
+            <LocationRoutingEditor endpointId={endpoint.id} routing={endpoint.locationRouting} siblings={siblings} />
+          </div>
+        </details>
+      )}
+
       <div>
         <p className="mb-2 text-xs font-medium text-muted-foreground">Letzte Eingänge</p>
         <div className="flex flex-col gap-1">
@@ -91,7 +104,15 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   );
 }
 
-export function WebhookPanel({ pipelineId, endpoints }: { pipelineId: string; endpoints: Endpoint[] }) {
+export function WebhookPanel({
+  pipelineId,
+  endpoints,
+  siblingPipelines = [],
+}: {
+  pipelineId: string;
+  endpoints: Endpoint[];
+  siblingPipelines?: SiblingPipeline[];
+}) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
@@ -111,7 +132,7 @@ export function WebhookPanel({ pipelineId, endpoints }: { pipelineId: string; en
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {endpoints.map((endpoint) => (
-          <EndpointCard key={endpoint.id} endpoint={endpoint} />
+          <EndpointCard key={endpoint.id} endpoint={endpoint} siblings={siblingPipelines} />
         ))}
         {endpoints.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Quelle eingerichtet.</p>}
       </CardContent>

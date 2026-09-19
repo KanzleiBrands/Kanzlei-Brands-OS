@@ -5,6 +5,7 @@ import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/a
 import { logAudit } from "@/lib/audit";
 import { customFieldEntries } from "@/lib/format-custom-fields";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
+import { contactDisplayName } from "@/lib/contact-display";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ import { EditContactDialog } from "./edit-contact-dialog";
 import { CustomFieldRow } from "./custom-field-row";
 import { AddCustomFieldDialog } from "./add-custom-field-dialog";
 import { CvUploadForm } from "./cv-upload-form";
+import { AdditionalContactDialog } from "./additional-contact-dialog";
+import { RemoveAdditionalContactButton } from "./remove-additional-contact-button";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = await params;
@@ -34,6 +37,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     include: {
       pipeline: { include: { stages: { orderBy: { order: "asc" } } } },
       activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
+      additionalContacts: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!contact) notFound();
@@ -54,6 +58,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   });
 
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
+  const displayName = contactDisplayName(contact);
+  const isB2BLead = contact.pipeline.kind === "LEADS" && !!contact.companyName;
   const hasMailbox = (await prisma.emailAccount.count({ where: { userId: session.user.id } })) > 0;
   const customFields = customFieldEntries(contact.customFields);
 
@@ -70,8 +76,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       <BackLink href={`/dashboard/pipelines/${contact.pipelineId}`}>Zurück zur Kampagne</BackLink>
       <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{fullName}</h1>
+          <h1 className="text-2xl font-semibold">{displayName}</h1>
           <p className="text-muted-foreground">
+            {isB2BLead && `${fullName} · `}
             {contact.email ?? "Keine E-Mail"} · {contact.phone ?? "Kein Telefon"}
           </p>
           <div className="mt-1">
@@ -102,6 +109,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             lastName={contact.lastName}
             email={contact.email}
             phone={contact.phone}
+            companyName={contact.companyName}
+            website={contact.website}
+            address={contact.address}
+            showCompanyFields={contact.pipeline.kind === "LEADS"}
           />
           <DeleteContactButton
             contactId={contact.id}
@@ -125,11 +136,65 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </Card>
           )}
 
+          {isB2BLead && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Firma</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Website</span>
+                  {contact.website ? (
+                    <a href={contact.website} target="_blank" rel="noreferrer" className="text-primary underline">
+                      {contact.website}
+                    </a>
+                  ) : (
+                    <span>-</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Adresse</span>
+                  <span>{contact.address ?? "-"}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {isB2BLead && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Weitere Kontakte</CardTitle>
+                <CardAction>
+                  <AdditionalContactDialog contactId={contact.id} />
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                {contact.additionalContacts.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {contact.additionalContacts.map((person) => (
+                      <div key={person.id} className="flex items-center justify-between gap-2 text-sm">
+                        <div>
+                          <p className="font-medium">{person.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[person.role, person.email, person.phone].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                        <RemoveAdditionalContactButton id={person.id} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Noch keine weiteren Kontakte.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Zusätzliche Angaben</CardTitle>
               <CardAction>
-                <AddCustomFieldDialog contactId={contact.id} />
+                <AddCustomFieldDialog contactId={contact.id} pipelineKind={contact.pipeline.kind} />
               </CardAction>
             </CardHeader>
             <CardContent>

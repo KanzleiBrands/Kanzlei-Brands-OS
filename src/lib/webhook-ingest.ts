@@ -19,6 +19,8 @@ export const AUTO_DETECT: Record<string, string[]> = {
   phone: ["phone", "telefon", "phone_number", "tel"],
   location: ["location", "ort", "stadt", "city", "wohnort"],
   cvUrl: ["cv_url", "cvurl", "lebenslauf", "resume_url", "resume", "cv"],
+  companyName: ["company", "company_name", "companyname", "firma", "firmenname", "unternehmen"],
+  address: ["address", "adresse", "strasse", "street", "anschrift"],
 };
 
 function toStringOrNull(value: unknown): string | null {
@@ -35,6 +37,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 const EMAIL_HINT = /e-?mail/i;
 const PHONE_HINT = /telefon|phone|handy|mobil/i;
 const CV_HINT = /lebenslauf|resume|\bcv\b/i;
+const COMPANY_HINT = /firma|firmenname|unternehmen|company/i;
 const COMBINED_NAME_HINT = /vor.*nach|nach.*vor|full[\s_-]?name/i;
 const FIRST_NAME_HINT = /vorname|first[\s_-]?name/i;
 const LAST_NAME_HINT = /nachname|last[\s_-]?name|surname/i;
@@ -74,6 +77,7 @@ function extractFromTitledProfile(profile: Record<string, unknown>): {
   email: string | null;
   phone: string | null;
   cvUrl: string | null;
+  companyName: string | null;
   customFields: Record<string, string>;
 } | null {
   const entries = collectTitledEntries(profile);
@@ -84,6 +88,7 @@ function extractFromTitledProfile(profile: Record<string, unknown>): {
   let email: string | null = null;
   let phone: string | null = null;
   let cvUrl: string | null = null;
+  let companyName: string | null = null;
   const customFields: Record<string, string> = {};
 
   for (const entry of entries) {
@@ -94,6 +99,8 @@ function extractFromTitledProfile(profile: Record<string, unknown>): {
       phone = entry.value;
     } else if (!cvUrl && CV_HINT.test(haystack)) {
       cvUrl = entry.value;
+    } else if (!companyName && COMPANY_HINT.test(haystack)) {
+      companyName = entry.value;
     } else if (!firstName && !lastName && COMBINED_NAME_HINT.test(haystack)) {
       const [first, ...rest] = entry.value.split(" ");
       firstName = first || null;
@@ -111,7 +118,89 @@ function extractFromTitledProfile(profile: Record<string, unknown>): {
     }
   }
 
-  return { firstName, lastName, email, phone, cvUrl, customFields };
+  return { firstName, lastName, email, phone, cvUrl, companyName, customFields };
+}
+
+/** Pulls a display string out of a fieldsMap entry, which can be a plain value or an option object like `{ label, value }`. */
+function valueFromFieldsMapEntry(raw: unknown): string | null {
+  const plain = toStringOrNull(raw);
+  if (plain) return plain;
+  if (Array.isArray(raw)) {
+    const parts = raw.map((item) => valueFromFieldsMapEntry(item)).filter((v): v is string => !!v);
+    return parts.length > 0 ? parts.join(", ") : null;
+  }
+  if (isPlainObject(raw)) {
+    for (const key of ["label", "text", "name", "value"]) {
+      const value = toStringOrNull(raw[key]);
+      if (value) return value;
+    }
+  }
+  return null;
+}
+
+/** Strips OnePage's step-number prefix and control-type suffix, e.g. "Step 7. Frage 5: Umsatz -> Select" -> "Frage 5: Umsatz". */
+function cleanFieldsMapLabel(key: string): string {
+  return key
+    .replace(/^Step\s*\d+\.\s*/i, "")
+    .replace(/\s*->\s*(Select|Text|Input)$/i, "")
+    .trim();
+}
+
+/**
+ * OnePage submits a `data.fieldsMap` object keyed by a step/question label
+ * (e.g. "Step 1. Optin -> E-Mail"), with option-type answers ("Select")
+ * shaped as `{ label, value }` objects rather than plain strings. Treated
+ * the same way as Perspektive's `profile`: this is the canonical per-field
+ * answer set, so it replaces the raw payload (which also separately ships
+ * a redundant "leadInfo" summary string and internal tracking metadata like
+ * form/site/page ids) instead of being merged with it.
+ */
+function extractFromFieldsMap(fieldsMap: Record<string, unknown>): {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  companyName: string | null;
+  customFields: Record<string, string>;
+} | null {
+  const entries = Object.entries(fieldsMap)
+    .map(([key, raw]) => ({ label: cleanFieldsMapLabel(key), value: valueFromFieldsMapEntry(raw) }))
+    .filter((entry): entry is { label: string; value: string } => !!entry.value);
+  if (entries.length === 0) return null;
+
+  let firstName: string | null = null;
+  let lastName: string | null = null;
+  let email: string | null = null;
+  let phone: string | null = null;
+  let companyName: string | null = null;
+  const customFields: Record<string, string> = {};
+
+  for (const entry of entries) {
+    const haystack = entry.label;
+    if (!email && EMAIL_HINT.test(haystack)) {
+      email = entry.value;
+    } else if (!phone && PHONE_HINT.test(haystack)) {
+      phone = entry.value;
+    } else if (!companyName && COMPANY_HINT.test(haystack)) {
+      companyName = entry.value;
+    } else if (!firstName && !lastName && COMBINED_NAME_HINT.test(haystack)) {
+      const [first, ...rest] = entry.value.split(" ");
+      firstName = first || null;
+      lastName = rest.join(" ") || null;
+    } else if (!firstName && FIRST_NAME_HINT.test(haystack) && !LAST_NAME_HINT.test(haystack)) {
+      firstName = entry.value;
+    } else if (!lastName && LAST_NAME_HINT.test(haystack)) {
+      lastName = entry.value;
+    } else if (!firstName && !lastName && NAME_HINT.test(haystack)) {
+      const [first, ...rest] = entry.value.split(" ");
+      firstName = first || null;
+      lastName = rest.join(" ") || null;
+    } else {
+      customFields[entry.label] = entry.value;
+    }
+  }
+
+  return { firstName, lastName, email, phone, companyName, customFields };
 }
 
 /**
@@ -129,6 +218,8 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
     phone: string | null;
     location: string | null;
     cvUrl: string | null;
+    companyName: string | null;
+    address: string | null;
     customFields: Record<string, string> | null;
   } = {
     firstName: null,
@@ -137,6 +228,8 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
     phone: null,
     location: null,
     cvUrl: null,
+    companyName: null,
+    address: null,
     customFields: null,
   };
 
@@ -150,10 +243,20 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
 
   const titledProfile = isPlainObject(payload.profile) ? extractFromTitledProfile(payload.profile) : null;
   if (titledProfile) {
-    for (const field of ["firstName", "lastName", "email", "phone", "cvUrl"] as const) {
+    for (const field of ["firstName", "lastName", "email", "phone", "cvUrl", "companyName"] as const) {
       if (!result[field]) result[field] = titledProfile[field];
     }
     result.customFields = titledProfile.customFields;
+  }
+
+  const onePageFieldsMap =
+    isPlainObject(payload.data) && isPlainObject(payload.data.fieldsMap) ? payload.data.fieldsMap : null;
+  const fromFieldsMap = onePageFieldsMap ? extractFromFieldsMap(onePageFieldsMap) : null;
+  if (fromFieldsMap) {
+    for (const field of ["firstName", "lastName", "email", "phone", "companyName"] as const) {
+      if (!result[field]) result[field] = fromFieldsMap[field];
+    }
+    result.customFields = fromFieldsMap.customFields;
   }
 
   for (const [field, candidates] of Object.entries(AUTO_DETECT)) {
@@ -178,4 +281,39 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
   }
 
   return result;
+}
+
+/** Recursively collects every string/number/boolean leaf value in a payload, for loose text matching. */
+function collectAllValues(node: unknown, out: string[] = []): string[] {
+  if (node === null || node === undefined) return out;
+  if (typeof node === "string" || typeof node === "number" || typeof node === "boolean") {
+    out.push(String(node));
+  } else if (Array.isArray(node)) {
+    for (const item of node) collectAllValues(item, out);
+  } else if (isPlainObject(node)) {
+    for (const value of Object.values(node)) collectAllValues(value, out);
+  }
+  return out;
+}
+
+/**
+ * For a job posted at several locations sharing one funnel/webhook: finds
+ * which location answer (if any) appears anywhere in the payload and
+ * returns the Pipeline id it should route to, per the endpoint's configured
+ * `locationRouting` map (location text -> pipeline id). Returns null when
+ * nothing matches, so the caller falls back to the endpoint's own pipeline.
+ */
+export function resolveLocationRoutingPipelineId(
+  payload: Record<string, unknown>,
+  routing: Record<string, string> | null | undefined,
+): string | null {
+  if (!routing) return null;
+  const entries = Object.entries(routing).filter(([location]) => location.trim());
+  if (entries.length === 0) return null;
+
+  const values = new Set(collectAllValues(payload).map((v) => v.trim().toLowerCase()));
+  for (const [location, pipelineId] of entries) {
+    if (values.has(location.trim().toLowerCase())) return pipelineId;
+  }
+  return null;
 }

@@ -58,6 +58,7 @@ export default async function ClientDetailPage({
       id: pipeline.id,
       name: pipeline.name,
       kind: pipeline.kind,
+      location: pipeline.location,
       totalContacts: cardStats.totalContacts,
       unprocessed: cardStats.unprocessed,
       staleUnprocessed: cardStats.staleUnprocessed,

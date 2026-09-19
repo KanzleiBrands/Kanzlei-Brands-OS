@@ -16,9 +16,11 @@ import {
 
 export function NewContactForm({
   pipelineId,
+  pipelineKind,
   stages,
 }: {
   pipelineId: string;
+  pipelineKind: string;
   stages: { id: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
@@ -47,6 +49,7 @@ export function NewContactForm({
 
         <form ref={formRef} action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="pipelineId" value={pipelineId} />
+          {pipelineKind === "LEADS" && <Input name="companyName" placeholder="Firma (bei B2B)" />}
           <div className="grid grid-cols-2 gap-3">
             <Input name="firstName" placeholder="Vorname" />
             <Input name="lastName" placeholder="Nachname" />

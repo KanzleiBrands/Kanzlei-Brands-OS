@@ -397,6 +397,27 @@ export async function renamePipeline(_prevState: string | undefined, formData: F
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }
 
+export async function updatePipelineLocation(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+  const location = String(formData.get("location") ?? "").trim();
+
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return "Kampagne nicht gefunden.";
+  try {
+    assertOrganizationAccess(session, pipeline.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return error.message;
+    throw error;
+  }
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur die Agentur kann den Standort ändern.";
+
+  await prisma.pipeline.update({ where: { id: pipelineId }, data: { location: location || null } });
+
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+  revalidatePath(`/dashboard/clients/${pipeline.organizationId}`);
+}
+
 export async function toggleDuplicateWarning(formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");

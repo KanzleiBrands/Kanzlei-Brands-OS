@@ -19,6 +19,7 @@ type Campaign = {
   id: string;
   name: string;
   kind: string;
+  location: string | null;
   totalContacts: number;
   unprocessed: number;
   staleUnprocessed: number;
@@ -119,7 +120,10 @@ export function CampaignsTab({
                 <Link href={`/dashboard/pipelines/${campaign.id}`} className="truncate font-medium hover:underline">
                   {campaign.name}
                 </Link>
-                <p className="text-xs text-muted-foreground">{CAMPAIGN_KIND_LABELS[campaign.kind] ?? campaign.kind}</p>
+                <p className="text-xs text-muted-foreground">
+                  {CAMPAIGN_KIND_LABELS[campaign.kind] ?? campaign.kind}
+                  {campaign.location && ` · ${campaign.location}`}
+                </p>
               </div>
               <Link
                 href={`/dashboard/pipelines/${campaign.id}?tab=settings`}

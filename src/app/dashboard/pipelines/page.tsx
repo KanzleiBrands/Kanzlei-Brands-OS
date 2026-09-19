@@ -33,7 +33,8 @@ export default async function PipelinesPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind} · {pipeline._count.contacts} Kontakte
+                  {CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind}
+                  {pipeline.location && ` · ${pipeline.location}`} · {pipeline._count.contacts} Kontakte
                 </p>
               </CardContent>
             </Card>

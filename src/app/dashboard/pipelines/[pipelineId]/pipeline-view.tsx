@@ -34,10 +34,12 @@ type Stage = {
 
 export function PipelineView({
   pipelineId,
+  pipelineKind,
   stages,
   showDuplicateWarning,
 }: {
   pipelineId: string;
+  pipelineKind: string;
   stages: Stage[];
   showDuplicateWarning: boolean;
 }) {
@@ -85,6 +87,7 @@ export function PipelineView({
         <div className="flex flex-wrap items-center gap-2">
           <NewContactForm
             pipelineId={pipelineId}
+            pipelineKind={pipelineKind}
             stages={stages.filter((s) => !s.isRejected)}
           />
           <Input

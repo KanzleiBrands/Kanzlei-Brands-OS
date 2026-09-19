@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { setCustomField } from "@/lib/actions/contacts";
+import { addAdditionalContact } from "@/lib/actions/contacts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,11 +13,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export function AddCustomFieldDialog({ contactId, pipelineKind }: { contactId: string; pipelineKind: string }) {
-  const examplePlaceholder =
-    pipelineKind === "APPLICANTS" ? "Feldname (z.B. Gehaltsvorstellung)" : "Feldname (z.B. Jahresumsatz)";
+export function AdditionalContactDialog({ contactId }: { contactId: string }) {
   const [open, setOpen] = useState(false);
-  const [error, formAction, isPending] = useActionState(setCustomField, undefined);
+  const [error, formAction, isPending] = useActionState(addAdditionalContact, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
@@ -33,17 +31,19 @@ export function AddCustomFieldDialog({ contactId, pipelineKind }: { contactId: s
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
         <PlusIcon className="size-4" />
-        Feld hinzufügen
+        Kontakt hinzufügen
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Feld hinzufügen</DialogTitle>
+          <DialogTitle>Weiteren Kontakt hinzufügen</DialogTitle>
         </DialogHeader>
 
         <form ref={formRef} action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="contactId" value={contactId} />
-          <Input name="key" placeholder={examplePlaceholder} required />
-          <Input name="value" placeholder="Wert" />
+          <Input name="name" placeholder="Name" required />
+          <Input name="role" placeholder="Rolle (z.B. Geschäftsführer/in)" />
+          <Input name="email" type="email" placeholder="E-Mail" />
+          <Input name="phone" placeholder="Telefon" />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
             {isPending ? "Wird hinzugefügt..." : "Hinzufügen"}

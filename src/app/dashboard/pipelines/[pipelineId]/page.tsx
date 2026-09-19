@@ -8,6 +8,7 @@ import { WebhookPanel } from "./webhook-panel";
 import { PipelineActiveToggle } from "./pipeline-active-toggle";
 import { DeletePipelineButton } from "./delete-pipeline-button";
 import { EditPipelineNameForm } from "./edit-pipeline-name-form";
+import { EditPipelineLocationForm } from "./edit-pipeline-location-form";
 import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
@@ -68,12 +69,23 @@ export default async function PipelineDetailPage({
   if (!pipeline) notFound();
 
   const baseUrl = await getBaseUrl();
+  const siblingPipelines =
+    tab === "sources" && canManageSources && pipeline.kind === "APPLICANTS"
+      ? await prisma.pipeline.findMany({
+          where: { organizationId: pipeline.organizationId, kind: pipeline.kind, id: { not: pipeline.id } },
+          select: { id: true, name: true, location: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
 
   return (
     <div className="p-8">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold">{pipeline.name}</h1>
-        <p className="text-muted-foreground">{CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind}</p>
+        <p className="text-muted-foreground">
+          {CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind}
+          {pipeline.location && ` · ${pipeline.location}`}
+        </p>
       </div>
 
       {canManageSettings && (
@@ -105,6 +117,7 @@ export default async function PipelineDetailPage({
         <div className="mb-6">
           <PipelineView
             pipelineId={pipeline.id}
+            pipelineKind={pipeline.kind}
             stages={pipeline.stages}
             showDuplicateWarning={pipeline.showDuplicateWarning}
           />
@@ -118,6 +131,15 @@ export default async function PipelineDetailPage({
             <EditPipelineNameForm pipelineId={pipeline.id} name={pipeline.name} />
           </div>
 
+          {pipeline.kind === "APPLICANTS" && (
+            <div className="rounded-lg border bg-card p-4">
+              <p className="mb-2 text-sm text-muted-foreground">
+                Standort (z.B. wenn dieselbe Stelle an mehreren Standorten ausgeschrieben ist)
+              </p>
+              <EditPipelineLocationForm pipelineId={pipeline.id} location={pipeline.location} />
+            </div>
+          )}
+
           <DuplicateWarningToggle pipelineId={pipeline.id} enabled={pipeline.showDuplicateWarning} />
 
           <div className="flex items-center gap-2">
@@ -130,11 +152,13 @@ export default async function PipelineDetailPage({
       {tab === "sources" && canManageSources && (
         <WebhookPanel
           pipelineId={pipeline.id}
+          siblingPipelines={siblingPipelines}
           endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
             id: endpoint.id,
             source: endpoint.source,
             url: `${baseUrl}/api/webhooks/${endpoint.token}`,
             fieldMapping: endpoint.fieldMapping,
+            locationRouting: endpoint.locationRouting,
             deliveries: endpoint.deliveries.map((d) => ({
               id: d.id,
               createdAt: d.createdAt.toLocaleString("de-DE"),

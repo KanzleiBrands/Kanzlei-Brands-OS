@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma, WebhookSource, ContactSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { extractContactFields } from "@/lib/webhook-ingest";
+import { extractContactFields, resolveLocationRoutingPipelineId } from "@/lib/webhook-ingest";
 import { isFileUrl } from "@/lib/format-custom-fields";
 import { storeFileFromUrl } from "@/lib/file-storage";
+import { deriveWebsiteFromEmail } from "@/lib/company";
 
 /** Re-hosts a file the source platform linked to under our own storage; keeps the original link if the download fails. */
 async function mirrorExternalFile(url: string): Promise<string> {
@@ -50,8 +51,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
+    // Multi-location jobs sharing one funnel/webhook: if the payload's
+    // location answer matches this endpoint's routing config, file the
+    // contact under that sibling pipeline instead of the endpoint's own -
+    // but only when it's a real pipeline in the same organization, in case
+    // the routing config is stale (e.g. after a pipeline was deleted).
+    const routedPipelineId = resolveLocationRoutingPipelineId(
+      payload,
+      endpoint.locationRouting as Record<string, string> | null,
+    );
+    const routedPipeline =
+      routedPipelineId && routedPipelineId !== endpoint.pipelineId
+        ? await prisma.pipeline.findFirst({
+            where: { id: routedPipelineId, organizationId: endpoint.organizationId },
+          })
+        : null;
+    const pipelineId = routedPipeline?.id ?? endpoint.pipelineId;
+
     const firstStage = await prisma.stage.findFirst({
-      where: { pipelineId: endpoint.pipelineId },
+      where: { pipelineId },
       orderBy: { order: "asc" },
     });
     if (!firstStage) {
@@ -61,6 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const fields = extractContactFields(payload, endpoint.fieldMapping as Record<string, string> | null);
 
     const cvUrl = fields.cvUrl ? await mirrorExternalFile(fields.cvUrl) : null;
+    const website = deriveWebsiteFromEmail(fields.email);
 
     let customFields = fields.customFields;
     if (customFields) {
@@ -73,13 +92,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const contact = await prisma.contact.create({
       data: {
-        pipelineId: endpoint.pipelineId,
+        pipelineId,
         stageId: firstStage.id,
         firstName: fields.firstName,
         lastName: fields.lastName,
         email: fields.email,
         phone: fields.phone,
         location: fields.location,
+        companyName: fields.companyName,
+        website,
+        address: fields.address,
         cvUrl,
         source: CONTACT_SOURCE_BY_WEBHOOK_SOURCE[endpoint.source],
         customFields: (customFields as Prisma.InputJsonObject | null) ?? payload,

@@ -8,6 +8,7 @@ import { formatCustomFields } from "@/lib/format-custom-fields";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { CONTACT_SOURCE_LABELS, CONTACT_SOURCE_COLORS } from "@/lib/contact-source-labels";
+import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 
@@ -18,6 +19,7 @@ type Contact = {
   email: string | null;
   phone: string | null;
   location: string | null;
+  companyName?: string | null;
   source: string;
   rating: number | null;
   createdAt: Date;
@@ -120,7 +122,7 @@ export function KanbanBoard({
             </p>
             <div className="flex flex-col gap-2">
               {stage.contacts.map((contact) => {
-                const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
+                const fullName = contactDisplayName(contact);
                 const highlight = formatCustomFields(contact.customFields)[0];
                 const sourceLabel = CONTACT_SOURCE_LABELS[contact.source] ?? contact.source;
                 const sourceColor = CONTACT_SOURCE_COLORS[contact.source] ?? "#6B7280";

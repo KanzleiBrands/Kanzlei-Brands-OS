@@ -7,8 +7,11 @@ import { AUTO_DETECT, normalizeFieldKey } from "@/lib/webhook-ingest";
 const SKIP_KEYS = new Set([...Object.values(AUTO_DETECT).flat().map(normalizeFieldKey), "name", "full_name"]);
 
 function humanizeKey(key: string): string {
-  // Already a readable label/question (e.g. from extractFromTitledProfile) - leave casing alone.
-  if (key.includes(" ")) return key.trim();
+  // Already a readable, flat label/question (e.g. from extractFromTitledProfile
+  // or extractFromFieldsMap) - leave casing alone. Only flat (non-dotted) keys
+  // qualify: a nested raw-payload path whose leaf segment happens to contain a
+  // space would otherwise be returned as the raw dotted path unhumanized.
+  if (!key.includes(".") && key.includes(" ")) return key.trim();
 
   return key
     .replace(/[_.]+/g, " ")
@@ -32,7 +35,9 @@ function flatten(obj: Record<string, unknown>, prefix = ""): Record<string, stri
     if (typeof value === "object" && !Array.isArray(value)) {
       Object.assign(result, flatten(value as Record<string, unknown>, fullKey));
     } else if (Array.isArray(value)) {
-      result[fullKey] = value.map((v) => String(v)).join(", ");
+      result[fullKey] = value
+        .map((v) => (v !== null && typeof v === "object" ? JSON.stringify(v) : String(v)))
+        .join(", ");
     } else {
       result[fullKey] = String(value);
     }

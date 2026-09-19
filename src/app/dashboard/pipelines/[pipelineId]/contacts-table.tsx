@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
+import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +14,7 @@ type Contact = {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  companyName?: string | null;
   source: string;
   rating: number | null;
   createdAt: Date;
@@ -82,7 +84,7 @@ export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; du
       </TableHeader>
       <TableBody>
         {sorted.map((contact) => {
-          const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
+          const fullName = contactDisplayName(contact);
           return (
             <TableRow key={contact.id} className="cursor-pointer">
               <TableCell>
