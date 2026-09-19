@@ -93,7 +93,7 @@ export function PipelineView({
             stages={stages.filter((s) => !s.isRejected)}
           />
           <Input
-            placeholder="Lead/Bewerber suchen..."
+            placeholder={pipelineKind === "APPLICANTS" ? "Bewerber suchen..." : "Lead suchen..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-56"
@@ -147,7 +147,12 @@ export function PipelineView({
           pipelineKind={pipelineKind}
         />
       ) : (
-        <ContactsTable stages={qualifiedStages} duplicateEmails={duplicateEmails} />
+        <ContactsTable
+          stages={qualifiedStages}
+          allStages={stages}
+          pipelineKind={pipelineKind}
+          duplicateEmails={duplicateEmails}
+        />
       )}
     </div>
   );

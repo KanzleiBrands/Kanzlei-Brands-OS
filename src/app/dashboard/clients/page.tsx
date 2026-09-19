@@ -74,7 +74,6 @@ export default async function ClientsPage({
 
   const clientRows = clients.map((client) => {
     const stats = computeOverviewStats(client.pipelines);
-    const activePipelines = client.pipelines.filter((p) => p.active).length;
     const lastLeadAt = client.pipelines
       .flatMap((p) => p.contacts)
       .reduce<Date | null>((latest, c) => (!latest || c.createdAt > latest ? c.createdAt : latest), null);
@@ -83,8 +82,6 @@ export default async function ClientsPage({
       id: client.id,
       name: client.name,
       totalContacts: stats.totalContacts,
-      activePipelines,
-      totalPipelines: client.pipelines.length,
       unprocessed: stats.unprocessed,
       staleUnprocessed: stats.staleUnprocessed,
       newLast7Days: stats.newLast7Days,

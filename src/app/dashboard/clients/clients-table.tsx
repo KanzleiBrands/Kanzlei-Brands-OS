@@ -12,8 +12,6 @@ type ClientRow = {
   id: string;
   name: string;
   totalContacts: number;
-  activePipelines: number;
-  totalPipelines: number;
   unprocessed: number;
   staleUnprocessed: number;
   newLast7Days: number;
@@ -24,14 +22,12 @@ type ClientRow = {
   applicantsQuota: number | null;
 };
 
-function quotaLine(label: string, used: number, quota: number | null) {
-  if (used === 0 && quota === null) return null;
+function QuotaCell({ used, quota }: { used: number; quota: number | null }) {
   const overQuota = quota !== null && used > quota;
   return (
-    <p key={label} className={overQuota ? "font-medium text-destructive" : undefined}>
-      {label}: {used}
-      {quota !== null && ` / ${quota}`}
-    </p>
+    <span className={overQuota ? "font-medium text-destructive" : undefined}>
+      {quota !== null ? `${used}/${quota} verfügbar` : `${used} (kein Limit)`}
+    </span>
   );
 }
 
@@ -116,8 +112,8 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           <TableRow>
             <TableHead>Kunde</TableHead>
             <TableHead>Leads</TableHead>
-            <TableHead>Kampagnen</TableHead>
-            <TableHead>Kontingente</TableHead>
+            <TableHead>Stellenanzeigen</TableHead>
+            <TableHead>Mandatsakquise</TableHead>
             <TableHead>Letzter Lead</TableHead>
             <TableHead>Unbearbeitet</TableHead>
             <TableHead>Überfällig</TableHead>
@@ -140,17 +136,11 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                 </Link>
               </TableCell>
               <TableCell>{client.totalContacts}</TableCell>
-              <TableCell>
-                {client.activePipelines} / {client.totalPipelines}
+              <TableCell className="text-sm text-muted-foreground">
+                <QuotaCell used={client.applicantsUsed} quota={client.applicantsQuota} />
               </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {(() => {
-                  const lines = [
-                    quotaLine("Mandatsakquise", client.leadsUsed, client.leadsQuota),
-                    quotaLine("Recruiting", client.applicantsUsed, client.applicantsQuota),
-                  ].filter(Boolean);
-                  return lines.length > 0 ? lines : "–";
-                })()}
+              <TableCell className="text-sm text-muted-foreground">
+                <QuotaCell used={client.leadsUsed} quota={client.leadsQuota} />
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(client.lastLeadAt)}</TableCell>
               <TableCell>{client.unprocessed}</TableCell>

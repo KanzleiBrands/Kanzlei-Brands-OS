@@ -7,6 +7,7 @@ import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
+import { StageSelectForm } from "@/app/dashboard/contacts/[contactId]/stage-select-form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Contact = {
@@ -27,17 +28,29 @@ type Stage = {
   contacts: Contact[];
 };
 
-type Row = Contact & { stageName: string; stageColor: string | null };
+type SelectableStage = { id: string; name: string; color: string | null; isRejected: boolean };
+
+type Row = Contact & { stageId: string; stageName: string; stageColor: string | null };
 
 type SortKey = "name" | "eingang";
 
-export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; duplicateEmails: Set<string> }) {
+export function ContactsTable({
+  stages,
+  allStages,
+  pipelineKind,
+  duplicateEmails,
+}: {
+  stages: Stage[];
+  allStages: SelectableStage[];
+  pipelineKind: string;
+  duplicateEmails: Set<string>;
+}) {
   const [sortKey, setSortKey] = useState<SortKey>("eingang");
   const [sortAsc, setSortAsc] = useState(false);
 
   const rows: Row[] = useMemo(() => {
     return stages.flatMap((stage) =>
-      stage.contacts.map((contact) => ({ ...contact, stageName: stage.name, stageColor: stage.color })),
+      stage.contacts.map((contact) => ({ ...contact, stageId: stage.id, stageName: stage.name, stageColor: stage.color })),
     );
   }, [stages]);
 
@@ -111,14 +124,13 @@ export function ContactsTable({ stages, duplicateEmails }: { stages: Stage[]; du
                   </span>
                 </Link>
               </TableCell>
-              <TableCell>
-                <span className="inline-flex items-center gap-1.5 text-sm">
-                  <span
-                    className="inline-block size-2 rounded-full"
-                    style={{ backgroundColor: contact.stageColor ?? "var(--muted-foreground)" }}
-                  />
-                  {contact.stageName}
-                </span>
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <StageSelectForm
+                  contactId={contact.id}
+                  currentStageId={contact.stageId}
+                  pipelineKind={pipelineKind}
+                  stages={allStages}
+                />
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}
