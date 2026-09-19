@@ -50,6 +50,34 @@ export async function createClientOrganization(_prevState: string | undefined, f
   revalidatePath("/dashboard/clients");
 }
 
+export async function updateClientName(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") {
+    return "Nur Agentur-Admins können den Kundennamen ändern.";
+  }
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return "Name ist erforderlich.";
+
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
+
+  await prisma.organization.update({ where: { id: organizationId }, data: { name } });
+
+  await logAudit({
+    action: "organization.renamed",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+    metadata: { from: organization.name, to: name },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+}
+
 export type CreateUserResult = { status: "error"; message: string } | { status: "success"; link: string } | undefined;
 
 export async function createOrgUser(_prevState: CreateUserResult, formData: FormData): Promise<CreateUserResult> {
@@ -263,7 +291,7 @@ export async function deletePipeline(formData: FormData) {
     if (error instanceof AccessDeniedError) return;
     throw error;
   }
-  if (session.user.role === "CLIENT_STAFF") return;
+  if (session.user.role !== "AGENCY_ADMIN") return;
 
   await prisma.pipeline.delete({ where: { id: pipelineId } });
 
@@ -279,11 +307,7 @@ export async function deletePipeline(formData: FormData) {
   revalidatePath("/dashboard/clients");
   revalidatePath("/dashboard/pipelines");
 
-  redirect(
-    session.user.role === "AGENCY_ADMIN"
-      ? `/dashboard/clients/${pipeline.organizationId}`
-      : "/dashboard/pipelines",
-  );
+  redirect(`/dashboard/clients/${pipeline.organizationId}`);
 }
 
 export async function togglePipelineActive(formData: FormData) {
@@ -293,12 +317,61 @@ export async function togglePipelineActive(formData: FormData) {
   const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
   if (!pipeline) return;
   assertOrganizationAccess(session, pipeline.organizationId);
-  if (session.user.role === "CLIENT_STAFF") return;
+  if (session.user.role !== "AGENCY_ADMIN") return;
 
   await prisma.pipeline.update({ where: { id: pipelineId }, data: { active: !pipeline.active } });
 
   revalidatePath("/dashboard/clients");
   revalidatePath("/dashboard/pipelines");
+}
+
+export async function renamePipeline(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return "Name ist erforderlich.";
+
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return "Kampagne nicht gefunden.";
+  try {
+    assertOrganizationAccess(session, pipeline.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return error.message;
+    throw error;
+  }
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur die Agentur kann die Kampagne umbenennen.";
+
+  await prisma.pipeline.update({ where: { id: pipelineId }, data: { name } });
+
+  await logAudit({
+    action: "pipeline.renamed",
+    entityType: "Pipeline",
+    entityId: pipelineId,
+    organizationId: pipeline.organizationId,
+    userId: session.user.id,
+    metadata: { from: pipeline.name, to: name },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/pipelines");
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+}
+
+export async function toggleDuplicateWarning(formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return;
+  assertOrganizationAccess(session, pipeline.organizationId);
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  await prisma.pipeline.update({
+    where: { id: pipelineId },
+    data: { showDuplicateWarning: !pipeline.showDuplicateWarning },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }
 
 export async function setPipelineAccess(formData: FormData) {

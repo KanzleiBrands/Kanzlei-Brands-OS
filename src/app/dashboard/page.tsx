@@ -8,33 +8,25 @@ import { avatarColorFor, initialsOf } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/stat-tile";
-import { StatusDistributionBar } from "@/components/status-distribution-bar";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const isAgency = session.user.role === "AGENCY_ADMIN";
-
-  const organizationIds = isAgency
-    ? (
-        await prisma.organization.findMany({
-          where: { type: "CLIENT", parentId: session.user.organizationId },
-          select: { id: true },
-        })
-      ).map((o) => o.id)
-    : [session.user.organizationId];
+  // Agency admins land on the richer Kunden-Übersicht instead of this page.
+  if (session.user.role === "AGENCY_ADMIN") redirect("/dashboard/clients");
 
   const accessible =
     session.user.role === "CLIENT_STAFF" ? await accessiblePipelineIds(session, session.user.organizationId) : "ALL";
 
+  const pipelineFilter = {
+    organizationId: session.user.organizationId,
+    ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
+  };
+
   const pipelines = await prisma.pipeline.findMany({
-    where: {
-      organizationId: { in: organizationIds },
-      ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
-    },
+    where: pipelineFilter,
     include: {
-      organization: { select: { name: true } },
       stages: { orderBy: { order: "asc" } },
       contacts: {
         select: { id: true, stageId: true, createdAt: true, updatedAt: true },
@@ -43,17 +35,10 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "asc" },
   });
 
-  const showOrgTag = isAgency && new Set(pipelines.map((p) => p.organizationId)).size > 1;
-
   const stats = computeOverviewStats(pipelines);
 
   const recentContacts = await prisma.contact.findMany({
-    where: {
-      pipeline: {
-        organizationId: { in: organizationIds },
-        ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
-      },
-    },
+    where: { pipeline: pipelineFilter },
     orderBy: { createdAt: "desc" },
     take: 6,
     include: { stage: true, pipeline: { select: { name: true } } },
@@ -82,15 +67,6 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Statusverteilung</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StatusDistributionBar segments={stats.statusDistribution} />
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
         <Card>
           <CardHeader>
@@ -117,12 +93,7 @@ export default async function DashboardPage() {
                       style={{ backgroundColor: sortedStages[0]?.color ?? "var(--muted-foreground)" }}
                     />
                     <div>
-                      <p className="font-medium">
-                        {pipeline.name}
-                        {showOrgTag && (
-                          <span className="ml-2 text-xs text-muted-foreground">{pipeline.organization.name}</span>
-                        )}
-                      </p>
+                      <p className="font-medium">{pipeline.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {lastContact
                           ? `Letzter Eingang ${lastContact.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}`

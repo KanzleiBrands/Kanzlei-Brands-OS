@@ -85,9 +85,11 @@ export function SidebarNav({
         </div>
       )}
       <div className="flex flex-col gap-1">
-        <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">
-          Übersicht
-        </Link>
+        {role !== "AGENCY_ADMIN" && (
+          <Link href="/dashboard" className="rounded px-3 py-2 text-sm hover:bg-muted">
+            Übersicht
+          </Link>
+        )}
         {links.map((link) => (
           <Link key={link.href} href={link.href} className="rounded px-3 py-2 text-sm hover:bg-muted">
             {link.label}

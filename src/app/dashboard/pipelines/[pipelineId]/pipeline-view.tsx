@@ -29,9 +29,20 @@ type Stage = {
   contacts: Contact[];
 };
 
-export function PipelineView({ pipelineId, stages }: { pipelineId: string; stages: Stage[] }) {
+export function PipelineView({
+  pipelineId,
+  stages,
+  showDuplicateWarning,
+}: {
+  pipelineId: string;
+  stages: Stage[];
+  showDuplicateWarning: boolean;
+}) {
   const [view, setView] = useState<"board" | "list">("board");
-  const duplicateEmails = useMemo(() => findDuplicateEmails(stages), [stages]);
+  const duplicateEmails = useMemo(
+    () => (showDuplicateWarning ? findDuplicateEmails(stages) : new Set<string>()),
+    [stages, showDuplicateWarning],
+  );
 
   return (
     <div>

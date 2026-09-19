@@ -7,6 +7,8 @@ import { PipelineView } from "./pipeline-view";
 import { WebhookPanel } from "./webhook-panel";
 import { PipelineActiveToggle } from "./pipeline-active-toggle";
 import { DeletePipelineButton } from "./delete-pipeline-button";
+import { EditPipelineNameForm } from "./edit-pipeline-name-form";
+import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
 
 type Tab = "leads" | "settings" | "sources";
 
@@ -34,7 +36,9 @@ export default async function PipelineDetailPage({
   }
 
   const { tab: tabParam } = await searchParams;
-  const canManageSettings = session.user.role !== "CLIENT_STAFF";
+  // Campaign-level settings (name, duplicate warning, active/delete, lead
+  // sources) are agency-only; clients only ever see the plain Leads view.
+  const canManageSettings = session.user.role === "AGENCY_ADMIN";
   const canManageSources = session.user.role === "AGENCY_ADMIN";
   const tab: Tab =
     tabParam === "settings" && canManageSettings
@@ -98,14 +102,27 @@ export default async function PipelineDetailPage({
 
       {tab === "leads" && (
         <div className="mb-6">
-          <PipelineView pipelineId={pipeline.id} stages={pipeline.stages} />
+          <PipelineView
+            pipelineId={pipeline.id}
+            stages={pipeline.stages}
+            showDuplicateWarning={pipeline.showDuplicateWarning}
+          />
         </div>
       )}
 
       {tab === "settings" && (
-        <div className="flex items-center gap-2">
-          <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
-          <DeletePipelineButton pipelineId={pipeline.id} pipelineName={pipeline.name} />
+        <div className="flex flex-col gap-6">
+          <div className="rounded-lg border bg-card p-4">
+            <p className="mb-2 text-sm text-muted-foreground">Kampagnenname</p>
+            <EditPipelineNameForm pipelineId={pipeline.id} name={pipeline.name} />
+          </div>
+
+          <DuplicateWarningToggle pipelineId={pipeline.id} enabled={pipeline.showDuplicateWarning} />
+
+          <div className="flex items-center gap-2">
+            <PipelineActiveToggle pipelineId={pipeline.id} active={pipeline.active} />
+            <DeletePipelineButton pipelineId={pipeline.id} pipelineName={pipeline.name} />
+          </div>
         </div>
       )}
 

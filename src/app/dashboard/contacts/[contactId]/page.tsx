@@ -89,7 +89,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               nativeButton={false}
               render={<a href={`mailto:${contact.email}`} />}
             >
-              Mailto
+              E-Mail
             </Button>
           )}
           <Badge variant="secondary">{contact.source}</Badge>

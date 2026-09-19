@@ -7,6 +7,7 @@ import { CourseAssignmentToggle } from "./course-assignment-toggle";
 import { ActivationStatus } from "@/components/activation-status";
 import { DeleteUserButton } from "./delete-user-button";
 import { DeleteOrganizationDialog } from "./delete-organization-dialog";
+import { EditClientNameForm } from "./edit-client-name-form";
 
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
@@ -46,9 +47,7 @@ export function SettingsTab({
           <CardTitle>Kunde</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
-          <p>
-            <span className="text-muted-foreground">Name:</span> {organizationName}
-          </p>
+          <EditClientNameForm organizationId={organizationId} name={organizationName} />
         </CardContent>
       </Card>
 

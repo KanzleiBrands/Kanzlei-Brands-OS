@@ -17,6 +17,8 @@ const ACTION_LABELS: Record<string, string> = {
   "user.activated": "Zugang aktiviert",
   "user.deleted": "Mitarbeiter gelöscht",
   "organization.deleted": "Kunde gelöscht",
+  "organization.renamed": "Kunde umbenannt",
+  "pipeline.renamed": "Kampagne umbenannt",
   "contact.stage_changed": "Kontakt-Status geändert",
   "contact.viewed": "Kontakt angesehen",
   "offer_interest.created": "Interesse an Angebot bekundet",

@@ -2,10 +2,8 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { computeOverviewStats, computeCampaignCardStats } from "@/lib/dashboard-stats";
 import { StatTile } from "@/components/stat-tile";
-import { StatusDistributionBar } from "@/components/status-distribution-bar";
 import { getBaseUrl } from "@/lib/base-url";
 import { CampaignsTab } from "./campaigns-tab";
 import { SettingsTab } from "./settings-tab";
@@ -107,15 +105,6 @@ export default async function ClientDetailPage({
               subtext={`${stats.completedTotal} gesamt`}
             />
           </div>
-
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Statusverteilung</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatusDistributionBar segments={stats.statusDistribution} />
-            </CardContent>
-          </Card>
 
           <CampaignsTab organizationId={organization.id} campaigns={campaigns} />
         </>
