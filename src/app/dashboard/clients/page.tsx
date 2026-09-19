@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { computeOverviewStats } from "@/lib/dashboard-stats";
+import { computeOverviewStats, computeCompletedStats } from "@/lib/dashboard-stats";
 import { NewClientForm } from "./new-client-form";
 import { ClientsTable } from "./clients-table";
 import { ArchivedClientsList } from "./archived-clients-list";
@@ -69,9 +69,12 @@ export default async function ClientsPage({
 
   const clientsLast30Days = countWithin30Days(clients.map((c) => c.createdAt));
   const allPipelines = clients.flatMap((c) => c.pipelines);
-  const campaignsLast30Days = countWithin30Days(allPipelines.map((p) => p.createdAt));
-  const allContacts = allPipelines.flatMap((p) => p.contacts);
-  const leadsLast30Days = countWithin30Days(allContacts.map((c) => c.createdAt));
+  const jobPipelines = allPipelines.filter((p) => p.kind === "APPLICANTS");
+  const leadPipelines = allPipelines.filter((p) => p.kind === "LEADS");
+  const jobsStats = computeOverviewStats(jobPipelines);
+  const leadsStats = computeOverviewStats(leadPipelines);
+  const jobsCompleted = computeCompletedStats(jobPipelines);
+  const leadsCompleted = computeCompletedStats(leadPipelines);
 
   const clientRows = clients.map((client) => {
     const stats = computeOverviewStats(client.pipelines);
@@ -99,10 +102,12 @@ export default async function ClientsPage({
     <div className="p-8">
       <h1 className="mb-6 text-2xl font-semibold">Kunden-Übersicht</h1>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {trendCard("Kunden", clients.length, clientsLast30Days)}
-        {trendCard("Kampagnen", allPipelines.length, campaignsLast30Days)}
-        {trendCard("Leads", allContacts.length, leadsLast30Days)}
+        {trendCard("Bewerbungen", jobsStats.totalContacts, jobsStats.newLast30Days)}
+        {trendCard("Einstellungen", jobsCompleted.total, jobsCompleted.last30Days)}
+        {trendCard("Mandatsanfragen", leadsStats.totalContacts, leadsStats.newLast30Days)}
+        {trendCard("Abschlüsse", leadsCompleted.total, leadsCompleted.last30Days)}
       </div>
 
       <div className="mb-6 flex gap-1 border-b">

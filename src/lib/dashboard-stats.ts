@@ -45,6 +45,32 @@ export function computeCampaignCardStats(pipeline: StatPipeline): CampaignCardSt
   };
 }
 
+export type CompletedStats = { total: number; last30Days: number };
+
+// Total/recent counts of contacts sitting in a pipeline's final stage,
+// used for org-wide "Einstellungen"/"Abschlüsse" trend cards.
+export function computeCompletedStats(pipelines: StatPipeline[]): CompletedStats {
+  const now = Date.now();
+  let total = 0;
+  let last30Days = 0;
+
+  for (const pipeline of pipelines) {
+    const sortedStages = [...pipeline.stages].sort((a, b) => a.order - b.order);
+    if (sortedStages.length === 0) continue;
+    const firstStageId = sortedStages[0].id;
+    const lastStageId = sortedStages[sortedStages.length - 1].id;
+
+    for (const contact of pipeline.contacts) {
+      if (contact.stageId === lastStageId && contact.stageId !== firstStageId) {
+        total += 1;
+        if (now - contact.updatedAt.getTime() <= 30 * DAY_MS) last30Days += 1;
+      }
+    }
+  }
+
+  return { total, last30Days };
+}
+
 export function computeOverviewStats(pipelines: StatPipeline[]): OverviewStats {
   const now = Date.now();
   let totalContacts = 0;
