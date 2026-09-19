@@ -27,29 +27,40 @@ const TYPE_META: Record<string, { label: string; variant: "default" | "secondary
   CALL: { label: "Anruf", variant: "destructive" },
 };
 
-export function ActivityTimeline({ activities }: { activities: Activity[] }) {
+/**
+ * `onlyTypes` fixes the filter to a specific set of activity types and hides
+ * the internal tab bar - used to embed a focused history (e.g. just notes,
+ * or just emails) inside a page-level tab that already has its own nav.
+ */
+export function ActivityTimeline({ activities, onlyTypes }: { activities: Activity[]; onlyTypes?: string[] }) {
   const [tab, setTab] = useState("all");
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
-  const filtered = activeTab.types ? activities.filter((a) => activeTab.types!.includes(a.type)) : activities;
+  const filtered = onlyTypes
+    ? activities.filter((a) => onlyTypes.includes(a.type))
+    : activeTab.types
+      ? activities.filter((a) => activeTab.types!.includes(a.type))
+      : activities;
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-1 border-b">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`px-3 py-1.5 text-sm ${
-              tab === t.key
-                ? "border-b-2 border-primary font-medium text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {!onlyTypes && (
+        <div className="mb-3 flex flex-wrap gap-1 border-b">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`px-3 py-1.5 text-sm ${
+                tab === t.key
+                  ? "border-b-2 border-primary font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         {filtered.map((activity) => {
           const meta = TYPE_META[activity.type] ?? { label: activity.type, variant: "outline" as const };

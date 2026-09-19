@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
@@ -22,8 +23,17 @@ import { CvUploadForm } from "./cv-upload-form";
 import { AdditionalContactDialog } from "./additional-contact-dialog";
 import { RemoveAdditionalContactButton } from "./remove-additional-contact-button";
 
-export default async function ContactDetailPage({ params }: { params: Promise<{ contactId: string }> }) {
+type Tab = "overview" | "notes" | "email" | "activity";
+
+export default async function ContactDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ contactId: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { contactId } = await params;
+  const { tab: tabParam } = await searchParams;
 
   let session;
   try {
@@ -70,6 +80,15 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     createdAt: activity.createdAt.toLocaleString("de-DE"),
     userName: activity.user?.name ?? null,
   }));
+
+  const tab: Tab =
+    tabParam === "notes" || tabParam === "email" || tabParam === "activity" ? tabParam : "overview";
+  const TAB_ORDER: { value: Tab; label: string; count?: number }[] = [
+    { value: "overview", label: "Übersicht" },
+    { value: "notes", label: "Notizen" },
+    { value: "email", label: "E-Mail" },
+    { value: "activity", label: "Verlauf", count: activities.length },
+  ];
 
   return (
     <div className="p-4 sm:p-8">
@@ -131,8 +150,21 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-6">
+      <div className="mb-6 flex flex-wrap gap-1 border-b">
+        {TAB_ORDER.map((item) => (
+          <Link
+            key={item.value}
+            href={`/dashboard/contacts/${contact.id}?tab=${item.value}`}
+            className={`border-b-2 px-3 py-2 text-sm ${tab === item.value ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {item.label}
+            {!!item.count && <span className="ml-1 text-sm text-muted-foreground">{item.count}</span>}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "overview" && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {contact.pipeline.kind === "APPLICANTS" && (
             <Card>
               <CardHeader>
@@ -224,7 +256,11 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
 
+      {tab === "notes" && (
+        <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Notiz / Anruf hinzufügen</CardTitle>
@@ -233,7 +269,19 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               <NoteForm contactId={contact.id} />
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Verlauf</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline activities={activities} onlyTypes={["NOTE", "CALL"]} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
+      {tab === "email" && (
+        <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
               <CardTitle>E-Mail senden</CardTitle>
@@ -242,8 +290,18 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               <SendEmailForm contactId={contact.id} hasMailbox={hasMailbox} />
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Verlauf</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline activities={activities} onlyTypes={["EMAIL_IN", "EMAIL_OUT"]} />
+            </CardContent>
+          </Card>
         </div>
+      )}
 
+      {tab === "activity" && (
         <Card>
           <CardHeader>
             <CardTitle>Verlauf</CardTitle>
@@ -252,7 +310,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <ActivityTimeline activities={activities} />
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 }
