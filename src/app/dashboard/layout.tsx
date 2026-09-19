@@ -2,11 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { accessiblePipelineIds } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
 
-function navFor(role: string) {
+function navFor(role: string, campaignKinds: Set<string>) {
   const common = [{ href: "/dashboard/courses", label: "Schulung" }];
 
   if (role === "AGENCY_ADMIN") {
@@ -20,6 +21,10 @@ function navFor(role: string) {
 
   return [
     { href: "/dashboard/pipelines", label: "Kampagnen" },
+    ...(campaignKinds.has("LEADS") ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen" }] : []),
+    ...(campaignKinds.has("APPLICANTS")
+      ? [{ href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen" }]
+      : []),
     ...common,
     { href: "/dashboard/hub", label: "Angebote" },
   ];
@@ -29,7 +34,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const links = navFor(session.user.role);
+  let campaignKinds = new Set<string>();
+  if (session.user.role !== "AGENCY_ADMIN") {
+    const accessible = await accessiblePipelineIds(session, session.user.organizationId);
+    const pipelines = await prisma.pipeline.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
+      },
+      select: { kind: true },
+    });
+    campaignKinds = new Set(pipelines.map((p) => p.kind));
+  }
+
+  const links = navFor(session.user.role, campaignKinds);
 
   const clients =
     session.user.role === "AGENCY_ADMIN"

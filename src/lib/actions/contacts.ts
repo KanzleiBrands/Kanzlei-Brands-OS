@@ -28,6 +28,7 @@ export async function deleteContact(formData: FormData) {
   });
 
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath("/dashboard/leads");
 }
 
 export async function moveContactStage(formData: FormData) {
@@ -64,6 +65,7 @@ export async function moveContactStage(formData: FormData) {
   });
 
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath("/dashboard/leads");
 }
 
 export async function setRating(formData: FormData) {
@@ -80,6 +82,7 @@ export async function setRating(formData: FormData) {
 
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
   revalidatePath(`/dashboard/contacts/${contactId}`);
+  revalidatePath("/dashboard/leads");
 }
 
 export async function updateContact(_prevState: string | undefined, formData: FormData) {
@@ -108,6 +111,7 @@ export async function updateContact(_prevState: string | undefined, formData: Fo
 
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
   revalidatePath(`/dashboard/contacts/${contactId}`);
+  revalidatePath("/dashboard/leads");
 }
 
 export async function setCustomField(_prevState: string | undefined, formData: FormData) {
