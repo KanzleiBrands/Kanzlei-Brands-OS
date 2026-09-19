@@ -48,12 +48,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "No agency organization configured" }, { status: 500 });
   }
 
+  // Optional: assign an existing agency staff member as this client's account
+  // manager by email, e.g. for bulk-backfilling clients whose Airtable Deal
+  // already names one. Silently ignored if the email doesn't match an
+  // AGENCY_ADMIN, rather than failing the whole sync over it.
+  const accountManagerEmail = normalize(body.accountManagerEmail)?.toLowerCase() ?? null;
+  const accountManager = accountManagerEmail
+    ? await prisma.user.findFirst({ where: { email: accountManagerEmail, role: "AGENCY_ADMIN" } })
+    : null;
+
   const existing = await prisma.organization.findUnique({ where: { airtableRecordId: recordId } });
 
   const organization = existing
     ? await prisma.organization.update({
         where: { id: existing.id },
-        data: { name: firma, applicantsFormUrl, leadsFormUrl },
+        data: {
+          name: firma,
+          applicantsFormUrl,
+          leadsFormUrl,
+          ...(accountManager ? { accountManagerId: accountManager.id } : {}),
+        },
       })
     : await prisma.organization.create({
         data: {
@@ -64,6 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           airtableRecordId: recordId,
           applicantsFormUrl,
           leadsFormUrl,
+          accountManagerId: accountManager?.id,
         },
       });
 
