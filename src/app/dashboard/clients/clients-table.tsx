@@ -20,6 +20,7 @@ type ClientRow = {
   applicantsUsed: number;
   leadsQuota: number | null;
   applicantsQuota: number | null;
+  locationsCount: number;
 };
 
 function QuotaCell({ used, quota }: { used: number; quota: number | null }) {
@@ -55,7 +56,7 @@ function avatarFor(name: string) {
 
 export function ClientsTable({ clients }: { clients: ClientRow[] }) {
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("lastLead");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
 
   const filtered = useMemo(
     () => clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase())),
@@ -112,9 +113,10 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Kunde</TableHead>
-            <TableHead>Leads</TableHead>
             <TableHead>Stellenanzeigen</TableHead>
             <TableHead>Mandatsakquise</TableHead>
+            <TableHead>Standorte</TableHead>
+            <TableHead>Leads</TableHead>
             <TableHead>Letzter Lead</TableHead>
             <TableHead>Unbearbeitet</TableHead>
             <TableHead>Überfällig</TableHead>
@@ -136,13 +138,14 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                   {client.name}
                 </Link>
               </TableCell>
-              <TableCell>{client.totalContacts}</TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 <QuotaCell used={client.applicantsUsed} quota={client.applicantsQuota} />
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 <QuotaCell used={client.leadsUsed} quota={client.leadsQuota} />
               </TableCell>
+              <TableCell className="text-sm text-muted-foreground">{client.locationsCount}</TableCell>
+              <TableCell>{client.totalContacts}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(client.lastLeadAt)}</TableCell>
               <TableCell>{client.unprocessed}</TableCell>
               <TableCell>
@@ -156,8 +159,11 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                 {client.newLast7Days > 0 ? <Badge>{client.newLast7Days}</Badge> : client.newLast7Days}
               </TableCell>
               <TableCell>
-                <Link href={`/dashboard/clients/${client.id}`} className="text-sm underline">
-                  Portal öffnen →
+                <Link
+                  href={`/dashboard/clients/${client.id}`}
+                  className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  Einloggen →
                 </Link>
               </TableCell>
             </TableRow>

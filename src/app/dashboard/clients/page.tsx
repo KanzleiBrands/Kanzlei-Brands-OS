@@ -51,6 +51,7 @@ export default async function ClientsPage({
             name: true,
             kind: true,
             active: true,
+            location: true,
             createdAt: true,
             stages: { select: { id: true, name: true, order: true, color: true } },
             contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true } },
@@ -90,6 +91,7 @@ export default async function ClientsPage({
       applicantsUsed: client.pipelines.filter((p) => p.kind === "APPLICANTS").length,
       leadsQuota: client.leadsQuota,
       applicantsQuota: client.applicantsQuota,
+      locationsCount: new Set(client.pipelines.map((p) => p.location).filter(Boolean)).size,
     };
   });
 
