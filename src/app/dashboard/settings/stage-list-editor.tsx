@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDownIcon, ChevronUpIcon, PlusIcon, XIcon } from "lucide-react";
+import { BanIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { STAGE_COLOR_PALETTE } from "@/lib/stage-colors";
 
-export type EditableStage = { name: string; color: string };
+export type EditableStage = { name: string; color: string; isRejected?: boolean };
 
 export function StageListEditor({
   initialStages,
@@ -24,6 +24,10 @@ export function StageListEditor({
 
   return (
     <div className="flex flex-col gap-2">
+      <p className="text-xs text-muted-foreground">
+        <BanIcon className="mr-1 inline size-3 align-[-1px]" />
+        markiert eine Ausschluss-Stufe (z.B. Absage): erscheint nicht im Kanban, sondern im Reiter „Ausgeschlossen“.
+      </p>
       {stages.map((stage, index) => (
         <div key={index} className="flex items-center gap-2">
           <span
@@ -55,6 +59,20 @@ export function StageListEditor({
               />
             ))}
           </div>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={stage.isRejected ? "default" : "ghost"}
+            title="Als Ausschluss-Stufe markieren (z.B. Absage) - erscheint nicht im Kanban, sondern im Reiter „Ausgeschlossen“"
+            aria-label="Als Ausschluss-Stufe markieren"
+            onClick={() => {
+              const next = [...stages];
+              next[index] = { ...next[index], isRejected: !next[index].isRejected };
+              update(next);
+            }}
+          >
+            <BanIcon className="size-4" />
+          </Button>
           <Button
             type="button"
             size="icon-sm"

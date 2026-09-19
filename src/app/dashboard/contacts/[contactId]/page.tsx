@@ -4,6 +4,7 @@ import { BackLink } from "@/components/back-link";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { customFieldEntries } from "@/lib/format-custom-fields";
+import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               E-Mail
             </Button>
           )}
-          <Badge variant="secondary">{contact.source}</Badge>
+          <Badge variant="secondary">{CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}</Badge>
           <StageSelectForm contactId={contact.id} currentStageId={contact.stageId} stages={contact.pipeline.stages} />
           <EditContactDialog
             contactId={contact.id}

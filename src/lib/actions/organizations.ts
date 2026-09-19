@@ -284,7 +284,7 @@ export async function createPipeline(_prevState: string | undefined, formData: F
 
   const template = await prisma.stageTemplate.findUnique({ where: { id: templateId } });
   if (!template) return "Statusvorlage nicht gefunden.";
-  const templateStages = template.stages as { name: string; order: number; color: string }[];
+  const templateStages = template.stages as { name: string; order: number; color: string; isRejected?: boolean }[];
 
   const pipeline = await prisma.pipeline.create({
     data: {
@@ -292,7 +292,12 @@ export async function createPipeline(_prevState: string | undefined, formData: F
       kind,
       organizationId,
       stages: {
-        create: templateStages.map((stage) => ({ name: stage.name, order: stage.order, color: stage.color })),
+        create: templateStages.map((stage) => ({
+          name: stage.name,
+          order: stage.order,
+          color: stage.color,
+          isRejected: Boolean(stage.isRejected),
+        })),
       },
     },
   });

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { BanIcon } from "lucide-react";
 import { moveContactStage } from "@/lib/actions/contacts";
 import { formatCustomFields } from "@/lib/format-custom-fields";
 import { formatRelativeTime } from "@/lib/relative-time";
@@ -54,7 +55,15 @@ function TimeBadge({ createdAt, isFirstStage }: { createdAt: Date; isFirstStage:
   return <span className={`rounded-full px-1.5 py-0.5 text-[11px] whitespace-nowrap ${classes}`}>{label}</span>;
 }
 
-export function KanbanBoard({ stages, duplicateEmails }: { stages: Stage[]; duplicateEmails: Set<string> }) {
+export function KanbanBoard({
+  stages,
+  duplicateEmails,
+  rejectStageId,
+}: {
+  stages: Stage[];
+  duplicateEmails: Set<string>;
+  rejectStageId?: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
@@ -66,6 +75,16 @@ export function KanbanBoard({ stages, duplicateEmails }: { stages: Stage[]; dupl
       moveContactStage(formData);
     });
     setDragOverStageId(null);
+  }
+
+  function handleReject(contactId: string) {
+    if (!rejectStageId) return;
+    const formData = new FormData();
+    formData.set("contactId", contactId);
+    formData.set("stageId", rejectStageId);
+    startTransition(() => {
+      moveContactStage(formData);
+    });
   }
 
   return (
@@ -119,7 +138,21 @@ export function KanbanBoard({ stages, duplicateEmails }: { stages: Stage[]; dupl
                       isPending ? "opacity-60" : ""
                     }`}
                   >
-                    <div className="absolute top-1 right-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      {rejectStageId && stage.id !== rejectStageId && (
+                        <button
+                          type="button"
+                          title="Absagen"
+                          aria-label="Absagen"
+                          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleReject(contact.id);
+                          }}
+                        >
+                          <BanIcon className="size-3.5" />
+                        </button>
+                      )}
                       <DeleteContactButton contactId={contact.id} contactName={fullName} />
                     </div>
                     <div className="flex items-start justify-between gap-2">

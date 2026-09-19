@@ -114,7 +114,7 @@ enum PipelineKind {
 model StageTemplate {
   id     String @id @default(cuid())
   name   String
-  stages Json // [{ name: string, order: number, color: string }]
+  stages Json // [{ name: string, order: number, color: string, isRejected?: boolean }]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -146,6 +146,7 @@ model Stage {
   name       String
   order      Int
   color      String?
+  isRejected Boolean  @default(false)
 
   pipelineId String
   pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)

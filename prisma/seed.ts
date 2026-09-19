@@ -57,7 +57,7 @@ async function main() {
         { name: "In Kontakt", order: 1, color: "#F59E0B" },
         { name: "Nicht erreicht", order: 2, color: "#8B5CF6" },
         { name: "Vorstellungsgespräch", order: 3, color: "#22C55E" },
-        { name: "Absage", order: 4, color: "#EF4444" },
+        { name: "Absage", order: 4, color: "#EF4444", isRejected: true },
       ],
     },
   });

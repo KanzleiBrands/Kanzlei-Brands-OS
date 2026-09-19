@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 
-export type StageTemplateStage = { name: string; order: number; color: string };
+export type StageTemplateStage = { name: string; order: number; color: string; isRejected: boolean };
 
 function parseStages(raw: string): StageTemplateStage[] | null {
   try {
@@ -14,6 +14,7 @@ function parseStages(raw: string): StageTemplateStage[] | null {
       name: String(stage.name ?? "").trim(),
       order: index,
       color: String(stage.color ?? "#6B7280"),
+      isRejected: Boolean(stage.isRejected),
     }));
   } catch {
     return null;
