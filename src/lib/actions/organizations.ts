@@ -218,6 +218,51 @@ export async function updateOrganizationIntakeSettings(_prevState: string | unde
   revalidatePath(`/dashboard/clients/${organizationId}`);
 }
 
+/**
+ * Kunden-Hub: Backoffice-/Buchhaltungs-Ansprechpartner, Ressourcen-Links
+ * (Google Drive, Landingpage, Meta-/LinkedIn-Werbebibliothek) und bereits
+ * gebuchte Produkte (blendet passende Angebote im Kunden-Hub aus). Alles
+ * optional und jederzeit von der Agentur änderbar, siehe
+ * /dashboard/hub für die Kundensicht.
+ */
+export async function updateHubSettings(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") {
+    return "Nur Agentur-Admins können diese Einstellungen ändern.";
+  }
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
+
+  const backofficeContactId = String(formData.get("backofficeContactId") ?? "").trim() || null;
+  const driveFolderUrl = String(formData.get("driveFolderUrl") ?? "").trim() || null;
+  const landingPageUrl = String(formData.get("landingPageUrl") ?? "").trim() || null;
+  const metaAdLibraryUrl = String(formData.get("metaAdLibraryUrl") ?? "").trim() || null;
+  const linkedInAdLibraryUrl = String(formData.get("linkedInAdLibraryUrl") ?? "").trim() || null;
+  const bookedProductTags = formData.getAll("bookedProductTags").map((v) => String(v));
+
+  if (backofficeContactId) {
+    const contact = await prisma.user.findUnique({ where: { id: backofficeContactId } });
+    if (!contact || contact.role !== "AGENCY_ADMIN") return "Ungültiger Buchhaltungs-Ansprechpartner.";
+  }
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: {
+      backofficeContactId,
+      driveFolderUrl,
+      landingPageUrl,
+      metaAdLibraryUrl,
+      linkedInAdLibraryUrl,
+      bookedProductTags,
+    },
+  });
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidatePath("/dashboard/hub");
+}
+
 export type CreateUserResult = { status: "error"; message: string } | { status: "success"; link: string } | undefined;
 
 export async function createOrgUser(_prevState: CreateUserResult, formData: FormData): Promise<CreateUserResult> {

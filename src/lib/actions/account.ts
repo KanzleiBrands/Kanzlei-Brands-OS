@@ -121,3 +121,26 @@ export async function updateNotificationPreference(formData: FormData) {
 
   revalidatePath("/dashboard/settings");
 }
+
+/**
+ * Telefonnummer + Calendly-Terminlink, die ein Agentur-Mitarbeiter selbst
+ * pflegt, sobald er als Account Manager oder Buchhaltungs-/Backoffice-
+ * Ansprechpartner in einem Kunden-Hub angezeigt wird (siehe
+ * Organization.accountManagerId/backofficeContactId).
+ */
+export async function updateContactInfo(
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  const session = await requireSession();
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const calendlyUrl = String(formData.get("calendlyUrl") ?? "").trim() || null;
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { phone, calendlyUrl },
+  });
+
+  revalidatePath("/dashboard/settings");
+  return undefined;
+}

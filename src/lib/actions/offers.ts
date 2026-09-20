@@ -13,6 +13,7 @@ export async function createOffer(_prevState: string | undefined, formData: Form
   const description = String(formData.get("description") ?? "").trim();
   const imageUrl = String(formData.get("imageUrl") ?? "").trim();
   const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Interesse";
+  const productTag = String(formData.get("productTag") ?? "").trim().toLowerCase() || null;
 
   if (!title) return "Titel ist erforderlich.";
 
@@ -22,6 +23,7 @@ export async function createOffer(_prevState: string | undefined, formData: Form
       description: description || null,
       imageUrl: imageUrl || null,
       ctaLabel,
+      productTag,
     },
   });
 

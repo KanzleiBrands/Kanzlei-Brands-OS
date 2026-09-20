@@ -34,7 +34,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
       : []),
     { href: "/dashboard/tasks", label: "Wiedervorlagen" },
     ...common,
-    { href: "/dashboard/hub", label: "Angebote" },
+    { href: "/dashboard/hub", label: "Kunden Hub" },
   ];
 }
 

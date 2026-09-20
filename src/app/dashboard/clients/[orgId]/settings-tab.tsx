@@ -12,6 +12,7 @@ import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { EditClientNameForm } from "./edit-client-name-form";
 import { QuotaSettingsForm } from "./quota-settings-form";
 import { IntakeSettingsForm } from "./intake-settings-form";
+import { HubSettingsForm } from "./hub-settings-form";
 import { MonthlyReportToggle } from "./monthly-report-toggle";
 import { DataRetentionForm } from "./data-retention-form";
 
@@ -49,6 +50,13 @@ export function SettingsTab({
   monthlyReportEnabled,
   applicantDataRetentionMonths,
   leadDataRetentionMonths,
+  backofficeContactId,
+  driveFolderUrl,
+  landingPageUrl,
+  metaAdLibraryUrl,
+  linkedInAdLibraryUrl,
+  bookedProductTags,
+  availableProductTags,
 }: {
   organizationId: string;
   organizationName: string;
@@ -69,6 +77,13 @@ export function SettingsTab({
   monthlyReportEnabled: boolean;
   applicantDataRetentionMonths: number | null;
   leadDataRetentionMonths: number | null;
+  backofficeContactId: string | null;
+  driveFolderUrl: string | null;
+  landingPageUrl: string | null;
+  metaAdLibraryUrl: string | null;
+  linkedInAdLibraryUrl: string | null;
+  bookedProductTags: string[];
+  availableProductTags: string[];
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -132,6 +147,25 @@ export function SettingsTab({
             accountManagerId={accountManagerId}
             leadsFormUrl={leadsFormUrl}
             applicantsFormUrl={applicantsFormUrl}
+            agencyUsers={agencyUsers}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kunden-Hub</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <HubSettingsForm
+            organizationId={organizationId}
+            backofficeContactId={backofficeContactId}
+            driveFolderUrl={driveFolderUrl}
+            landingPageUrl={landingPageUrl}
+            metaAdLibraryUrl={metaAdLibraryUrl}
+            linkedInAdLibraryUrl={linkedInAdLibraryUrl}
+            bookedProductTags={bookedProductTags}
+            availableProductTags={availableProductTags}
             agencyUsers={agencyUsers}
           />
         </CardContent>

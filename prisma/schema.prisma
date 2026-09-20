@@ -44,9 +44,31 @@ model Organization {
   applicantsFormUrl String?
 
   // Zuständiger Agentur-Mitarbeiter, an den eine Anfrage geht, wenn der
-  // Kunde weitere Kontingente beauftragen möchte.
+  // Kunde weitere Kontingente beauftragen möchte - auch im Kunden-Hub als
+  // Ansprechpartner mit Telefon/E-Mail/Calendly-Terminbuchung angezeigt.
   accountManagerId String?
   accountManager   User?   @relation("AccountManagerFor", fields: [accountManagerId], references: [id], onDelete: SetNull)
+
+  // Zuständiger Ansprechpartner für Buchhaltung/Backoffice (Rechnungen,
+  // Vertragswesen) - separat vom Account Manager, ebenfalls im Kunden-Hub
+  // angezeigt.
+  backofficeContactId String?
+  backofficeContact   User?   @relation("BackofficeContactFor", fields: [backofficeContactId], references: [id], onDelete: SetNull)
+
+  // Kunden-Hub: Ressourcen-Links, die dem Kunden direkt zugänglich gemacht
+  // werden - jeweils nur sichtbar, wenn gesetzt, damit ein Kunde ohne z.B.
+  // LinkedIn-Kampagne nicht auf einen leeren Link stößt und denkt, er hätte
+  // das gebucht, aber nicht bekommen.
+  driveFolderUrl       String?
+  landingPageUrl       String?
+  metaAdLibraryUrl     String?
+  linkedInAdLibraryUrl String?
+
+  // Kunden-Hub "Angebote": welche Pakete/Produkte dieser Kunde bereits
+  // gebucht hat (freie Tags, siehe Offer.productTag) - ein Angebot mit
+  // passendem productTag wird diesem Kunden dann nicht mehr als Upsell
+  // vorgeschlagen, weil er es schon hat.
+  bookedProductTags String[] @default([])
 
   // Set when this org was created or matched by the Airtable "Kunden" sync,
   // so re-deliveries of the same Airtable record update instead of duplicate.
@@ -126,16 +148,24 @@ model User {
   // ist - beide Schalter zusammen entscheiden, siehe notify-new-contact.ts.
   notifyOnNewContact Boolean @default(true)
 
-  pipelineAccess       PipelineAccess[]
-  activities           Activity[]
-  emailAccounts        EmailAccount[]
-  enrollments          Enrollment[]
-  auditLogs            AuditLog[]
-  offerInterests       OfferInterest[]
-  automationRules      AutomationRule[]
-  managedOrganizations Organization[]   @relation("AccountManagerFor")
-  tasksCreated         Task[]           @relation("TaskCreatedBy")
-  tasksAssigned        Task[]           @relation("TaskAssignedTo")
+  // Nur relevant für Agentur-Mitarbeiter, die als Account Manager oder
+  // Buchhaltungs-/Backoffice-Ansprechpartner im Kunden-Hub eines Kunden
+  // erscheinen: eigene Telefonnummer + persönlicher Calendly-Terminlink.
+  // Selbst gepflegt unter Einstellungen -> Account.
+  phone       String?
+  calendlyUrl String?
+
+  pipelineAccess           PipelineAccess[]
+  activities               Activity[]
+  emailAccounts            EmailAccount[]
+  enrollments              Enrollment[]
+  auditLogs                AuditLog[]
+  offerInterests           OfferInterest[]
+  automationRules          AutomationRule[]
+  managedOrganizations     Organization[]   @relation("AccountManagerFor")
+  backofficeContactForOrgs Organization[]   @relation("BackofficeContactFor")
+  tasksCreated             Task[]           @relation("TaskCreatedBy")
+  tasksAssigned            Task[]           @relation("TaskAssignedTo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -691,8 +721,8 @@ model LessonProgress {
 // Kunden-Hub: Angebote / Upsells
 // ---------------------------------------------------------------------------
 
-// An upsell/offer shown in a specific client's Kunden-Hub.
-// Offers are global: the same set is shown to every client in their Angebote page.
+// An upsell/offer shown in every client's Kunden-Hub, unless the client
+// already has the matching productTag in Organization.bookedProductTags.
 model Offer {
   id          String  @id @default(cuid())
   title       String
@@ -700,6 +730,11 @@ model Offer {
   imageUrl    String?
   ctaLabel    String  @default("Interesse")
   active      Boolean @default(true)
+
+  // Freier Tag (z.B. "webseite", "social_media") - matched gegen
+  // Organization.bookedProductTags, um das Angebot für Kunden auszublenden,
+  // die es bereits gebucht haben. Leer = wird allen Kunden gezeigt.
+  productTag String?
 
   interests OfferInterest[]
 

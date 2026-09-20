@@ -23,7 +23,8 @@ export default async function OffersPage() {
         <NewOfferForm />
       </div>
       <p className="mb-6 text-muted-foreground">
-        Diese Angebote werden identisch bei allen Kunden im Bereich &bdquo;Angebote&ldquo; angezeigt.
+        Diese Angebote werden allen Kunden im Kunden-Hub angezeigt - außer bei Kunden, die das passende
+        Produkt-Tag bereits unter &bdquo;Bereits gebuchte Produkte&ldquo; (Kundeneinstellungen) hinterlegt haben.
       </p>
 
       <Card>
@@ -35,6 +36,7 @@ export default async function OffersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Titel</TableHead>
+                <TableHead>Produkt-Tag</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Interesse bekundet</TableHead>
               </TableRow>
@@ -43,6 +45,7 @@ export default async function OffersPage() {
               {offers.map((offer) => (
                 <TableRow key={offer.id}>
                   <TableCell className="font-medium">{offer.title}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{offer.productTag ?? "-"}</TableCell>
                   <TableCell>
                     <OfferActiveToggle offerId={offer.id} active={offer.active} />
                   </TableCell>
@@ -55,7 +58,7 @@ export default async function OffersPage() {
               ))}
               {offers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     Noch keine Angebote.
                   </TableCell>
                 </TableRow>

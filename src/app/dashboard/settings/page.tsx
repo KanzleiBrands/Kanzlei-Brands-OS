@@ -42,7 +42,7 @@ export default async function SettingsPage({
   const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { notifyOnNewContact: true },
+    select: { notifyOnNewContact: true, phone: true, calendlyUrl: true },
   });
 
   return (
@@ -109,6 +109,8 @@ export default async function SettingsPage({
           email={session.user.email}
           role={session.user.role}
           organizationName={organization?.name}
+          phone={currentUser?.phone ?? null}
+          calendlyUrl={currentUser?.calendlyUrl ?? null}
         />
       )}
 

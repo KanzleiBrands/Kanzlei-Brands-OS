@@ -76,6 +76,17 @@ export default async function ClientDetailPage({
           orderBy: { name: "asc" },
         })
       : [];
+  const availableProductTags =
+    tab === "settings"
+      ? (
+          await prisma.offer.findMany({
+            where: { productTag: { not: null } },
+            select: { productTag: true },
+            distinct: ["productTag"],
+            orderBy: { productTag: "asc" },
+          })
+        ).map((o) => o.productTag!)
+      : [];
 
   function toCampaign(pipeline: NonNullable<typeof organization>["pipelines"][number]) {
     const cardStats = computeCampaignCardStats(pipeline);
@@ -228,6 +239,13 @@ export default async function ClientDetailPage({
           monthlyReportEnabled={organization.monthlyReportEnabled}
           applicantDataRetentionMonths={organization.applicantDataRetentionMonths}
           leadDataRetentionMonths={organization.leadDataRetentionMonths}
+          backofficeContactId={organization.backofficeContactId}
+          driveFolderUrl={organization.driveFolderUrl}
+          landingPageUrl={organization.landingPageUrl}
+          metaAdLibraryUrl={organization.metaAdLibraryUrl}
+          linkedInAdLibraryUrl={organization.linkedInAdLibraryUrl}
+          bookedProductTags={organization.bookedProductTags}
+          availableProductTags={availableProductTags}
         />
       )}
     </div>
