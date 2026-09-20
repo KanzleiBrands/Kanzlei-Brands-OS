@@ -5,9 +5,9 @@ export function BackLink({ href, children }: { href: string; children: React.Rea
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      className="inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
     >
-      <ArrowLeftIcon className="size-4" />
+      <ArrowLeftIcon className="size-4 flex-shrink-0" />
       {children}
     </Link>
   );

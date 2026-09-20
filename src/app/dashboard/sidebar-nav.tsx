@@ -57,7 +57,11 @@ export function SidebarNav({
         </Link>
 
         <div className="mb-4 px-2">
-          <BackLink href="/dashboard/clients">Zurück zur Kunden-Übersicht</BackLink>
+          <BackLink href="/dashboard/clients">
+            Zurück zur
+            <br />
+            Kundenübersicht
+          </BackLink>
         </div>
 
         <p className="mb-1 px-2 text-sm font-medium tracking-wide text-muted-foreground">KAMPAGNEN</p>
