@@ -77,6 +77,13 @@ export default async function ContactDetailPage({
   const hasMailbox = (await prisma.emailAccount.count({ where: { userId: session.user.id } })) > 0;
   const customFields = customFieldEntries(contact.customFields);
 
+  const templates = await prisma.messageTemplate.findMany({
+    where: { organizationId: session.user.organizationId },
+    orderBy: { name: "asc" },
+  });
+  const noteTemplates = templates.filter((t) => t.kind === "NOTE");
+  const emailTemplates = templates.filter((t) => t.kind === "EMAIL");
+
   const activities = contact.activities.map((activity) => ({
     id: activity.id,
     type: activity.type,
@@ -304,7 +311,7 @@ export default async function ContactDetailPage({
               <CardTitle>Notiz / Anruf hinzufügen</CardTitle>
             </CardHeader>
             <CardContent>
-              <NoteForm contactId={contact.id} />
+              <NoteForm contactId={contact.id} templates={noteTemplates} />
             </CardContent>
           </Card>
           <Card>
@@ -325,7 +332,7 @@ export default async function ContactDetailPage({
               <CardTitle>E-Mail senden</CardTitle>
             </CardHeader>
             <CardContent>
-              <SendEmailForm contactId={contact.id} hasMailbox={hasMailbox} />
+              <SendEmailForm contactId={contact.id} hasMailbox={hasMailbox} templates={emailTemplates} />
             </CardContent>
           </Card>
           <Card>

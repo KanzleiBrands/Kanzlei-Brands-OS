@@ -8,9 +8,10 @@ import { TeamSection } from "./team-section";
 import { AgencyTeamSection } from "./agency-team-section";
 import { MailboxSection } from "./mailbox-section";
 import { StageTemplatesSection } from "./stage-templates-section";
+import { MessageTemplatesSection } from "./message-templates-section";
 import type { EditableStage } from "./stage-list-editor";
 
-type Tab = "account" | "team" | "mailbox" | "templates";
+type Tab = "account" | "team" | "mailbox" | "snippets" | "templates";
 
 export default async function SettingsPage({
   searchParams,
@@ -29,6 +30,7 @@ export default async function SettingsPage({
     "account",
     ...(canManageTeam ? (["team"] as const) : []),
     ...(canUseMailbox ? (["mailbox"] as const) : []),
+    "snippets",
     ...(isAgency ? (["templates"] as const) : []),
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
@@ -63,12 +65,18 @@ export default async function SettingsPage({
             Postfach
           </Link>
         )}
+        <Link
+          href="/dashboard/settings?tab=snippets"
+          className={`border-b-2 px-3 py-2 text-sm ${tab === "snippets" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          Textbausteine
+        </Link>
         {isAgency && (
           <Link
             href="/dashboard/settings?tab=templates"
             className={`border-b-2 px-3 py-2 text-sm ${tab === "templates" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
-            Vorlagen
+            Statusvorlagen
           </Link>
         )}
       </div>
@@ -94,9 +102,19 @@ export default async function SettingsPage({
         <MailboxSectionData userId={session.user.id} connected={connected} error={error} />
       )}
 
+      {tab === "snippets" && <MessageTemplatesSectionData organizationId={session.user.organizationId} />}
+
       {tab === "templates" && isAgency && <StageTemplatesSectionData />}
     </div>
   );
+}
+
+async function MessageTemplatesSectionData({ organizationId }: { organizationId: string }) {
+  const templates = await prisma.messageTemplate.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+  });
+  return <MessageTemplatesSection templates={templates} />;
 }
 
 async function StageTemplatesSectionData() {
