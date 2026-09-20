@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { BanIcon } from "lucide-react";
 import { moveContactStage } from "@/lib/actions/contacts";
-import { formatCustomFields } from "@/lib/format-custom-fields";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { contactDisplayName } from "@/lib/contact-display";
@@ -24,7 +23,6 @@ type Contact = {
   source: string;
   rating: number | null;
   createdAt: Date;
-  customFields: unknown;
   _count: { activities: number };
 };
 
@@ -145,7 +143,6 @@ export function KanbanBoard({
             <div className="flex flex-col gap-2.5">
               {stage.contacts.map((contact) => {
                 const fullName = contactDisplayName(contact);
-                const highlight = formatCustomFields(contact.customFields)[0];
                 const isDuplicate = !!contact.email && duplicateEmails.has(contact.email.trim().toLowerCase());
                 return (
                   <Link
@@ -196,18 +193,10 @@ export function KanbanBoard({
                       </span>
                     )}
 
-                    <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
-                      <span className="truncate">
-                        Eingang{" "}
-                        {new Date(contact.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
-                        {contact.phone && ` · ${contact.phone}`}
-                      </span>
-                      {highlight && (
-                        <span className="truncate">
-                          {highlight.label}: {highlight.value}
-                        </span>
-                      )}
-                    </div>
+                    <p className="mt-2 truncate text-xs text-muted-foreground">
+                      Eingang{" "}
+                      {new Date(contact.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                    </p>
 
                     <div className="mt-2.5 flex items-center justify-between">
                       <StarRating contactId={contact.id} rating={contact.rating} size="sm" />
