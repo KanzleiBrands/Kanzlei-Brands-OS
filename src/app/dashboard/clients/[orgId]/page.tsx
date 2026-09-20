@@ -246,6 +246,10 @@ export default async function ClientDetailPage({
           linkedInAdLibraryUrl={organization.linkedInAdLibraryUrl}
           bookedProductTags={organization.bookedProductTags}
           availableProductTags={availableProductTags}
+          activeApplicantChannels={organization.activeApplicantChannels}
+          activeLeadChannels={organization.activeLeadChannels}
+          jobsBooked={jobsBooked}
+          leadsBooked={leadsBooked}
         />
       )}
     </div>

@@ -6,8 +6,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS } from "@/lib/growth-levers";
 
 type AgencyUser = { id: string; name: string };
+
+function ChannelCheckboxList({
+  name,
+  options,
+  initialChecked,
+}: {
+  name: string;
+  options: { tag: string; label: string }[];
+  initialChecked: string[];
+}) {
+  const [checked, setChecked] = useState<Set<string>>(new Set(initialChecked));
+  return (
+    <div className="flex flex-wrap gap-3">
+      {options.map((option) => (
+        <label key={option.tag} className="flex items-center gap-1.5 text-sm">
+          <input
+            type="checkbox"
+            name={name}
+            value={option.tag}
+            checked={checked.has(option.tag)}
+            onChange={(e) => {
+              const next = new Set(checked);
+              if (e.target.checked) next.add(option.tag);
+              else next.delete(option.tag);
+              setChecked(next);
+            }}
+          />
+          {option.label}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 export function HubSettingsForm({
   organizationId,
@@ -18,6 +52,10 @@ export function HubSettingsForm({
   linkedInAdLibraryUrl,
   bookedProductTags,
   availableProductTags,
+  activeApplicantChannels,
+  activeLeadChannels,
+  jobsBooked,
+  leadsBooked,
   agencyUsers,
 }: {
   organizationId: string;
@@ -28,10 +66,22 @@ export function HubSettingsForm({
   linkedInAdLibraryUrl: string | null;
   bookedProductTags: string[];
   availableProductTags: string[];
+  activeApplicantChannels: string[];
+  activeLeadChannels: string[];
+  jobsBooked: boolean;
+  leadsBooked: boolean;
   agencyUsers: AgencyUser[];
 }) {
   const [error, formAction, isPending] = useActionState(updateHubSettings, undefined);
   const [checkedTags, setCheckedTags] = useState<Set<string>>(new Set(bookedProductTags));
+  const applicantChannelOptions = APPLICANT_GROWTH_LEVERS.filter((l) => l.kind === "channel").map((l) => ({
+    tag: l.tag,
+    label: l.label,
+  }));
+  const leadChannelOptions = LEAD_GROWTH_LEVERS.filter((l) => l.kind === "channel").map((l) => ({
+    tag: l.tag,
+    label: l.label,
+  }));
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -140,6 +190,41 @@ export function HubSettingsForm({
           </p>
         )}
       </div>
+
+      {(jobsBooked || leadsBooked) && (
+        <div className="flex flex-col gap-4 border-t pt-4">
+          <div>
+            <Label>Potenzialscore</Label>
+            <p className="text-sm text-muted-foreground">
+              Welche Kanäle nutzt dieser Kunde für seine gebuchte Kampagne aktuell tatsächlich? Nicht angehakte
+              Kanäle senken den Potenzialscore im Kunden-Hub und werden dem Kunden dort als konkrete
+              Handlungsempfehlung angezeigt (inkl. Hinweis, das mit dem Account Manager zu besprechen).
+            </p>
+          </div>
+
+          {jobsBooked && (
+            <div className="flex flex-col gap-1.5">
+              <Label>Aktive Recruiting-Kanäle</Label>
+              <ChannelCheckboxList
+                name="activeApplicantChannels"
+                options={applicantChannelOptions}
+                initialChecked={activeApplicantChannels}
+              />
+            </div>
+          )}
+
+          {leadsBooked && (
+            <div className="flex flex-col gap-1.5">
+              <Label>Aktive Mandatsakquise-Kanäle</Label>
+              <ChannelCheckboxList
+                name="activeLeadChannels"
+                options={leadChannelOptions}
+                initialChecked={activeLeadChannels}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" size="sm" disabled={isPending} className="self-start">

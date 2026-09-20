@@ -70,6 +70,14 @@ model Organization {
   // vorgeschlagen, weil er es schon hat.
   bookedProductTags String[] @default([])
 
+  // Kunden-Hub "Potenzialscore": welche Vertriebs-/Marketingkanäle der
+  // Kunde für seine gebuchte Recruiting- bzw. Mandatsakquise-Kampagne
+  // aktuell tatsächlich nutzt (freie Tags, siehe src/lib/growth-levers.ts) -
+  // fehlende Kanäle senken den Score und werden als konkrete
+  // Handlungsempfehlung angezeigt.
+  activeApplicantChannels String[] @default([])
+  activeLeadChannels      String[] @default([])
+
   // Set when this org was created or matched by the Airtable "Kunden" sync,
   // so re-deliveries of the same Airtable record update instead of duplicate.
   airtableRecordId String? @unique

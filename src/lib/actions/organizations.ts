@@ -241,6 +241,8 @@ export async function updateHubSettings(_prevState: string | undefined, formData
   const metaAdLibraryUrl = String(formData.get("metaAdLibraryUrl") ?? "").trim() || null;
   const linkedInAdLibraryUrl = String(formData.get("linkedInAdLibraryUrl") ?? "").trim() || null;
   const bookedProductTags = formData.getAll("bookedProductTags").map((v) => String(v));
+  const activeApplicantChannels = formData.getAll("activeApplicantChannels").map((v) => String(v));
+  const activeLeadChannels = formData.getAll("activeLeadChannels").map((v) => String(v));
 
   if (backofficeContactId) {
     const contact = await prisma.user.findUnique({ where: { id: backofficeContactId } });
@@ -256,6 +258,8 @@ export async function updateHubSettings(_prevState: string | undefined, formData
       metaAdLibraryUrl,
       linkedInAdLibraryUrl,
       bookedProductTags,
+      activeApplicantChannels,
+      activeLeadChannels,
     },
   });
 

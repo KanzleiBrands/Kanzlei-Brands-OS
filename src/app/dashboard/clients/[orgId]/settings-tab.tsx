@@ -57,6 +57,10 @@ export function SettingsTab({
   linkedInAdLibraryUrl,
   bookedProductTags,
   availableProductTags,
+  activeApplicantChannels,
+  activeLeadChannels,
+  jobsBooked,
+  leadsBooked,
 }: {
   organizationId: string;
   organizationName: string;
@@ -84,6 +88,10 @@ export function SettingsTab({
   linkedInAdLibraryUrl: string | null;
   bookedProductTags: string[];
   availableProductTags: string[];
+  activeApplicantChannels: string[];
+  activeLeadChannels: string[];
+  jobsBooked: boolean;
+  leadsBooked: boolean;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -166,6 +174,10 @@ export function SettingsTab({
             linkedInAdLibraryUrl={linkedInAdLibraryUrl}
             bookedProductTags={bookedProductTags}
             availableProductTags={availableProductTags}
+            activeApplicantChannels={activeApplicantChannels}
+            activeLeadChannels={activeLeadChannels}
+            jobsBooked={jobsBooked}
+            leadsBooked={leadsBooked}
             agencyUsers={agencyUsers}
           />
         </CardContent>
