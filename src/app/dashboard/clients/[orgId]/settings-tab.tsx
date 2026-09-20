@@ -50,7 +50,6 @@ export function SettingsTab({
   monthlyReportEnabled,
   applicantDataRetentionMonths,
   leadDataRetentionMonths,
-  backofficeContactId,
   driveFolderUrl,
   landingPageUrl,
   metaAdLibraryUrl,
@@ -81,7 +80,6 @@ export function SettingsTab({
   monthlyReportEnabled: boolean;
   applicantDataRetentionMonths: number | null;
   leadDataRetentionMonths: number | null;
-  backofficeContactId: string | null;
   driveFolderUrl: string | null;
   landingPageUrl: string | null;
   metaAdLibraryUrl: string | null;
@@ -167,7 +165,6 @@ export function SettingsTab({
         <CardContent>
           <HubSettingsForm
             organizationId={organizationId}
-            backofficeContactId={backofficeContactId}
             driveFolderUrl={driveFolderUrl}
             landingPageUrl={landingPageUrl}
             metaAdLibraryUrl={metaAdLibraryUrl}
@@ -178,7 +175,6 @@ export function SettingsTab({
             activeLeadChannels={activeLeadChannels}
             jobsBooked={jobsBooked}
             leadsBooked={leadsBooked}
-            agencyUsers={agencyUsers}
           />
         </CardContent>
       </Card>

@@ -23,13 +23,21 @@ export default async function KundenHubPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role === "AGENCY_ADMIN") redirect("/dashboard/clients");
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: session.user.organizationId },
-    include: {
-      accountManager: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
-      backofficeContact: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
-    },
-  });
+  const [organization, agency] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: session.user.organizationId },
+      include: {
+        accountManager: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
+      },
+    }),
+    // Die Buchhaltung/Backoffice ist portalweit einheitlich (es gibt nur
+    // eine für alle Kunden) und wird daher auf der Agentur-Organisation
+    // selbst gepflegt, nicht pro Kunde - siehe updatePortalBackofficeContact.
+    prisma.organization.findFirst({
+      where: { type: "AGENCY" },
+      select: { backofficeContact: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } } },
+    }),
+  ]);
   if (!organization) redirect("/login");
 
   const allOrgPipelines = await prisma.pipeline.findMany({
@@ -79,7 +87,7 @@ export default async function KundenHubPage() {
         <ContactCard
           title="Buchhaltung / Backoffice"
           description="Fragen zu Rechnungen oder Vertragswesen?"
-          contact={organization.backofficeContact}
+          contact={agency?.backofficeContact ?? null}
           teamEmail={BACKOFFICE_EMAIL}
         />
       </div>

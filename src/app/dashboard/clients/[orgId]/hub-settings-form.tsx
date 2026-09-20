@@ -5,10 +5,7 @@ import { updateHubSettings } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS } from "@/lib/growth-levers";
-
-type AgencyUser = { id: string; name: string };
 
 function ChannelCheckboxList({
   name,
@@ -45,7 +42,6 @@ function ChannelCheckboxList({
 
 export function HubSettingsForm({
   organizationId,
-  backofficeContactId,
   driveFolderUrl,
   landingPageUrl,
   metaAdLibraryUrl,
@@ -56,10 +52,8 @@ export function HubSettingsForm({
   activeLeadChannels,
   jobsBooked,
   leadsBooked,
-  agencyUsers,
 }: {
   organizationId: string;
-  backofficeContactId: string | null;
   driveFolderUrl: string | null;
   landingPageUrl: string | null;
   metaAdLibraryUrl: string | null;
@@ -70,7 +64,6 @@ export function HubSettingsForm({
   activeLeadChannels: string[];
   jobsBooked: boolean;
   leadsBooked: boolean;
-  agencyUsers: AgencyUser[];
 }) {
   const [error, formAction, isPending] = useActionState(updateHubSettings, undefined);
   const [checkedTags, setCheckedTags] = useState<Set<string>>(new Set(bookedProductTags));
@@ -86,28 +79,6 @@ export function HubSettingsForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="organizationId" value={organizationId} />
-
-      <div className="flex flex-col gap-1.5">
-        <Label>Buchhaltung / Backoffice-Ansprechpartner</Label>
-        <Select name="backofficeContactId" defaultValue={backofficeContactId ?? ""}>
-          <SelectTrigger className="max-w-64">
-            <SelectValue>
-              {(value: string) => agencyUsers.find((u) => u.id === value)?.name ?? "Nicht zugewiesen"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {agencyUsers.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
-                {user.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-muted-foreground">
-          Wird im Kunden-Hub für Fragen zu Rechnungen/Vertragswesen angezeigt. Telefon/Calendly pflegt diese Person
-          selbst unter Einstellungen → Account.
-        </p>
-      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="driveFolderUrl">Google-Drive-Ordner</Label>

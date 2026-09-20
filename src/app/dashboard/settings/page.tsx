@@ -44,6 +44,13 @@ export default async function SettingsPage({
     where: { id: session.user.id },
     select: { notifyOnNewContact: true, phone: true, calendlyUrl: true, avatarUrl: true },
   });
+  const agencyUsers = isAgency
+    ? await prisma.user.findMany({
+        where: { role: "AGENCY_ADMIN", organizationId: session.user.organizationId },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   return (
     <div className="p-4 sm:p-8">
@@ -112,6 +119,8 @@ export default async function SettingsPage({
           phone={currentUser?.phone ?? null}
           calendlyUrl={currentUser?.calendlyUrl ?? null}
           avatarUrl={currentUser?.avatarUrl ?? null}
+          backofficeContactId={organization?.backofficeContactId ?? null}
+          agencyUsers={agencyUsers}
         />
       )}
 

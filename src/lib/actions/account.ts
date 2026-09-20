@@ -125,9 +125,10 @@ export async function updateNotificationPreference(formData: FormData) {
 
 /**
  * Telefonnummer + Calendly-Terminlink, die ein Agentur-Mitarbeiter selbst
- * pflegt, sobald er als Account Manager oder Buchhaltungs-/Backoffice-
- * Ansprechpartner in einem Kunden-Hub angezeigt wird (siehe
- * Organization.accountManagerId/backofficeContactId).
+ * pflegt, sobald er als Account Manager (siehe Organization.accountManagerId,
+ * pro Kunde) oder als der eine portalweite Buchhaltungs-/Backoffice-
+ * Ansprechpartner (siehe Organization.backofficeContactId auf der
+ * Agentur-Organisation) im Kunden-Hub angezeigt wird.
  */
 export async function updateContactInfo(
   _prevState: string | undefined,

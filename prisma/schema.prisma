@@ -50,8 +50,10 @@ model Organization {
   accountManager   User?   @relation("AccountManagerFor", fields: [accountManagerId], references: [id], onDelete: SetNull)
 
   // Zuständiger Ansprechpartner für Buchhaltung/Backoffice (Rechnungen,
-  // Vertragswesen) - separat vom Account Manager, ebenfalls im Kunden-Hub
-  // angezeigt.
+  // Vertragswesen). Anders als der Account Manager portalweit einheitlich -
+  // es gibt nur eine Buchhaltung für alle Kunden -, daher nur auf der
+  // einzelnen AGENCY-Organisation gepflegt (siehe updatePortalBackofficeContact)
+  // und im Kunden-Hub jedes Kunden gleichermaßen angezeigt.
   backofficeContactId String?
   backofficeContact   User?   @relation("BackofficeContactFor", fields: [backofficeContactId], references: [id], onDelete: SetNull)
 

@@ -239,7 +239,6 @@ export default async function ClientDetailPage({
           monthlyReportEnabled={organization.monthlyReportEnabled}
           applicantDataRetentionMonths={organization.applicantDataRetentionMonths}
           leadDataRetentionMonths={organization.leadDataRetentionMonths}
-          backofficeContactId={organization.backofficeContactId}
           driveFolderUrl={organization.driveFolderUrl}
           landingPageUrl={organization.landingPageUrl}
           metaAdLibraryUrl={organization.metaAdLibraryUrl}
