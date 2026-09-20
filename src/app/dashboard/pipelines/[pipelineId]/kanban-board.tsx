@@ -11,6 +11,7 @@ import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { RejectionReasonDialog } from "@/components/rejection-reason-dialog";
 import { FinalStageDialog } from "@/components/final-stage-dialog";
+import type { DuplicateContactKeys } from "@/lib/duplicate-contacts";
 
 type Contact = {
   id: string;
@@ -58,14 +59,14 @@ function TimeBadge({ createdAt, isFirstStage }: { createdAt: Date; isFirstStage:
 
 export function KanbanBoard({
   stages,
-  duplicateEmails,
+  duplicateContacts,
   rejectStageId,
   finalStageId,
   pipelineKind,
   canDeleteContacts,
 }: {
   stages: Stage[];
-  duplicateEmails: Set<string>;
+  duplicateContacts: DuplicateContactKeys;
   rejectStageId?: string;
   finalStageId?: string;
   pipelineKind: string;
@@ -145,7 +146,9 @@ export function KanbanBoard({
             <div className="flex flex-col gap-2.5">
               {stage.contacts.map((contact) => {
                 const fullName = contactDisplayName(contact);
-                const isDuplicate = !!contact.email && duplicateEmails.has(contact.email.trim().toLowerCase());
+                const isDuplicate =
+                  (!!contact.email && duplicateContacts.emails.has(contact.email.trim().toLowerCase())) ||
+                  (!!contact.phone && duplicateContacts.phones.has(contact.phone.trim().toLowerCase()));
                 return (
                   <Link
                     key={contact.id}

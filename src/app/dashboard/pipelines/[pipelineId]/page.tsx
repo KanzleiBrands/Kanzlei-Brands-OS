@@ -185,11 +185,14 @@ export default async function PipelineDetailPage({
             url: `${baseUrl}/api/webhooks/${endpoint.token}`,
             fieldMapping: endpoint.fieldMapping,
             locationRouting: endpoint.locationRouting,
+            minCallDurationSeconds: endpoint.minCallDurationSeconds,
             deliveries: endpoint.deliveries.map((d) => ({
               id: d.id,
               createdAt: d.createdAt.toLocaleString("de-DE"),
               error: d.error,
+              skippedReason: d.skippedReason,
               contactId: d.contactId,
+              rawPayload: d.rawPayload,
             })),
           }))}
         />

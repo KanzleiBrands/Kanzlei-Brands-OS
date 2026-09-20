@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma, WebhookSource, ContactSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { extractContactFields, resolveLocationRoutingPipelineId, stripTrackingFields } from "@/lib/webhook-ingest";
+import {
+  extractCallDurationSeconds,
+  extractContactFields,
+  resolveLocationRoutingPipelineId,
+  stripTrackingFields,
+} from "@/lib/webhook-ingest";
 import { isFileUrl } from "@/lib/format-custom-fields";
 import { storeFileFromUrl } from "@/lib/file-storage";
 import { deriveWebsiteFromEmail } from "@/lib/company";
@@ -31,6 +36,7 @@ const CONTACT_SOURCE_BY_WEBHOOK_SOURCE: Record<WebhookSource, ContactSource> = {
   MEETOVO: "MEETOVO",
   AIDAFORM: "AIDAFORM",
   THRIVE: "THRIVE",
+  MATELSO: "MATELSO",
 };
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -82,6 +88,35 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const fields = extractContactFields(payload, endpoint.fieldMapping as Record<string, string> | null);
+
+    // Call-tracking sources (matelso): a misdial or immediate hang-up isn't a
+    // real lead - skip creating a Contact for calls under the configured
+    // minimum duration, but still log the delivery so it stays visible.
+    const callDurationSeconds = extractCallDurationSeconds(
+      payload,
+      endpoint.fieldMapping as Record<string, string> | null,
+    );
+    if (
+      endpoint.minCallDurationSeconds !== null &&
+      callDurationSeconds !== null &&
+      callDurationSeconds < endpoint.minCallDurationSeconds
+    ) {
+      await prisma.webhookDelivery.create({
+        data: {
+          endpointId: endpoint.id,
+          rawPayload: payload,
+          skippedReason: `Anruf zu kurz (${callDurationSeconds}s < ${endpoint.minCallDurationSeconds}s) - kein Lead angelegt.`,
+        },
+      });
+      return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
+    }
+
+    // Anonymous call (Rufnummernunterdrückung): no phone AND no name at all -
+    // still worth surfacing as a card so the client notices a call happened,
+    // rather than silently dropping it because there's nothing to display.
+    if (endpoint.source === "MATELSO" && !fields.firstName && !fields.lastName && !fields.phone) {
+      fields.firstName = "Anonymer Anrufer";
+    }
 
     const cvUrl = fields.cvUrl ? await mirrorExternalFile(fields.cvUrl) : null;
     const website = deriveWebsiteFromEmail(fields.email);

@@ -249,6 +249,7 @@ enum ContactSource {
   MEETOVO
   AIDAFORM
   THRIVE
+  MATELSO
 }
 
 // A Lead or an Applicant, depending on the pipeline's kind.
@@ -373,6 +374,7 @@ enum WebhookSource {
   MEETOVO
   AIDAFORM
   THRIVE
+  MATELSO // Call-Tracking (Dynamic Number Insertion): Anrufer-Leads aus Google-Ads-Landingpages
 }
 
 // One inbound endpoint per pipeline+source; `token` is the unguessable
@@ -391,6 +393,12 @@ model WebhookEndpoint {
   locationRouting Json?
   active          Boolean       @default(true)
 
+  // Call-Tracking-Quellen (z.B. matelso): Anrufe unter dieser Dauer werden
+  // nicht als Lead angelegt (Verwähler/Auflegen rausfiltern). Erwartet die
+  // Anrufdauer in Sekunden unter dem fieldMapping-Schlüssel
+  // "callDurationSeconds" (oder per Auto-Detect, siehe webhook-ingest.ts).
+  minCallDurationSeconds Int?
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   pipelineId     String
@@ -406,13 +414,17 @@ model WebhookEndpoint {
 
 // Raw log of every inbound webhook call, kept for debugging failed mappings.
 model WebhookDelivery {
-  id         String          @id @default(cuid())
-  endpointId String
-  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
-  rawPayload Json
-  contactId  String?
-  error      String?
-  createdAt  DateTime        @default(now())
+  id            String          @id @default(cuid())
+  endpointId    String
+  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  rawPayload    Json
+  contactId     String?
+  error         String?
+  // Set instead of `error` when the payload was valid but deliberately not
+  // turned into a Contact (e.g. a call below minCallDurationSeconds) - kept
+  // separate from `error` so the UI can show it as informational, not a failure.
+  skippedReason String?
+  createdAt     DateTime        @default(now())
 
   @@index([endpointId])
 }

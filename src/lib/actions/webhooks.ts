@@ -35,6 +35,30 @@ export async function updateFieldMapping(_prevState: string | undefined, formDat
   revalidatePath(`/dashboard/pipelines/${endpoint.pipelineId}`);
 }
 
+export async function updateMinCallDuration(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const endpointId = String(formData.get("endpointId") ?? "");
+  const raw = String(formData.get("minCallDurationSeconds") ?? "").trim();
+
+  const endpoint = await prisma.webhookEndpoint.findUnique({ where: { id: endpointId } });
+  if (!endpoint) return "Webhook nicht gefunden.";
+  await assertPipelineAccess(session, endpoint.pipelineId);
+
+  let minCallDurationSeconds: number | null = null;
+  if (raw) {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return "Ungültige Sekundenzahl.";
+    minCallDurationSeconds = Math.round(parsed);
+  }
+
+  await prisma.webhookEndpoint.update({
+    where: { id: endpointId },
+    data: { minCallDurationSeconds },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${endpoint.pipelineId}`);
+}
+
 export async function updateLocationRouting(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const endpointId = String(formData.get("endpointId") ?? "");

@@ -14,6 +14,7 @@ export const CONTACT_SOURCE_LABELS: Record<string, string> = {
   MEETOVO: "Meetovo",
   AIDAFORM: "AidaForm",
   THRIVE: "Thrive",
+  MATELSO: "Anruf (matelso)",
 };
 
 export const CONTACT_SOURCE_COLORS: Record<string, string> = {
@@ -32,4 +33,5 @@ export const CONTACT_SOURCE_COLORS: Record<string, string> = {
   MEETOVO: "#EC4899",
   AIDAFORM: "#0EA5E9",
   THRIVE: "#16A34A",
+  MATELSO: "#0F766E",
 };

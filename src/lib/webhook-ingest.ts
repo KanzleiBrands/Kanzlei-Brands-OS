@@ -16,12 +16,77 @@ export const AUTO_DETECT: Record<string, string[]> = {
   firstName: ["firstName", "first_name", "vorname", "firstname"],
   lastName: ["lastName", "last_name", "nachname", "lastname"],
   email: ["email", "e_mail", "mail"],
-  phone: ["phone", "telefon", "phone_number", "tel"],
+  // Includes common call-tracking field names (matelso & friends): the
+  // caller's number, not the dynamically-inserted tracking number they
+  // dialed - that one never appears under these keys.
+  phone: [
+    "phone",
+    "telefon",
+    "phone_number",
+    "tel",
+    "caller",
+    "caller_number",
+    "callernumber",
+    "caller_id",
+    "callerid",
+    "anrufer",
+    "anrufernummer",
+    "rufnummer",
+    "from_number",
+    "from",
+  ],
   location: ["location", "ort", "stadt", "city", "wohnort"],
   cvUrl: ["cv_url", "cvurl", "lebenslauf", "resume_url", "resume", "cv"],
   companyName: ["company", "company_name", "companyname", "firma", "firmenname", "unternehmen"],
   address: ["address", "adresse", "strasse", "street", "anschrift"],
 };
+
+// Call-tracking payloads (matelso & friends) carry the call's talk time under
+// varying key names - used only to filter out too-short/junk calls before a
+// Contact is created (see minCallDurationSeconds), never stored as a Contact
+// field itself.
+const CALL_DURATION_AUTO_DETECT = [
+  "callDurationSeconds",
+  "call_duration_seconds",
+  "call_duration",
+  "callduration",
+  "duration",
+  "dauer",
+  "gespraechsdauer",
+  "gesprächsdauer",
+  "talk_time",
+  "talktime",
+  "duration_seconds",
+];
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+/**
+ * Reads the call duration (in seconds) from a webhook payload: an explicit
+ * `fieldMapping.callDurationSeconds` dot-path wins, otherwise falls back to
+ * auto-detecting one of the common call-tracking key names. Returns null
+ * when no duration is present in the payload at all (e.g. non-call sources),
+ * as opposed to 0, which means a real, measured zero-second call.
+ */
+export function extractCallDurationSeconds(payload: Record<string, unknown>, fieldMapping?: FieldMapping | null): number | null {
+  const mappedPath = fieldMapping?.callDurationSeconds;
+  if (mappedPath) {
+    const mapped = toFiniteNumber(getByPath(payload, mappedPath));
+    if (mapped !== null) return mapped;
+  }
+  for (const candidate of CALL_DURATION_AUTO_DETECT) {
+    const value = toFiniteNumber(payload[candidate]);
+    if (value !== null) return value;
+  }
+  return null;
+}
 
 function toStringOrNull(value: unknown): string | null {
   if (value === null || value === undefined) return null;

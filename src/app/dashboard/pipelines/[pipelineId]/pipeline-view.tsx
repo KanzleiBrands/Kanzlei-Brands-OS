@@ -7,7 +7,7 @@ import { KanbanBoard } from "./kanban-board";
 import { ContactsTable } from "./contacts-table";
 import { ExcludedContactsTable } from "./excluded-contacts-table";
 import { NewContactForm } from "./new-contact-form";
-import { findDuplicateEmails } from "@/lib/duplicate-contacts";
+import { findDuplicateContacts } from "@/lib/duplicate-contacts";
 import { excludedTabLabel } from "@/lib/campaign-kind-labels";
 
 type Contact = {
@@ -53,8 +53,11 @@ export function PipelineView({
   const [view, setView] = useState<"board" | "list">("board");
   const [statusTab, setStatusTab] = useState<"qualified" | "excluded">("qualified");
   const [search, setSearch] = useState("");
-  const duplicateEmails = useMemo(
-    () => (showDuplicateWarning ? findDuplicateEmails(stages) : new Set<string>()),
+  const duplicateContacts = useMemo(
+    () =>
+      showDuplicateWarning
+        ? findDuplicateContacts(stages)
+        : { emails: new Set<string>(), phones: new Set<string>() },
     [stages, showDuplicateWarning],
   );
 
@@ -159,7 +162,7 @@ export function PipelineView({
       ) : view === "board" ? (
         <KanbanBoard
           stages={qualifiedStages}
-          duplicateEmails={duplicateEmails}
+          duplicateContacts={duplicateContacts}
           rejectStageId={firstRejectedStageId}
           finalStageId={finalStageId}
           pipelineKind={pipelineKind}
@@ -170,7 +173,7 @@ export function PipelineView({
           stages={qualifiedStages}
           allStages={stages}
           pipelineKind={pipelineKind}
-          duplicateEmails={duplicateEmails}
+          duplicateContacts={duplicateContacts}
           canDeleteContacts={canDeleteContacts}
         />
       )}

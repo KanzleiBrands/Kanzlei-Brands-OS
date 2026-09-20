@@ -17,6 +17,7 @@ export const WEBHOOK_SOURCE_LABELS: Record<string, string> = {
   MEETOVO: "Meetovo",
   AIDAFORM: "AidaForm",
   THRIVE: "Thrive",
+  MATELSO: "matelso (Call Tracking)",
 };
 
 export const WEBHOOK_SOURCE_DESCRIPTIONS: Record<string, string> = {
@@ -34,6 +35,7 @@ export const WEBHOOK_SOURCE_DESCRIPTIONS: Record<string, string> = {
   MEETOVO: "Bewerber-Funnels aus Meetovo",
   AIDAFORM: "Formulare aus AidaForm",
   THRIVE: "Formulare aus Thrive Themes",
+  MATELSO: "Anrufer-Leads aus Google-Ads-Landingpages (Dynamic Number Insertion)",
 };
 
 export const WEBHOOK_SOURCE_COLORS: Record<string, string> = {
@@ -51,10 +53,11 @@ export const WEBHOOK_SOURCE_COLORS: Record<string, string> = {
   MEETOVO: "#EC4899",
   AIDAFORM: "#0EA5E9",
   THRIVE: "#16A34A",
+  MATELSO: "#0F766E",
 };
 
 // "Formular/Webhook"-style sources: shown as copy-the-URL tiles.
-export const WEBHOOK_FORM_SOURCES = ["GENERIC"] as const;
+export const WEBHOOK_FORM_SOURCES = ["GENERIC", "MATELSO"] as const;
 
 // Native/ads-platform sources, grouped separately as "Direktintegrationen".
 export const DIRECT_INTEGRATION_SOURCES = ["GOOGLE_ADS", "META_LEAD_ADS", "LINKEDIN_LEAD_GEN"] as const;
