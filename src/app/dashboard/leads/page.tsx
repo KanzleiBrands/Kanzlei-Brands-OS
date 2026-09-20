@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
@@ -22,13 +23,24 @@ export default async function CrossPipelineLeadsPage({
   const kind = kindParam === "APPLICANTS" ? "APPLICANTS" : "LEADS";
 
   const accessible = await accessiblePipelineIds(session, session.user.organizationId);
+  const pipelineFilter: Prisma.PipelineWhereInput = {
+    organizationId: session.user.organizationId,
+    kind,
+    ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
+  };
+
+  // Mit genau einer Kampagne dieses Typs (der Normalfall) ist diese
+  // schreibgeschützte Übersichtstabelle nicht der eigentliche Arbeitsort -
+  // das ist das Kanban-Board der Kampagne selbst (Drag&Drop zwischen
+  // Stufen, Schnellaktionen). Erst bei mehreren Kampagnen desselben Typs
+  // ergibt eine kampagnenübergreifende Übersicht wirklich Sinn.
+  const pipelineIds = await prisma.pipeline.findMany({ where: pipelineFilter, select: { id: true } });
+  if (pipelineIds.length === 1) {
+    redirect(`/dashboard/pipelines/${pipelineIds[0].id}`);
+  }
 
   const pipelines = await prisma.pipeline.findMany({
-    where: {
-      organizationId: session.user.organizationId,
-      kind,
-      ...(accessible === "ALL" ? {} : { id: { in: accessible } }),
-    },
+    where: pipelineFilter,
     include: {
       contacts: {
         orderBy: { createdAt: "desc" },
