@@ -15,7 +15,7 @@ export default async function ActivatePage({ params }: { params: Promise<{ token
   const isReset = isValid && !!user!.passwordHash;
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-background p-4">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/20 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-[24rem] w-[24rem] translate-x-1/3 translate-y-1/3 rounded-full bg-primary/10 blur-3xl" />
 

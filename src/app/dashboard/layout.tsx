@@ -106,7 +106,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   );
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-dvh flex-col md:flex-row">
       <MobileSidebarShell sidebar={sidebar} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
