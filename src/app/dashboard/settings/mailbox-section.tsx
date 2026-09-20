@@ -45,7 +45,7 @@ export function MailboxSection({
         <CardHeader>
           <CardTitle>Postfach verbinden</CardTitle>
         </CardHeader>
-        <CardContent className="flex gap-3">
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           {googleConfigured ? (
             <Button nativeButton={false} render={<a href="/api/mailbox/google/connect" />}>
               Gmail verbinden
