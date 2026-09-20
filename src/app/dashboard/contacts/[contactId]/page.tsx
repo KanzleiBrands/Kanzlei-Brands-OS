@@ -27,6 +27,7 @@ import { NewTaskForm } from "./new-task-form";
 import { TaskList } from "./task-list";
 import { TalentPoolButton } from "./talent-pool-button";
 import { CommentForm } from "./comment-form";
+import { DealOutcomeEditor } from "./deal-outcome-editor";
 
 type Tab = "overview" | "tasks" | "comments" | "notes" | "email" | "activity";
 
@@ -76,6 +77,9 @@ export default async function ContactDetailPage({
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
   const displayName = contactDisplayName(contact);
   const isB2BLead = contact.pipeline.kind === "LEADS" && !!contact.companyName;
+  const finalId = finalStageId(contact.pipeline.stages);
+  const showDealOutcome =
+    contact.stageId === finalId || contact.dealVolumeEur != null || contact.startDate != null;
   const hasMailbox = (await prisma.emailAccount.count({ where: { userId: session.user.id } })) > 0;
   const customFields = customFieldEntries(contact.customFields);
 
@@ -147,6 +151,14 @@ export default async function ContactDetailPage({
             {contact.rejectionReason && (
               <p className="mt-1 text-sm text-destructive">Absagegrund: {contact.rejectionReason}</p>
             )}
+            {showDealOutcome && (
+              <DealOutcomeEditor
+                contactId={contact.id}
+                pipelineKind={contact.pipeline.kind}
+                dealVolumeEur={contact.dealVolumeEur}
+                startDate={contact.startDate ? contact.startDate.toISOString().slice(0, 10) : null}
+              />
+            )}
             {contact.pipeline.kind === "APPLICANTS" && (
               <div className="mt-2">
                 <TalentPoolButton
@@ -179,7 +191,7 @@ export default async function ContactDetailPage({
               currentStageId={contact.stageId}
               pipelineKind={contact.pipeline.kind}
               stages={contact.pipeline.stages}
-              finalStageId={finalStageId(contact.pipeline.stages)}
+              finalStageId={finalId}
             />
             <EditContactDialog
               contactId={contact.id}

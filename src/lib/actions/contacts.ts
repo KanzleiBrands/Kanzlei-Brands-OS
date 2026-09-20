@@ -13,6 +13,7 @@ import { sendSystemEmail } from "@/lib/email/resend";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
 import { handleNewContactCreated } from "@/lib/notify-new-contact";
+import { parseEuroAmount } from "@/lib/parse-euro-amount";
 
 const TALENTPOOL_FOLLOWUP_DAYS = 182; // ~6 Monate
 
@@ -102,7 +103,7 @@ export async function moveContactStage(formData: FormData) {
   // Stufe per Pflichtfeld im FinalStageDialog abgefragt (siehe dort) - hier
   // nur best-effort übernommen, falls mitgeschickt.
   const startDate = startDateRaw ? new Date(startDateRaw) : undefined;
-  const dealVolumeEur = dealVolumeRaw ? Number(dealVolumeRaw) : undefined;
+  const dealVolumeEur = dealVolumeRaw ? parseEuroAmount(dealVolumeRaw) : undefined;
 
   await prisma.$transaction([
     prisma.contact.update({
@@ -111,7 +112,7 @@ export async function moveContactStage(formData: FormData) {
         stageId,
         rejectionReason: nextRejectionReason,
         ...(startDate && !Number.isNaN(startDate.getTime()) ? { startDate } : {}),
-        ...(dealVolumeEur !== undefined && Number.isFinite(dealVolumeEur) ? { dealVolumeEur } : {}),
+        ...(dealVolumeEur !== undefined && dealVolumeEur !== null ? { dealVolumeEur } : {}),
       },
     }),
     prisma.activity.create({
@@ -137,6 +138,59 @@ export async function moveContactStage(formData: FormData) {
 
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
   revalidatePath("/dashboard/leads");
+}
+
+/**
+ * Direct correction for Contact.startDate/dealVolumeEur, independent of the
+ * FinalStageDialog shown on first reaching the final stage - so a wrong
+ * value (e.g. a mistyped "3.000") can be fixed in place instead of forcing
+ * the contact out of and back into the final stage, which previously left
+ * both the old and new dealVolumeEur figure counted in the KPI once two
+ * different contacts had gone through that workaround.
+ */
+export async function updateDealOutcome(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const startDateRaw = String(formData.get("startDate") ?? "").trim();
+  const dealVolumeRaw = String(formData.get("dealVolumeEur") ?? "").trim();
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  const data: Prisma.ContactUpdateInput = {};
+  const metadata: Record<string, string | number> = {};
+
+  if (startDateRaw) {
+    const startDate = new Date(startDateRaw);
+    if (Number.isNaN(startDate.getTime())) return "Ungültiges Datum.";
+    data.startDate = startDate;
+    metadata.startDate = startDate.toISOString();
+  }
+
+  if (dealVolumeRaw) {
+    const dealVolumeEur = parseEuroAmount(dealVolumeRaw);
+    if (dealVolumeEur === null) return "Ungültiger Betrag.";
+    data.dealVolumeEur = dealVolumeEur;
+    metadata.dealVolumeEur = dealVolumeEur;
+  }
+
+  if (Object.keys(data).length === 0) return "Kein Wert angegeben.";
+
+  await prisma.contact.update({ where: { id: contactId }, data });
+
+  await logAudit({
+    action: "contact.deal_outcome_updated",
+    entityType: "Contact",
+    entityId: contactId,
+    organizationId: (await prisma.pipeline.findUnique({ where: { id: contact.pipelineId } }))!.organizationId,
+    userId: session.user.id,
+    metadata,
+  });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+  revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath("/dashboard/clients");
 }
 
 export async function setRating(formData: FormData) {
