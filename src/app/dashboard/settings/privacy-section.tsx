@@ -1,26 +1,37 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+function monthsLabel(months: number) {
+  return `${months} ${months === 1 ? "Monat" : "Monaten"}`;
+}
+
 function RetentionRow({
   label,
   months,
-  helpText,
+  description,
+  legalBasis,
 }: {
   label: string;
   months: number | null;
-  helpText: string;
+  description: string;
+  legalBasis: string;
 }) {
   return (
     <div className="flex flex-col gap-1 border-b pb-4 last:border-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">{label}</p>
         {months !== null ? (
-          <Badge>Aktiv - nach {months} {months === 1 ? "Monat" : "Monaten"}</Badge>
+          <Badge>Aktiv - nach {monthsLabel(months)}</Badge>
         ) : (
           <Badge variant="secondary">Deaktiviert</Badge>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">{helpText}</p>
+      <p className="text-sm text-muted-foreground">
+        {months !== null
+          ? `${description} nach Ablauf von ${monthsLabel(months)} vollständig gelöscht.`
+          : `${description} aktuell nicht automatisch gelöscht, da keine Frist hinterlegt ist.`}
+      </p>
+      <p className="text-sm text-muted-foreground">{legalBasis}</p>
     </div>
   );
 }
@@ -47,12 +58,14 @@ export function PrivacySection({
           <RetentionRow
             label="Abgelehnte Bewerber"
             months={applicantDataRetentionMonths}
-            helpText="Kontakte in einer Ungeeignet-Stufe eurer Recruiting-Kampagnen werden nach Ablauf der Frist vollständig gelöscht (nicht nur anonymisiert)."
+            description="Kontakte in einer Ungeeignet-Stufe eurer Recruiting-Kampagnen werden"
+            legalBasis="Rechtsgrundlage: Löschpflicht aus dem Grundsatz der Speicherbegrenzung (Art. 5 Abs. 1 lit. e, Art. 17 DSGVO). Die Aufbewahrung bis dahin stützt sich auf das berechtigte Interesse (Art. 6 Abs. 1 lit. f DSGVO), Beweise für die Verteidigung gegen mögliche AGG-Ansprüche vorzuhalten: § 15 Abs. 4 AGG setzt dafür eine Frist von 2 Monaten ab Zugang der Ablehnung, zzgl. der 3-monatigen Klagefrist nach § 61b Abs. 1 ArbGG - in der Praxis werden dafür üblicherweise 6 Monate angesetzt."
           />
           <RetentionRow
             label="Nicht zustande gekommene Mandatsanfragen"
             months={leadDataRetentionMonths}
-            helpText="Kontakte in einer Ungeeignet-Stufe eurer Mandatsakquise-Kampagnen werden nach Ablauf der Frist vollständig gelöscht (nicht nur anonymisiert)."
+            description="Kontakte in einer Ungeeignet-Stufe eurer Mandatsakquise-Kampagnen werden"
+            legalBasis="Rechtsgrundlage: Grundsatz der Speicherbegrenzung (Art. 5 Abs. 1 lit. e DSGVO) und Recht auf Löschung (Art. 17 DSGVO). Für Mandatsanfragen gibt es keine gesetzliche Mindestfrist wie beim AGG - die Frist wird individuell mit eurer Agentur abgestimmt."
           />
         </CardContent>
       </Card>

@@ -74,8 +74,8 @@ export function DataRetentionForm({
 
       <p className="text-sm text-muted-foreground">
         Gilt kundenweit für alle Kampagnen des jeweiligen Typs. Betrifft nur Kontakte in einer Ungeeignet-Stufe.
-        Der gesamte Kontakt wird unwiderruflich gelöscht (nicht nur anonymisiert). Nicht rückgängig zu machen. Leer
-        lassen = deaktiviert. Für den Kunden ist diese Einstellung unter Einstellungen → Datenschutz einsehbar.
+        Der gesamte Kontakt wird unwiderruflich gelöscht. Nicht rückgängig zu machen. Leer lassen = deaktiviert.
+        Für den Kunden ist diese Einstellung unter Einstellungen → Datenschutz einsehbar.
       </p>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
