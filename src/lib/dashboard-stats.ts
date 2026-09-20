@@ -1,6 +1,18 @@
-type StatContact = { id: string; stageId: string; createdAt: Date; updatedAt: Date };
-type StatStage = { id: string; name: string; order: number; color: string | null };
+type StatContact = { id: string; stageId: string; createdAt: Date; updatedAt: Date; dealVolumeEur?: number | null };
+type StatStage = { id: string; name: string; order: number; color: string | null; isRejected?: boolean };
 type StatPipeline = { id: string; name: string; organizationName?: string; stages: StatStage[]; contacts: StatContact[] };
+
+/**
+ * The pipeline's actual "success" stage (eingestellt/gewonnen): the
+ * highest-order stage among the NON-rejected ones. Using the highest-order
+ * stage overall would be wrong wherever an isRejected stage (e.g.
+ * "Ungeeignet") was appended after the real final stage, which is the norm -
+ * see the leads_ungeeignet_stage migration.
+ */
+function finalStageId(sortedStages: StatStage[]): string | undefined {
+  const qualified = sortedStages.filter((s) => !s.isRejected);
+  return qualified[qualified.length - 1]?.id;
+}
 
 export type OverviewStats = {
   totalContacts: number;
@@ -58,7 +70,7 @@ export function computeCompletedStats(pipelines: StatPipeline[]): CompletedStats
     const sortedStages = [...pipeline.stages].sort((a, b) => a.order - b.order);
     if (sortedStages.length === 0) continue;
     const firstStageId = sortedStages[0].id;
-    const lastStageId = sortedStages[sortedStages.length - 1].id;
+    const lastStageId = finalStageId(sortedStages);
 
     for (const contact of pipeline.contacts) {
       if (contact.stageId === lastStageId && contact.stageId !== firstStageId) {
@@ -69,6 +81,30 @@ export function computeCompletedStats(pipelines: StatPipeline[]): CompletedStats
   }
 
   return { total, last30Days };
+}
+
+export type DealVolumeStats = { totalEur: number; last30DaysEur: number };
+
+// Sum of Contact.dealVolumeEur for LEADS contacts sitting in the pipeline's
+// final ("gewonnen") stage - only ever set there, via FinalStageDialog.
+export function computeDealVolumeStats(pipelines: StatPipeline[]): DealVolumeStats {
+  const now = Date.now();
+  let totalEur = 0;
+  let last30DaysEur = 0;
+
+  for (const pipeline of pipelines) {
+    const sortedStages = [...pipeline.stages].sort((a, b) => a.order - b.order);
+    if (sortedStages.length === 0) continue;
+    const lastStageId = finalStageId(sortedStages);
+
+    for (const contact of pipeline.contacts) {
+      if (contact.stageId !== lastStageId || !contact.dealVolumeEur) continue;
+      totalEur += contact.dealVolumeEur;
+      if (now - contact.updatedAt.getTime() <= 30 * DAY_MS) last30DaysEur += contact.dealVolumeEur;
+    }
+  }
+
+  return { totalEur, last30DaysEur };
 }
 
 export function computeOverviewStats(pipelines: StatPipeline[]): OverviewStats {
@@ -87,7 +123,7 @@ export function computeOverviewStats(pipelines: StatPipeline[]): OverviewStats {
     const sortedStages = [...pipeline.stages].sort((a, b) => a.order - b.order);
     if (sortedStages.length === 0) continue;
     const firstStageId = sortedStages[0].id;
-    const lastStageId = sortedStages[sortedStages.length - 1].id;
+    const lastStageId = finalStageId(sortedStages);
     const stageById = new Map(sortedStages.map((s) => [s.id, s]));
 
     for (const contact of pipeline.contacts) {

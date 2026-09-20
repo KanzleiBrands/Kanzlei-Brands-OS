@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { computeOverviewStats, computeCampaignCardStats } from "@/lib/dashboard-stats";
+import { computeOverviewStats, computeCampaignCardStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
 import { StatTile } from "@/components/stat-tile";
 import { getBaseUrl } from "@/lib/base-url";
 import { CampaignsTab } from "./campaigns-tab";
@@ -41,8 +41,8 @@ export default async function ClientDetailPage({
       pipelines: {
         orderBy: { createdAt: "asc" },
         include: {
-          stages: { select: { id: true, name: true, order: true, color: true } },
-          contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true } },
+          stages: { select: { id: true, name: true, order: true, color: true, isRejected: true } },
+          contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true, dealVolumeEur: true } },
         },
       },
       courseAssignments: { select: { courseId: true } },
@@ -55,6 +55,8 @@ export default async function ClientDetailPage({
   const leadPipelines = organization.pipelines.filter((p) => p.kind === "LEADS");
   const jobsStats = computeOverviewStats(jobPipelines);
   const leadsStats = computeOverviewStats(leadPipelines);
+  const dealVolumeStats = computeDealVolumeStats(leadPipelines);
+  const eurFormatter = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
   const baseUrl = await getBaseUrl();
   const leadsUsed = leadPipelines.length;
   const applicantsUsed = jobPipelines.length;
@@ -151,7 +153,7 @@ export default async function ClientDetailPage({
           <section>
             <h2 className="mb-3 text-lg font-semibold">Mandatsakquise</h2>
             {leadsBooked ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <StatTile
                   label="Neu in 30 Tagen"
                   value={leadsStats.newLast30Days}
@@ -167,6 +169,11 @@ export default async function ClientDetailPage({
                   label="Abgeschlossen in 12 Monaten"
                   value={leadsStats.completedLast365Days}
                   subtext={`${leadsStats.completedTotal} gesamt`}
+                />
+                <StatTile
+                  label="Dealvolumen (30 Tage)"
+                  value={eurFormatter.format(dealVolumeStats.last30DaysEur)}
+                  subtext={`${eurFormatter.format(dealVolumeStats.totalEur)} gesamt`}
                 />
               </div>
             ) : (

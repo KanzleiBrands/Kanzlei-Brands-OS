@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { moveContactStage } from "@/lib/actions/contacts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RejectionReasonDialog } from "@/components/rejection-reason-dialog";
+import { FinalStageDialog } from "@/components/final-stage-dialog";
 
 function StageDot({ color }: { color: string | null }) {
   return (
@@ -19,22 +20,27 @@ export function StageSelectForm({
   currentStageId,
   pipelineKind,
   stages,
+  finalStageId,
 }: {
   contactId: string;
   currentStageId: string;
   pipelineKind: string;
   stages: { id: string; name: string; color: string | null; isRejected: boolean }[];
+  finalStageId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [value, setValue] = useState(currentStageId);
   const [pendingRejectStageId, setPendingRejectStageId] = useState<string | null>(null);
+  const [pendingFinalStageId, setPendingFinalStageId] = useState<string | null>(null);
 
-  function moveTo(stageId: string, rejectionReason?: string) {
+  function moveTo(stageId: string, extra?: { rejectionReason?: string; startDate?: string; dealVolumeEur?: string }) {
     setValue(stageId);
     const formData = new FormData();
     formData.set("contactId", contactId);
     formData.set("stageId", stageId);
-    if (rejectionReason) formData.set("rejectionReason", rejectionReason);
+    if (extra?.rejectionReason) formData.set("rejectionReason", extra.rejectionReason);
+    if (extra?.startDate) formData.set("startDate", extra.startDate);
+    if (extra?.dealVolumeEur) formData.set("dealVolumeEur", extra.dealVolumeEur);
     startTransition(() => {
       moveContactStage(formData);
     });
@@ -50,6 +56,8 @@ export function StageSelectForm({
           const stage = stages.find((s) => s.id === stageId);
           if (stage?.isRejected) {
             setPendingRejectStageId(stageId);
+          } else if (finalStageId && stageId === finalStageId && currentStageId !== finalStageId) {
+            setPendingFinalStageId(stageId);
           } else {
             moveTo(stageId);
           }
@@ -89,8 +97,22 @@ export function StageSelectForm({
         isPending={isPending}
         onConfirm={(reason) => {
           if (!pendingRejectStageId) return;
-          moveTo(pendingRejectStageId, reason);
+          moveTo(pendingRejectStageId, { rejectionReason: reason });
           setPendingRejectStageId(null);
+        }}
+      />
+
+      <FinalStageDialog
+        open={!!pendingFinalStageId}
+        onOpenChange={(open) => {
+          if (!open) setPendingFinalStageId(null);
+        }}
+        pipelineKind={pipelineKind}
+        isPending={isPending}
+        onConfirm={(fields) => {
+          if (!pendingFinalStageId) return;
+          moveTo(pendingFinalStageId, fields);
+          setPendingFinalStageId(null);
         }}
       />
     </>

@@ -98,3 +98,22 @@ export async function changeEmail(
 
   await signOut({ redirectTo: "/login?email_changed=1" });
 }
+
+/**
+ * Persönlicher Schalter (nicht pro Kampagne): per E-Mail benachrichtigt
+ * werden, wenn auf einer Kampagne mit Zugriff ein neuer Lead/Bewerber
+ * eingeht. Greift nur zusammen mit dem kampagnenweiten
+ * Pipeline.notifyOnNewContact (siehe toggleNotifyOnNewContact) - siehe
+ * src/lib/notify-new-contact.ts.
+ */
+export async function updateNotificationPreference(formData: FormData) {
+  const session = await requireSession();
+  const notifyOnNewContact = formData.get("notifyOnNewContact") === "true";
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notifyOnNewContact },
+  });
+
+  revalidatePath("/dashboard/settings");
+}

@@ -12,6 +12,7 @@ import { deriveWebsiteFromEmail } from "@/lib/company";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
+import { handleNewContactCreated } from "@/lib/notify-new-contact";
 
 const TALENTPOOL_FOLLOWUP_DAYS = 182; // ~6 Monate
 
@@ -82,6 +83,8 @@ export async function moveContactStage(formData: FormData) {
   const contactId = String(formData.get("contactId") ?? "");
   const stageId = String(formData.get("stageId") ?? "");
   const rejectionReason = String(formData.get("rejectionReason") ?? "").trim() || null;
+  const startDateRaw = String(formData.get("startDate") ?? "").trim();
+  const dealVolumeRaw = String(formData.get("dealVolumeEur") ?? "").trim();
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });
   if (!contact) return;
@@ -95,8 +98,22 @@ export async function moveContactStage(formData: FormData) {
   // stale reason from a previous rejection.
   const nextRejectionReason = stage.isRejected ? rejectionReason : null;
 
+  // Einstellungsdatum/Dealvolumen werden nur beim Erreichen der finalen
+  // Stufe per Pflichtfeld im FinalStageDialog abgefragt (siehe dort) - hier
+  // nur best-effort übernommen, falls mitgeschickt.
+  const startDate = startDateRaw ? new Date(startDateRaw) : undefined;
+  const dealVolumeEur = dealVolumeRaw ? Number(dealVolumeRaw) : undefined;
+
   await prisma.$transaction([
-    prisma.contact.update({ where: { id: contactId }, data: { stageId, rejectionReason: nextRejectionReason } }),
+    prisma.contact.update({
+      where: { id: contactId },
+      data: {
+        stageId,
+        rejectionReason: nextRejectionReason,
+        ...(startDate && !Number.isNaN(startDate.getTime()) ? { startDate } : {}),
+        ...(dealVolumeEur !== undefined && Number.isFinite(dealVolumeEur) ? { dealVolumeEur } : {}),
+      },
+    }),
     prisma.activity.create({
       data: {
         contactId,
@@ -228,7 +245,10 @@ export async function createContact(_prevState: string | undefined, formData: Fo
 
   await assertPipelineAccess(session, pipelineId);
 
-  await prisma.contact.create({
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return "Kampagne nicht gefunden.";
+
+  const contact = await prisma.contact.create({
     data: {
       pipelineId,
       stageId,
@@ -241,6 +261,12 @@ export async function createContact(_prevState: string | undefined, formData: Fo
       source: "MANUAL",
     },
   });
+
+  try {
+    await handleNewContactCreated(pipeline, contact);
+  } catch (notifyError) {
+    console.error("[createContact] handleNewContactCreated failed:", notifyError);
+  }
 
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }

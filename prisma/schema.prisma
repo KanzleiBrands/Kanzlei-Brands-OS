@@ -120,6 +120,12 @@ model User {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  // Persönliche Einstellung (nicht pro Kampagne): per E-Mail benachrichtigt
+  // werden, wenn auf einer Kampagne mit Zugriff ein neuer Lead/Bewerber
+  // eingeht. Greift nur, wenn zusätzlich Pipeline.notifyOnNewContact aktiv
+  // ist - beide Schalter zusammen entscheiden, siehe notify-new-contact.ts.
+  notifyOnNewContact Boolean @default(true)
+
   pipelineAccess       PipelineAccess[]
   activities           Activity[]
   emailAccounts        EmailAccount[]
@@ -181,6 +187,12 @@ model Pipeline {
   active               Boolean      @default(true)
   showDuplicateWarning Boolean      @default(true)
   location             String? // Recruiting: which office/site this specific job posting is for
+
+  // Kunden per E-Mail benachrichtigen, wenn auf dieser Kampagne ein neuer
+  // Lead/Bewerber eingeht - default an. Wirkt zusammen mit dem persönlichen
+  // Schalter User.notifyOnNewContact: es werden nur Nutzer mit Zugriff auf
+  // diese Kampagne benachrichtigt, die ihrerseits nicht abbestellt haben.
+  notifyOnNewContact Boolean @default(true)
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -262,6 +274,13 @@ model Contact {
   // per Wiedervorlage (Task) automatisch nach einigen Monaten erneut vorgelegt.
   talentPool     Boolean @default(false)
   talentPoolNote String?
+
+  // Nur bei Erreichen der jeweils letzten (nicht-abgelehnten) Stufe der
+  // Kampagne per Pflichtfeld im Popup abgefragt und gesetzt - siehe
+  // FinalStageDialog. startDate = Einstellungsdatum (Recruiting),
+  // dealVolumeEur = Auftragswert in Euro (Mandatsakquise, "gewonnen").
+  startDate     DateTime?
+  dealVolumeEur Int?
 
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
@@ -497,9 +516,17 @@ model MessageTemplate {
   subject String? // nur bei kind = EMAIL genutzt
   body    String
 
+  // Automatischer Empfangsbestätigung an den Lead/Bewerber selbst, direkt bei
+  // Eingang (Webhook/manuell angelegt) - höchstens eine EMAIL-Vorlage pro
+  // Organisation und Kampagnentyp (der Unique-Index unten erzwingt das nur
+  // für Zeilen mit gesetztem Wert, da Postgres NULL != NULL behandelt).
+  // null = kein Automatikversand für diese Vorlage.
+  defaultForKind PipelineKind?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([organizationId, defaultForKind])
   @@index([organizationId])
 }
 

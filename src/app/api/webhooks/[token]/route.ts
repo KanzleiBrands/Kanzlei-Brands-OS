@@ -5,6 +5,7 @@ import { extractContactFields, resolveLocationRoutingPipelineId, stripTrackingFi
 import { isFileUrl } from "@/lib/format-custom-fields";
 import { storeFileFromUrl } from "@/lib/file-storage";
 import { deriveWebsiteFromEmail } from "@/lib/company";
+import { handleNewContactCreated } from "@/lib/notify-new-contact";
 
 /** Re-hosts a file the source platform linked to under our own storage; keeps the original link if the download fails. */
 async function mirrorExternalFile(url: string): Promise<string> {
@@ -67,6 +68,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           })
         : null;
     const pipelineId = routedPipeline?.id ?? endpoint.pipelineId;
+    const pipeline = routedPipeline ?? (await prisma.pipeline.findUnique({ where: { id: pipelineId } }));
+    if (!pipeline) {
+      throw new Error("Pipeline not found");
+    }
 
     const firstStage = await prisma.stage.findFirst({
       where: { pipelineId },
@@ -111,6 +116,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await prisma.webhookDelivery.create({
       data: { endpointId: endpoint.id, rawPayload: payload, contactId: contact.id },
     });
+
+    // Best-effort: a notification/auto-reply failure must never fail lead
+    // ingestion itself, which is the one thing this route may never lose.
+    try {
+      await handleNewContactCreated(pipeline, contact);
+    } catch (notifyError) {
+      console.error("[webhook] handleNewContactCreated failed:", notifyError);
+    }
 
     return NextResponse.json({ ok: true, contactId: contact.id }, { status: 201 });
   } catch (error) {

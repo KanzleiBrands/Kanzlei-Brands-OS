@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { createTemplate, deleteTemplate } from "@/lib/actions/templates";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { createTemplate, deleteTemplate, setTemplateDefaultForKind } from "@/lib/actions/templates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ type Template = {
   name: string;
   subject: string | null;
   body: string;
+  defaultForKind: "LEADS" | "APPLICANTS" | null;
 };
 
 const KIND_LABELS: Record<Template["kind"], string> = { NOTE: "Notiz", EMAIL: "E-Mail" };
@@ -51,6 +52,40 @@ function NewTemplateForm() {
   );
 }
 
+function DefaultForKindCheckbox({
+  templateId,
+  kind,
+  label,
+  checked,
+}: {
+  templateId: string;
+  kind: "LEADS" | "APPLICANTS";
+  label: string;
+  checked: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <input
+        type="checkbox"
+        defaultChecked={checked}
+        disabled={isPending}
+        onChange={(e) => {
+          const formData = new FormData();
+          formData.set("templateId", templateId);
+          formData.set("defaultForKind", kind);
+          formData.set("checked", String(e.target.checked));
+          startTransition(() => {
+            setTemplateDefaultForKind(formData);
+          });
+        }}
+      />
+      {label}
+    </label>
+  );
+}
+
 export function MessageTemplatesSection({ templates }: { templates: Template[] }) {
   return (
     <Card>
@@ -59,7 +94,9 @@ export function MessageTemplatesSection({ templates }: { templates: Template[] }
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
-          Wiederverwendbare Notiz- und E-Mail-Vorlagen, einmal anlegen und in jedem Kontakt per Klick einfügen.
+          Wiederverwendbare Notiz- und E-Mail-Vorlagen, einmal anlegen und in jedem Kontakt per Klick einfügen. Eine
+          E-Mail-Vorlage kann außerdem als automatische Empfangsbestätigung markiert werden, die neue Leads/Bewerber
+          direkt bei Eingang bekommen (höchstens eine pro Kampagnentyp).
         </p>
         <NewTemplateForm />
         <div className="flex flex-col gap-2">
@@ -72,6 +109,22 @@ export function MessageTemplatesSection({ templates }: { templates: Template[] }
                 </div>
                 {template.subject && <p className="text-sm text-muted-foreground">Betreff: {template.subject}</p>}
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{template.body}</p>
+                {template.kind === "EMAIL" && (
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <DefaultForKindCheckbox
+                      templateId={template.id}
+                      kind="APPLICANTS"
+                      label="Standard bei neuer Bewerbung"
+                      checked={template.defaultForKind === "APPLICANTS"}
+                    />
+                    <DefaultForKindCheckbox
+                      templateId={template.id}
+                      kind="LEADS"
+                      label="Standard bei neuer Mandatsanfrage"
+                      checked={template.defaultForKind === "LEADS"}
+                    />
+                  </div>
+                )}
               </div>
               <form action={deleteTemplate}>
                 <input type="hidden" name="templateId" value={template.id} />

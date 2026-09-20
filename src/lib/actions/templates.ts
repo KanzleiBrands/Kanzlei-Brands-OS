@@ -40,6 +40,41 @@ export async function createTemplate(_prevState: string | undefined, formData: F
   revalidatePath("/dashboard/settings");
 }
 
+/**
+ * Marks (or unmarks) an EMAIL-Vorlage as die automatische
+ * Empfangsbestätigung, die ein Lead/Bewerber selbst bekommt, sobald ein
+ * neuer Kontakt dieses Kampagnentyps eingeht (Webhook oder manuell
+ * angelegt - nicht bei CSV-Massenimport) - siehe notify-new-contact.ts.
+ * Höchstens eine Vorlage pro Organisation und Kampagnentyp: das Setzen
+ * einer neuen Standard-Vorlage entfernt die Markierung von einer
+ * eventuell vorherigen automatisch.
+ */
+export async function setTemplateDefaultForKind(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role === "CLIENT_STAFF") return;
+
+  const templateId = String(formData.get("templateId") ?? "");
+  const kindRaw = String(formData.get("defaultForKind") ?? "");
+  const checked = formData.get("checked") === "true";
+
+  if (kindRaw !== "LEADS" && kindRaw !== "APPLICANTS") return;
+
+  const template = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
+  if (!template || template.organizationId !== session.user.organizationId || template.kind !== "EMAIL") return;
+
+  await prisma.$transaction([
+    prisma.messageTemplate.updateMany({
+      where: { organizationId: session.user.organizationId, defaultForKind: kindRaw },
+      data: { defaultForKind: null },
+    }),
+    ...(checked
+      ? [prisma.messageTemplate.update({ where: { id: templateId }, data: { defaultForKind: kindRaw } })]
+      : []),
+  ]);
+
+  revalidatePath("/dashboard/settings");
+}
+
 export async function deleteTemplate(formData: FormData) {
   const session = await requireSession();
   if (session.user.role === "CLIENT_STAFF") return;

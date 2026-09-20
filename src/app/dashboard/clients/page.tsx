@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { computeOverviewStats, computeCompletedStats } from "@/lib/dashboard-stats";
+import { computeOverviewStats, computeCompletedStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
 import { NewClientForm } from "./new-client-form";
 import { ClientsTable } from "./clients-table";
 import { ArchivedClientsList } from "./archived-clients-list";
@@ -23,6 +23,18 @@ function trendCard(label: string, value: number, deltaLast30Days: number) {
       <div className="mt-0.5 flex items-baseline gap-1.5">
         <span className="text-xl font-semibold">{value}</span>
         {deltaLast30Days > 0 && <span className="text-sm font-medium text-emerald-500">↗ +{deltaLast30Days}</span>}
+      </div>
+    </div>
+  );
+}
+
+function currencyTrendCard(label: string, valueLabel: string, deltaLabel: string | null) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="mt-0.5 flex items-baseline gap-1.5">
+        <span className="text-xl font-semibold">{valueLabel}</span>
+        {deltaLabel && <span className="text-sm font-medium text-emerald-500">↗ +{deltaLabel}</span>}
       </div>
     </div>
   );
@@ -51,8 +63,8 @@ export default async function ClientsPage({
             kind: true,
             active: true,
             createdAt: true,
-            stages: { select: { id: true, name: true, order: true, color: true } },
-            contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true } },
+            stages: { select: { id: true, name: true, order: true, color: true, isRejected: true } },
+            contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true, dealVolumeEur: true } },
           },
         },
       },
@@ -73,6 +85,8 @@ export default async function ClientsPage({
   const leadsStats = computeOverviewStats(leadPipelines);
   const jobsCompleted = computeCompletedStats(jobPipelines);
   const leadsCompleted = computeCompletedStats(leadPipelines);
+  const dealVolume = computeDealVolumeStats(leadPipelines);
+  const eurFormatter = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
   const clientRows = clients.map((client) => {
     const stats = computeOverviewStats(client.pipelines);
@@ -99,12 +113,17 @@ export default async function ClientsPage({
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Kunden-Übersicht</h1>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
         {trendCard("Kunden", clients.length, clientsLast30Days)}
         {trendCard("Bewerbungen", jobsStats.totalContacts, jobsStats.newLast30Days)}
         {trendCard("Einstellungen", jobsCompleted.total, jobsCompleted.last30Days)}
         {trendCard("Mandatsanfragen", leadsStats.totalContacts, leadsStats.newLast30Days)}
         {trendCard("Abschlüsse", leadsCompleted.total, leadsCompleted.last30Days)}
+        {currencyTrendCard(
+          "Dealvolumen",
+          eurFormatter.format(dealVolume.totalEur),
+          dealVolume.last30DaysEur > 0 ? eurFormatter.format(dealVolume.last30DaysEur) : null,
+        )}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b">

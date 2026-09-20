@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
-import { computeOverviewStats } from "@/lib/dashboard-stats";
+import { computeOverviewStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
 import { avatarColorFor, initialsOf } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,13 +29,16 @@ export default async function DashboardPage() {
     include: {
       stages: { orderBy: { order: "asc" } },
       contacts: {
-        select: { id: true, stageId: true, createdAt: true, updatedAt: true },
+        select: { id: true, stageId: true, createdAt: true, updatedAt: true, dealVolumeEur: true },
       },
     },
     orderBy: { createdAt: "asc" },
   });
 
   const stats = computeOverviewStats(pipelines);
+  const leadPipelines = pipelines.filter((p) => p.kind === "LEADS");
+  const dealVolumeStats = computeDealVolumeStats(leadPipelines);
+  const eurFormatter = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
   const recentContacts = await prisma.contact.findMany({
     where: { pipeline: pipelineFilter },
@@ -65,6 +68,13 @@ export default async function DashboardPage() {
           value={stats.completedLast365Days}
           subtext={`${stats.completedTotal} gesamt`}
         />
+        {leadPipelines.length > 0 && (
+          <StatTile
+            label="Dealvolumen (30 Tage)"
+            value={eurFormatter.format(dealVolumeStats.last30DaysEur)}
+            subtext={`${eurFormatter.format(dealVolumeStats.totalEur)} gesamt`}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">

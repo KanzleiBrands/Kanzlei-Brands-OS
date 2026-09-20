@@ -576,6 +576,29 @@ export async function toggleDuplicateWarning(formData: FormData) {
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }
 
+/**
+ * Ob der Kunde per E-Mail benachrichtigt wird, wenn auf dieser Kampagne ein
+ * neuer Lead/Bewerber eingeht - wirkt zusammen mit dem persönlichen Schalter
+ * jedes einzelnen Nutzers (User.notifyOnNewContact, siehe updateNotificationPreference),
+ * siehe src/lib/notify-new-contact.ts.
+ */
+export async function toggleNotifyOnNewContact(formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return;
+  assertOrganizationAccess(session, pipeline.organizationId);
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  await prisma.pipeline.update({
+    where: { id: pipelineId },
+    data: { notifyOnNewContact: !pipeline.notifyOnNewContact },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+}
+
 export async function setPipelineAccess(formData: FormData) {
   const session = await requireSession();
   const userId = String(formData.get("userId") ?? "");

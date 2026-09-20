@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 
-export function StatTile({ label, value, subtext }: { label: string; value: number; subtext: string }) {
+export function StatTile({ label, value, subtext }: { label: string; value: number | string; subtext: string }) {
   return (
     <Card>
       <CardContent>

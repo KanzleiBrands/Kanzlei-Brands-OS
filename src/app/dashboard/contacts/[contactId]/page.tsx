@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { customFieldEntries } from "@/lib/format-custom-fields";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { contactDisplayName } from "@/lib/contact-display";
+import { finalStageId } from "@/lib/final-stage";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -177,6 +178,7 @@ export default async function ContactDetailPage({
             currentStageId={contact.stageId}
             pipelineKind={contact.pipeline.kind}
             stages={contact.pipeline.stages}
+            finalStageId={finalStageId(contact.pipeline.stages)}
           />
           <EditContactDialog
             contactId={contact.id}

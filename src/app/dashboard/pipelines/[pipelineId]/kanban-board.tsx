@@ -11,6 +11,7 @@ import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { RejectionReasonDialog } from "@/components/rejection-reason-dialog";
+import { FinalStageDialog } from "@/components/final-stage-dialog";
 
 type Contact = {
   id: string;
@@ -61,38 +62,53 @@ export function KanbanBoard({
   stages,
   duplicateEmails,
   rejectStageId,
+  finalStageId,
   pipelineKind,
 }: {
   stages: Stage[];
   duplicateEmails: Set<string>;
   rejectStageId?: string;
+  finalStageId?: string;
   pipelineKind: string;
 }) {
   const rejectLabel = "Als ungeeignet markieren";
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [rejectingContactId, setRejectingContactId] = useState<string | null>(null);
+  const [finalizingContactId, setFinalizingContactId] = useState<string | null>(null);
 
-  function handleDrop(stageId: string, contactId: string) {
+  function move(stageId: string, contactId: string, extra?: { rejectionReason?: string; startDate?: string; dealVolumeEur?: string }) {
     const formData = new FormData();
     formData.set("contactId", contactId);
     formData.set("stageId", stageId);
+    if (extra?.rejectionReason) formData.set("rejectionReason", extra.rejectionReason);
+    if (extra?.startDate) formData.set("startDate", extra.startDate);
+    if (extra?.dealVolumeEur) formData.set("dealVolumeEur", extra.dealVolumeEur);
     startTransition(() => {
       moveContactStage(formData);
     });
+  }
+
+  function handleDrop(stageId: string, contactId: string) {
+    const currentStage = stages.find((s) => s.contacts.some((c) => c.id === contactId));
+    if (stageId === finalStageId && currentStage?.id !== finalStageId) {
+      setFinalizingContactId(contactId);
+    } else {
+      move(stageId, contactId);
+    }
     setDragOverStageId(null);
   }
 
   function handleRejectConfirm(reason: string) {
     if (!rejectStageId || !rejectingContactId) return;
-    const formData = new FormData();
-    formData.set("contactId", rejectingContactId);
-    formData.set("stageId", rejectStageId);
-    formData.set("rejectionReason", reason);
-    startTransition(() => {
-      moveContactStage(formData);
-    });
+    move(rejectStageId, rejectingContactId, { rejectionReason: reason });
     setRejectingContactId(null);
+  }
+
+  function handleFinalConfirm(fields: { startDate?: string; dealVolumeEur?: string }) {
+    if (!finalStageId || !finalizingContactId) return;
+    move(finalStageId, finalizingContactId, fields);
+    setFinalizingContactId(null);
   }
 
   return (
@@ -215,6 +231,15 @@ export function KanbanBoard({
         }}
         pipelineKind={pipelineKind}
         onConfirm={handleRejectConfirm}
+        isPending={isPending}
+      />
+      <FinalStageDialog
+        open={!!finalizingContactId}
+        onOpenChange={(open) => {
+          if (!open) setFinalizingContactId(null);
+        }}
+        pipelineKind={pipelineKind}
+        onConfirm={handleFinalConfirm}
         isPending={isPending}
       />
     </div>

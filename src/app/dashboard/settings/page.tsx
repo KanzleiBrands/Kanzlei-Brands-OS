@@ -10,9 +10,10 @@ import { MailboxSection } from "./mailbox-section";
 import { StageTemplatesSection } from "./stage-templates-section";
 import { MessageTemplatesSection } from "./message-templates-section";
 import { PrivacySection } from "./privacy-section";
+import { NotificationsSection } from "./notifications-section";
 import type { EditableStage } from "./stage-list-editor";
 
-type Tab = "account" | "team" | "mailbox" | "snippets" | "templates" | "privacy";
+type Tab = "account" | "notifications" | "team" | "mailbox" | "snippets" | "templates" | "privacy";
 
 export default async function SettingsPage({
   searchParams,
@@ -29,6 +30,7 @@ export default async function SettingsPage({
 
   const validTabs: Tab[] = [
     "account",
+    "notifications",
     ...(canManageTeam ? (["team"] as const) : []),
     ...(canUseMailbox ? (["mailbox"] as const) : []),
     "snippets",
@@ -38,6 +40,10 @@ export default async function SettingsPage({
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
 
   const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { notifyOnNewContact: true },
+  });
 
   return (
     <div className="p-4 sm:p-8">
@@ -50,6 +56,12 @@ export default async function SettingsPage({
           className={`border-b-2 px-3 py-2 text-sm ${tab === "account" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >
           Account
+        </Link>
+        <Link
+          href="/dashboard/settings?tab=notifications"
+          className={`border-b-2 px-3 py-2 text-sm ${tab === "notifications" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          Benachrichtigungen
         </Link>
         {canManageTeam && (
           <Link
@@ -98,6 +110,10 @@ export default async function SettingsPage({
           role={session.user.role}
           organizationName={organization?.name}
         />
+      )}
+
+      {tab === "notifications" && (
+        <NotificationsSection notifyOnNewContact={currentUser?.notifyOnNewContact ?? true} />
       )}
 
       {tab === "team" && canManageTeam && (

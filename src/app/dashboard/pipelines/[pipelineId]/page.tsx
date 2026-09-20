@@ -10,6 +10,7 @@ import { DeletePipelineButton } from "./delete-pipeline-button";
 import { EditPipelineNameForm } from "./edit-pipeline-name-form";
 import { EditPipelineLocationForm } from "./edit-pipeline-location-form";
 import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
+import { NotifyNewContactToggle } from "./notify-new-contact-toggle";
 import { AutomationsPanel } from "./automations-panel";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
@@ -152,6 +153,7 @@ export default async function PipelineDetailPage({
           )}
 
           <DuplicateWarningToggle pipelineId={pipeline.id} enabled={pipeline.showDuplicateWarning} />
+          <NotifyNewContactToggle pipelineId={pipeline.id} enabled={pipeline.notifyOnNewContact} />
 
           <AutomationsPanel
             pipelineId={pipeline.id}
