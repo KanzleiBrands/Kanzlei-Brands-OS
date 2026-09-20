@@ -5,6 +5,7 @@ import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/a
 import { getBaseUrl } from "@/lib/base-url";
 import { PipelineView } from "./pipeline-view";
 import { WebhookPanel } from "./webhook-panel";
+import { MetaConnectionsPanel } from "./meta-connections-panel";
 import { PipelineActiveToggle } from "./pipeline-active-toggle";
 import { DeletePipelineButton } from "./delete-pipeline-button";
 import { EditPipelineNameForm } from "./edit-pipeline-name-form";
@@ -64,6 +65,9 @@ export default async function PipelineDetailPage({
         },
       },
       webhookEndpoints: {
+        include: { deliveries: { orderBy: { createdAt: "desc" }, take: 5 } },
+      },
+      metaLeadFormConnections: {
         include: { deliveries: { orderBy: { createdAt: "desc" }, take: 5 } },
       },
       automationRules: true,
@@ -176,26 +180,45 @@ export default async function PipelineDetailPage({
       )}
 
       {tab === "sources" && canManageSources && (
-        <WebhookPanel
-          pipelineId={pipeline.id}
-          siblingPipelines={siblingPipelines}
-          endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
-            id: endpoint.id,
-            source: endpoint.source,
-            url: `${baseUrl}/api/webhooks/${endpoint.token}`,
-            fieldMapping: endpoint.fieldMapping,
-            locationRouting: endpoint.locationRouting,
-            minCallDurationSeconds: endpoint.minCallDurationSeconds,
-            deliveries: endpoint.deliveries.map((d) => ({
-              id: d.id,
-              createdAt: d.createdAt.toLocaleString("de-DE"),
-              error: d.error,
-              skippedReason: d.skippedReason,
-              contactId: d.contactId,
-              rawPayload: d.rawPayload,
-            })),
-          }))}
-        />
+        <div className="flex flex-col gap-6">
+          <MetaConnectionsPanel
+            pipelineId={pipeline.id}
+            metaConfigured={!!process.env.META_APP_ID}
+            connections={pipeline.metaLeadFormConnections.map((connection) => ({
+              id: connection.id,
+              pageName: connection.pageName,
+              formName: connection.formName,
+              active: connection.active,
+              lastError: connection.lastError,
+              deliveries: connection.deliveries.map((d) => ({
+                id: d.id,
+                createdAt: d.createdAt.toLocaleString("de-DE"),
+                error: d.error,
+                contactId: d.contactId,
+              })),
+            }))}
+          />
+          <WebhookPanel
+            pipelineId={pipeline.id}
+            siblingPipelines={siblingPipelines}
+            endpoints={pipeline.webhookEndpoints.map((endpoint) => ({
+              id: endpoint.id,
+              source: endpoint.source,
+              url: `${baseUrl}/api/webhooks/${endpoint.token}`,
+              fieldMapping: endpoint.fieldMapping,
+              locationRouting: endpoint.locationRouting,
+              minCallDurationSeconds: endpoint.minCallDurationSeconds,
+              deliveries: endpoint.deliveries.map((d) => ({
+                id: d.id,
+                createdAt: d.createdAt.toLocaleString("de-DE"),
+                error: d.error,
+                skippedReason: d.skippedReason,
+                contactId: d.contactId,
+                rawPayload: d.rawPayload,
+              })),
+            }))}
+          />
+        </div>
       )}
     </div>
   );

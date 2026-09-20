@@ -393,6 +393,78 @@ function collectAllValues(node: unknown, out: string[] = []): string[] {
   return out;
 }
 
+// Meta's Lead Ads (Instant Forms) standard field keys are fixed/documented
+// (unlike the free-text German form labels the HINT regexes above are for),
+// so this maps them by exact key instead of guessing - see
+// https://developers.facebook.com/docs/marketing-api/guides/lead-ads/field-types.
+const META_STANDARD_FIELD_MAP: Record<string, "firstName" | "lastName" | "email" | "phone" | "location" | "companyName" | "address"> = {
+  first_name: "firstName",
+  last_name: "lastName",
+  email: "email",
+  work_email: "email",
+  phone_number: "phone",
+  work_phone_number: "phone",
+  city: "location",
+  company_name: "companyName",
+  street_address: "address",
+};
+
+/**
+ * Maps a Meta Graph API lead's `field_data` array (fetched via
+ * fetchMetaLead() after a leadgen webhook event) onto Contact fields.
+ * Custom questions the client added in Ads Manager use an arbitrary `name`
+ * that isn't in META_STANDARD_FIELD_MAP - those fall through to
+ * customFields instead of being guessed at, since Meta's own standard keys
+ * are reliable enough to not need the HINT-regex fallback the other
+ * extractors use for free-form form builders.
+ */
+export function extractContactFieldsFromMetaLead(fieldData: { name: string; values: string[] }[]): {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  companyName: string | null;
+  address: string | null;
+  customFields: Record<string, string>;
+} {
+  const result = {
+    firstName: null as string | null,
+    lastName: null as string | null,
+    email: null as string | null,
+    phone: null as string | null,
+    location: null as string | null,
+    companyName: null as string | null,
+    address: null as string | null,
+    customFields: {} as Record<string, string>,
+  };
+
+  for (const field of fieldData) {
+    const value = toStringOrNull(field.values?.[0]);
+    if (!value) continue;
+    const key = normalizeFieldKey(field.name);
+
+    if (key === "full_name") {
+      if (!result.firstName && !result.lastName) {
+        const [first, ...rest] = value.split(" ");
+        result.firstName = first || null;
+        result.lastName = rest.join(" ") || null;
+      }
+      continue;
+    }
+
+    const mapped = META_STANDARD_FIELD_MAP[key];
+    if (mapped) {
+      if (!result[mapped]) result[mapped] = value;
+      continue;
+    }
+
+    result.customFields[field.name] = value;
+  }
+
+  return result;
+}
+
 /**
  * For a job posted at several locations sharing one funnel/webhook: finds
  * which location answer (if any) appears anywhere in the payload and

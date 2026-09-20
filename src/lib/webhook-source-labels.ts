@@ -60,6 +60,9 @@ export const WEBHOOK_SOURCE_COLORS: Record<string, string> = {
 export const WEBHOOK_FORM_SOURCES = ["GENERIC", "MATELSO"] as const;
 
 // Native/ads-platform sources, grouped separately as "Direktintegrationen".
-export const DIRECT_INTEGRATION_SOURCES = ["GOOGLE_ADS", "META_LEAD_ADS", "LINKEDIN_LEAD_GEN"] as const;
+// META_LEAD_ADS is deliberately excluded here: it has its own real OAuth
+// connect flow now (MetaConnectionsPanel/"+ Verbinden"), not a generic
+// webhook token like the sources below still are.
+export const DIRECT_INTEGRATION_SOURCES = ["GOOGLE_ADS", "LINKEDIN_LEAD_GEN"] as const;
 
 export const WEBHOOK_SOURCES = [...WEBHOOK_FORM_SOURCES, ...DIRECT_INTEGRATION_SOURCES] as const;

@@ -114,12 +114,13 @@ model Organization {
   // (Art. 5 Abs. 1 lit. e DSGVO) - Empfehlung in der Praxis 6 Monate.
   leadDataRetentionMonths      Int?
 
-  users             User[]
-  pipelines         Pipeline[]
-  courseAssignments CourseAssignment[]
-  webhookEndpoints  WebhookEndpoint[]
-  auditLogs         AuditLog[]
-  messageTemplates  MessageTemplate[]
+  users                   User[]
+  pipelines               Pipeline[]
+  courseAssignments       CourseAssignment[]
+  webhookEndpoints        WebhookEndpoint[]
+  metaLeadFormConnections MetaLeadFormConnection[]
+  auditLogs               AuditLog[]
+  messageTemplates        MessageTemplate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -173,10 +174,11 @@ model User {
   auditLogs                AuditLog[]
   offerInterests           OfferInterest[]
   automationRules          AutomationRule[]
-  managedOrganizations     Organization[]   @relation("AccountManagerFor")
-  backofficeContactForOrgs Organization[]   @relation("BackofficeContactFor")
-  tasksCreated             Task[]           @relation("TaskCreatedBy")
-  tasksAssigned            Task[]           @relation("TaskAssignedTo")
+  managedOrganizations     Organization[]           @relation("AccountManagerFor")
+  backofficeContactForOrgs Organization[]           @relation("BackofficeContactFor")
+  connectedMetaLeadForms   MetaLeadFormConnection[]
+  tasksCreated             Task[]                   @relation("TaskCreatedBy")
+  tasksAssigned            Task[]                   @relation("TaskAssignedTo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -238,11 +240,12 @@ model Pipeline {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  stages           Stage[]
-  contacts         Contact[]
-  access           PipelineAccess[]
-  webhookEndpoints WebhookEndpoint[]
-  automationRules  AutomationRule[]
+  stages                  Stage[]
+  contacts                Contact[]
+  access                  PipelineAccess[]
+  webhookEndpoints        WebhookEndpoint[]
+  metaLeadFormConnections MetaLeadFormConnection[]
+  automationRules         AutomationRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -341,6 +344,7 @@ model Contact {
   emailMessages      EmailMessage[]
   additionalContacts AdditionalContact[]
   automationLogs     AutomationLog[]
+  metaLeadDeliveries MetaLeadDelivery[]
   tasks              Task[]
 
   createdAt DateTime @default(now())
@@ -468,6 +472,72 @@ model WebhookDelivery {
   createdAt     DateTime        @default(now())
 
   @@index([endpointId])
+}
+
+// ---------------------------------------------------------------------------
+// Meta (Facebook/Instagram) Lead Ads: echte OAuth-Direktintegration statt
+// eines generischen Webhook-Tokens. Ein Agentur-Mitarbeiter verbindet eine
+// Facebook-Seite + ein konkretes Instant-Formular mit genau einer Pipeline;
+// neue Formular-Antworten kommen dann per Meta-Leadgen-Webhook
+// (src/app/api/webhooks/meta/leadgen/route.ts) automatisch als Contact rein,
+// ganz ohne Zapier/Make als Zwischenschritt.
+// ---------------------------------------------------------------------------
+
+model MetaLeadFormConnection {
+  id                 String  @id @default(cuid())
+  pageId             String
+  pageName           String?
+  formId             String
+  formName           String?
+  // Verschlüsselt wie EmailAccount.accessTokenEnc (src/lib/auth-encryption.ts).
+  // Page Access Tokens aus einem Long-Lived User Token laufen praktisch nicht
+  // ab, solange der Zugriff nicht entzogen wird - siehe lastError für den
+  // Fall, dass Meta ihn dennoch irgendwann ablehnt (Graph-Fehlercode 190).
+  pageAccessTokenEnc String
+
+  // Wird auf false gesetzt, sobald Meta den Access Token ablehnt (Passwort
+  // geändert, Zugriff in Facebook entzogen o.ä.) - die Kachel im
+  // Lead-Quellen-Tab fordert dann zum erneuten Verbinden auf, statt weiter
+  // stillschweigend Leads zu verlieren.
+  active    Boolean @default(true)
+  lastError String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pipelineId     String
+  pipeline       Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  connectedByUserId String?
+  connectedBy       User?   @relation(fields: [connectedByUserId], references: [id], onDelete: SetNull)
+
+  deliveries MetaLeadDelivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pipelineId, formId])
+  @@index([organizationId])
+  @@index([pipelineId])
+  @@index([pageId])
+}
+
+// Idempotenz + Audit-Log für eingehende Meta-Leadgen-Webhook-Events: Metas
+// eigene Zustellung wiederholt sich bei Fehlern/Timeouts, daher verhindert
+// der Unique-Index auf (connectionId, leadgenId), dass derselbe Lead zweimal
+// als Contact angelegt wird.
+model MetaLeadDelivery {
+  id           String                 @id @default(cuid())
+  connectionId String
+  connection   MetaLeadFormConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  leadgenId    String
+  contactId    String?
+  contact      Contact?               @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  rawPayload   Json?
+  error        String?
+  createdAt    DateTime               @default(now())
+
+  @@unique([connectionId, leadgenId])
+  @@index([connectionId])
 }
 
 // ---------------------------------------------------------------------------
