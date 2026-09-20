@@ -29,13 +29,18 @@ model Organization {
   // from the default Kunden-Übersicht and can be reactivated at any time.
   archivedAt DateTime?
 
-  // Gebuchte Kampagnen-Kontingente je Kampagnentyp - null bedeutet "kein
-  // Limit gesetzt". "In Gebrauch" wird nicht separat gespeichert, sondern
-  // immer live aus der Anzahl vorhandener Pipeline-Zeilen dieses Kunden
-  // je PipelineKind berechnet, damit Löschen einer Kampagne das Kontingent
-  // automatisch wieder freigibt.
-  leadsQuota      Int?
-  applicantsQuota Int?
+  // Gebuchte Kampagnen-Kontingente je Kampagnentyp - null bedeutet bewusst
+  // "kein Limit gesetzt" (von der Agentur explizit für einen Kunden
+  // gewählt), Default für neue Kunden ist 0 statt null: ein frisch
+  // angelegter Kunde hat noch nichts gebucht und darf daher nicht per
+  // Self-Serve-Formular eine erste Kampagne einreichen können, bevor die
+  // Agentur überhaupt ein Kontingent freigegeben hat (siehe
+  // CampaignRequestCard.quotaExhausted). "In Gebrauch" wird nicht separat
+  // gespeichert, sondern immer live aus der Anzahl vorhandener
+  // Pipeline-Zeilen dieses Kunden je PipelineKind berechnet, damit Löschen
+  // einer Kampagne das Kontingent automatisch wieder freigibt.
+  leadsQuota      Int? @default(0)
+  applicantsQuota Int? @default(0)
 
   // Kundenspezifische Jotform-URLs (Stellenformular / Mandatsakquise-Briefing,
   // an Airtable gekoppelt) - der Kunde nutzt diese selbst, um im Rahmen
