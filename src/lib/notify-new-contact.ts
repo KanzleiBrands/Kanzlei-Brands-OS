@@ -47,9 +47,9 @@ export async function handleNewContactCreated(pipeline: NewContactPipeline, cont
       const isApplicant = pipeline.kind === "APPLICANTS";
       const subject = `${isApplicant ? "Neue Bewerbung" : "Neuer Lead"} für ${pipeline.name}`;
       const text = [
-        `Sie haben ${isApplicant ? "eine neue Bewerbung" : "einen neuen Lead"} für die Kampagne "${pipeline.name}" erhalten.`,
+        `Du hast ${isApplicant ? "eine neue Bewerbung" : "einen neuen Lead"} für die Kampagne "${pipeline.name}" erhalten.`,
         "",
-        `Bitte loggen Sie sich in Ihr Kundenportal ein, um ${isApplicant ? "die Bewerbung" : "die Anfrage"} zu bearbeiten:`,
+        `Bitte logge dich in dein Kundenportal ein, um ${isApplicant ? "die Bewerbung" : "die Anfrage"} zu bearbeiten:`,
         `${baseUrl}/dashboard/pipelines/${pipeline.id}`,
       ].join("\n");
 

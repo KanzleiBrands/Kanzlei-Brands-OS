@@ -112,8 +112,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const baseUrl = await getBaseUrl();
         await sendSystemEmail({
           to: contactEmail,
-          subject: "Zugang zu eurem Kanzlei Brands Kundenportal",
-          text: `Hallo ${contactFirstName},\n\neuer Zugang zum Kanzlei Brands Kundenportal ist bereit. Aktiviere ihn hier:\n${baseUrl}/activate/${activationToken}\n\nViele Grüße\nKanzlei Brands`,
+          subject: "Zugang zu deinem Kanzlei Brands Kundenportal",
+          text: `Hallo ${contactFirstName},\n\ndein Zugang zum Kanzlei Brands Kundenportal ist bereit. Aktiviere ihn hier:\n${baseUrl}/activate/${activationToken}\n\nViele Grüße\nKanzlei Brands`,
         });
       }
     }

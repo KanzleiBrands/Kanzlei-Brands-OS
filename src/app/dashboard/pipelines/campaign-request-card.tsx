@@ -64,8 +64,8 @@ export function CampaignRequestCard({
           <>
             <p className="text-sm text-muted-foreground">
               {quotaExhausted
-                ? "Euer gebuchtes Kontingent ist aktuell ausgeschöpft."
-                : "Dafür meldet sich euer Account Manager persönlich bei euch."}
+                ? "Dein gebuchtes Kontingent ist aktuell ausgeschöpft."
+                : "Dafür meldet sich dein Account Manager persönlich bei dir."}
             </p>
             {canRequest ? (
               sent ? (

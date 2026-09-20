@@ -23,14 +23,14 @@ export const APPLICANT_GROWTH_LEVERS: GrowthLever[] = [
     label: "Social Media für Stellenanzeigen",
     kind: "channel",
     tag: "social_media",
-    suggestion: "Nutzt eure offenen Stellen auch auf Social Media, um mehr passende Kandidat:innen zu erreichen.",
+    suggestion: "Nutze deine offenen Stellen auch auf Social Media, um mehr passende Kandidat:innen zu erreichen.",
   },
   {
     id: "stellenportale",
     label: "Stellenportale",
     kind: "channel",
     tag: "stellenportale",
-    suggestion: "Schaltet eure Stellen zusätzlich auf Stellenportalen, um eure Reichweite zu vergrößern.",
+    suggestion: "Schalte deine Stellen zusätzlich auf Stellenportalen, um deine Reichweite zu vergrößern.",
   },
   {
     id: "karriereseite",
@@ -45,7 +45,7 @@ export const APPLICANT_GROWTH_LEVERS: GrowthLever[] = [
     kind: "product",
     tag: "drehtag",
     suggestion:
-      "Mit persönlichen, authentischen Reels von einem Drehtag könnt ihr eure Arbeitgebermarke extrem stärken.",
+      "Mit persönlichen, authentischen Reels von einem Drehtag kannst du deine Arbeitgebermarke extrem stärken.",
   },
 ];
 
@@ -62,7 +62,7 @@ export const LEAD_GROWTH_LEVERS: GrowthLever[] = [
     label: "Meta Ads (Facebook/Instagram)",
     kind: "channel",
     tag: "meta_ads",
-    suggestion: "Mit Meta-Anzeigen (Facebook/Instagram) erreicht ihr zusätzliche Wunschmandant:innen.",
+    suggestion: "Mit Meta-Anzeigen (Facebook/Instagram) erreichst du zusätzliche Wunschmandant:innen.",
   },
   {
     id: "linkedin_ads",
@@ -77,7 +77,7 @@ export const LEAD_GROWTH_LEVERS: GrowthLever[] = [
     kind: "channel",
     tag: "content_marketing",
     suggestion:
-      "Durch euer Wissen und euren Expertenstatus könnt ihr erklärungsbedürftige Themen euren Wunschmandant:innen näherbringen.",
+      "Durch dein Wissen und deinen Expertenstatus kannst du erklärungsbedürftige Themen deinen Wunschmandant:innen näherbringen.",
   },
 ];
 

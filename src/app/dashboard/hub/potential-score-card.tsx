@@ -30,11 +30,11 @@ export function PotentialScoreCard({
 
         {percent >= 100 ? (
           <p className="text-sm text-muted-foreground">
-            Ihr nutzt aktuell alle uns bekannten Hebel für diese Kampagne voll aus. 🎉
+            Du nutzt aktuell alle uns bekannten Hebel für diese Kampagne voll aus. 🎉
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">So könnt ihr euer Potenzial weiter steigern:</p>
+            <p className="text-sm font-medium">So kannst du dein Potenzial weiter steigern:</p>
             <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
               {unmetLevers.map((lever) => (
                 <li key={lever.id} className="flex gap-2">

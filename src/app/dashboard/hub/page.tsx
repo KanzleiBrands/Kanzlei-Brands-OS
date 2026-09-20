@@ -66,7 +66,7 @@ export default async function KundenHubPage() {
     <div className="p-4 sm:p-8">
       <h1 className="mb-2 text-2xl font-semibold">Kunden-Hub</h1>
       <p className="mb-6 text-muted-foreground">
-        Eure Ansprechpartner, Ressourcen und Angebote von Kanzlei Brands an einem Ort.
+        Deine Ansprechpartner, Ressourcen und Angebote von Kanzlei Brands an einem Ort.
       </p>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -95,7 +95,7 @@ export default async function KundenHubPage() {
 
       {(jobsBooked || leadsBooked) && (
         <>
-          <h2 className="mb-3 text-lg font-semibold">Euer Potenzialscore</h2>
+          <h2 className="mb-3 text-lg font-semibold">Dein Potenzialscore</h2>
           <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {jobsBooked && (
               <PotentialScoreCard

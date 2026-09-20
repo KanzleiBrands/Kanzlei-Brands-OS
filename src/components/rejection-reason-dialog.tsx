@@ -35,7 +35,7 @@ export function RejectionReasonDialog({
           <DialogTitle>Absagegrund</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Damit wir für euch nachvollziehen können, woran es liegt, wenn {pipelineKind === "APPLICANTS" ? "Kandidaten" : "Interessenten"} nicht zum Abschluss kommen.
+          Damit wir für dich nachvollziehen können, woran es liegt, wenn {pipelineKind === "APPLICANTS" ? "Kandidaten" : "Interessenten"} nicht zum Abschluss kommen.
         </p>
         <Select value={reason} onValueChange={(value) => setReason(value ?? "")}>
           <SelectTrigger className="w-full">
