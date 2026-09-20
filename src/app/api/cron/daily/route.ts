@@ -164,20 +164,26 @@ export async function GET(request: Request) {
     }
   }
 
-  // --- 4. DSGVO: abgelehnte Kandidaten anonymisieren (nur wenn pro Kunde --
-  // explizit aktiviert - siehe Kommentar an updateDataRetentionSetting). Ein
-  // fehlendes E-Mail-Feld nach dem Lauf markiert "bereits anonymisiert", damit
-  // ein Kontakt nicht bei jedem Cron-Lauf erneut angefasst wird.
+  // --- 4. DSGVO: abgelehnte Bewerber anonymisieren (nur wenn pro Recruiting-
+  // Kampagne explizit aktiviert - siehe Kommentar an
+  // updatePipelineDataRetention). Ein fehlendes E-Mail-Feld nach dem Lauf
+  // markiert "bereits anonymisiert", damit ein Kontakt nicht bei jedem
+  // Cron-Lauf erneut angefasst wird.
   let anonymized = 0;
-  for (const client of clients) {
-    if (!client.rejectedDataRetentionMonths) continue;
+  const retentionPipelines = await prisma.pipeline.findMany({
+    where: { kind: "APPLICANTS", rejectedDataRetentionMonths: { not: null } },
+    select: { id: true, organizationId: true, rejectedDataRetentionMonths: true },
+  });
+
+  for (const pipeline of retentionPipelines) {
+    if (!pipeline.rejectedDataRetentionMonths) continue;
 
     const cutoff = new Date(now);
-    cutoff.setMonth(cutoff.getMonth() - client.rejectedDataRetentionMonths);
+    cutoff.setMonth(cutoff.getMonth() - pipeline.rejectedDataRetentionMonths);
 
     const staleRejected = await prisma.contact.findMany({
       where: {
-        pipeline: { organizationId: client.id },
+        pipelineId: pipeline.id,
         stage: { isRejected: true },
         updatedAt: { lt: cutoff },
         email: { not: null },
@@ -206,8 +212,8 @@ export async function GET(request: Request) {
         action: "contact.anonymized",
         entityType: "Contact",
         entityId: contact.id,
-        organizationId: client.id,
-        metadata: { reason: "rejected_data_retention", retentionMonths: client.rejectedDataRetentionMonths },
+        organizationId: pipeline.organizationId,
+        metadata: { reason: "rejected_data_retention", retentionMonths: pipeline.rejectedDataRetentionMonths, pipelineId: pipeline.id },
       });
       anonymized++;
     }

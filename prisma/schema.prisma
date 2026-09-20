@@ -64,11 +64,6 @@ model Organization {
   monthlyReportEnabled Boolean   @default(true)
   lastReportSentAt     DateTime?
 
-  // DSGVO: abgelehnte Kandidaten nach X Monaten automatisch anonymisieren.
-  // null = deaktiviert - bewusst nicht standardmäßig aktiv, weil das echte
-  // Bewerberdaten unwiderruflich löscht; muss pro Kunde bewusst gesetzt werden.
-  rejectedDataRetentionMonths Int?
-
   users             User[]
   pipelines         Pipeline[]
   courseAssignments CourseAssignment[]
@@ -168,6 +163,14 @@ model Pipeline {
   active               Boolean      @default(true)
   showDuplicateWarning Boolean      @default(true)
   location             String? // Recruiting: which office/site this specific job posting is for
+
+  // DSGVO (Recruiting): abgelehnte Bewerber dieser Kampagne nach X Monaten
+  // automatisch anonymisieren. null = deaktiviert - bewusst nicht
+  // standardmäßig aktiv, da dies echte Bewerberdaten unwiderruflich löscht;
+  // muss pro Kampagne bewusst gesetzt werden. Empfehlung ist 6 Monate, siehe
+  // AGG §15 Abs. 4 (2 Monate Klagefrist) + §61b ArbGG (3 Monate Klagefrist)
+  // + Sicherheitspuffer.
+  rejectedDataRetentionMonths Int?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

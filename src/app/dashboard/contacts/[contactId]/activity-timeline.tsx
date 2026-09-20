@@ -9,6 +9,7 @@ type Activity = {
   content: string | null;
   createdAt: string;
   userName: string | null;
+  mentionedNames?: string[];
 };
 
 const TABS: { key: string; label: string; types?: string[] }[] = [
@@ -74,6 +75,9 @@ export function ActivityTimeline({ activities, onlyTypes }: { activities: Activi
               </div>
               {activity.content && <p className="mt-1 text-muted-foreground">{activity.content}</p>}
               {activity.userName && <p className="text-sm text-muted-foreground">von {activity.userName}</p>}
+              {!!activity.mentionedNames?.length && (
+                <p className="text-sm text-muted-foreground">→ erwähnt: {activity.mentionedNames.join(", ")}</p>
+              )}
             </div>
           );
         })}

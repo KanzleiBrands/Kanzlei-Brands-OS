@@ -85,13 +85,28 @@ export default async function ContactDetailPage({
   const noteTemplates = templates.filter((t) => t.kind === "NOTE");
   const emailTemplates = templates.filter((t) => t.kind === "EMAIL");
 
-  const activities = contact.activities.map((activity) => ({
-    id: activity.id,
-    type: activity.type,
-    content: activity.content,
-    createdAt: activity.createdAt.toLocaleString("de-DE"),
-    userName: activity.user?.name ?? null,
-  }));
+  const clientOrg = await prisma.organization.findUnique({
+    where: { id: contact.pipeline.organizationId },
+    select: { parentId: true },
+  });
+  const mentionableOrgIds = [contact.pipeline.organizationId, ...(clientOrg?.parentId ? [clientOrg.parentId] : [])];
+  const mentionableUsers = await prisma.user.findMany({
+    where: { organizationId: { in: mentionableOrgIds } },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  const activities = contact.activities.map((activity) => {
+    const metadata = activity.metadata as { mentionedNames?: string[] } | null;
+    return {
+      id: activity.id,
+      type: activity.type,
+      content: activity.content,
+      createdAt: activity.createdAt.toLocaleString("de-DE"),
+      userName: activity.user?.name ?? null,
+      mentionedNames: metadata?.mentionedNames ?? [],
+    };
+  });
 
   const openTaskCount = contact.tasks.filter((t) => !t.completedAt).length;
 
@@ -319,7 +334,7 @@ export default async function ContactDetailPage({
               <CardTitle>Kommentar an Kunde/Agentur</CardTitle>
             </CardHeader>
             <CardContent>
-              <CommentForm contactId={contact.id} />
+              <CommentForm contactId={contact.id} mentionableUsers={mentionableUsers} />
             </CardContent>
           </Card>
           <Card>

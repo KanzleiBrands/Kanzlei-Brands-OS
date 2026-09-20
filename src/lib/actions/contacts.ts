@@ -347,28 +347,52 @@ export async function postComment(_prevState: string | undefined, formData: Form
   if (!contact) return "Kontakt nicht gefunden.";
   await assertPipelineAccess(session, contact.pipelineId);
 
-  await prisma.activity.create({
-    data: { contactId, userId: session.user.id, type: "COMMENT", content },
-  });
-
   const clientOrg = contact.pipeline.organization;
   const isFromAgency = session.user.role === "AGENCY_ADMIN";
 
-  const recipients = isFromAgency
-    ? await prisma.user.findMany({ where: { organizationId: clientOrg.id, role: "CLIENT_ADMIN" }, select: { email: true } })
-    : clientOrg.accountManagerId
-      ? await prisma.user.findMany({ where: { id: clientOrg.accountManagerId }, select: { email: true } })
-      : clientOrg.parentId
-        ? await prisma.user.findMany({
-            where: { organizationId: clientOrg.parentId, role: "AGENCY_ADMIN" },
-            select: { email: true },
-          })
-        : [];
+  // @-mentions: only users from the client org or its parent agency can be
+  // mentioned/notified this way - resolved server-side against the ids the
+  // client submitted, never trusting plain-text name matches from content.
+  const requestedMentionIds = formData.getAll("mentionedUserIds").map(String).filter(Boolean);
+  const mentionedUsers = requestedMentionIds.length
+    ? await prisma.user.findMany({
+        where: {
+          id: { in: requestedMentionIds },
+          organizationId: { in: [clientOrg.id, ...(clientOrg.parentId ? [clientOrg.parentId] : [])] },
+        },
+        select: { id: true, name: true, email: true },
+      })
+    : [];
+
+  await prisma.activity.create({
+    data: {
+      contactId,
+      userId: session.user.id,
+      type: "COMMENT",
+      content,
+      metadata: mentionedUsers.length ? { mentionedNames: mentionedUsers.map((u) => u.name) } : undefined,
+    },
+  });
+
+  const recipients =
+    mentionedUsers.length > 0
+      ? mentionedUsers
+      : isFromAgency
+        ? await prisma.user.findMany({ where: { organizationId: clientOrg.id, role: "CLIENT_ADMIN" }, select: { email: true } })
+        : clientOrg.accountManagerId
+          ? await prisma.user.findMany({ where: { id: clientOrg.accountManagerId }, select: { email: true } })
+          : clientOrg.parentId
+            ? await prisma.user.findMany({
+                where: { organizationId: clientOrg.parentId, role: "AGENCY_ADMIN" },
+                select: { email: true },
+              })
+            : [];
 
   if (recipients.length > 0) {
     const baseUrl = await getBaseUrl();
     const name = contactDisplayName(contact);
-    const subject = `Neuer Kommentar zu ${name}${!isFromAgency ? ` (${clientOrg.name})` : ""}`;
+    const mentionPrefix = mentionedUsers.length > 0 ? "Du wurdest erwähnt in einem Kommentar" : "Neuer Kommentar";
+    const subject = `${mentionPrefix} zu ${name}${!isFromAgency ? ` (${clientOrg.name})` : ""}`;
     const text = `${session.user.name} hat einen Kommentar hinterlassen:\n\n"${content}"\n\n${baseUrl}/dashboard/contacts/${contactId}?tab=comments`;
     for (const recipient of recipients) {
       await sendSystemEmail({ to: recipient.email, subject, text });
