@@ -47,6 +47,14 @@ export const APPLICANT_GROWTH_LEVERS: GrowthLever[] = [
     suggestion:
       "Mit persönlichen, authentischen Reels von einem Drehtag kannst du deine Arbeitgebermarke extrem stärken.",
   },
+  {
+    id: "content_marketing",
+    label: "Content-Marketing / Expertenstatus",
+    kind: "channel",
+    tag: "content_marketing",
+    suggestion:
+      "Mit Einblicken in euren Arbeitsalltag und eurem Expertenwissen zeigst du potenziellen Bewerber:innen, wer bei euch arbeitet und warum sich das lohnt.",
+  },
 ];
 
 export const LEAD_GROWTH_LEVERS: GrowthLever[] = [

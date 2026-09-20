@@ -1,6 +1,10 @@
 import { CalendarIcon, MailIcon, PhoneIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { initialsOf, avatarColorFor } from "@/lib/avatar";
+
+const OFFICE_PHONE = "+4940238359780";
+const OFFICE_PHONE_LABEL = "040 238 359 780";
 
 export function ContactCard({
   title,
@@ -10,9 +14,12 @@ export function ContactCard({
 }: {
   title: string;
   description: string;
-  contact: { name: string; phone: string | null; calendlyUrl: string | null } | null;
+  contact: { name: string; phone: string | null; calendlyUrl: string | null; avatarUrl: string | null } | null;
   teamEmail: string;
 }) {
+  const [firstName, ...rest] = contact?.name.trim().split(/\s+/) ?? [];
+  const lastName = rest.at(-1) ?? null;
+
   return (
     <Card>
       <CardHeader>
@@ -23,7 +30,24 @@ export function ContactCard({
 
         {contact ? (
           <>
-            <p className="font-medium">{contact.name}</p>
+            <div className="flex items-center gap-3">
+              {contact.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={contact.avatarUrl}
+                  alt={contact.name}
+                  className="size-10 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className="flex size-10 items-center justify-center rounded-full text-sm font-medium text-white"
+                  style={{ backgroundColor: avatarColorFor(contact.name) }}
+                >
+                  {initialsOf(firstName ?? null, lastName)}
+                </div>
+              )}
+              <p className="font-medium">{contact.name}</p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {contact.phone && (
                 <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
@@ -56,6 +80,13 @@ export function ContactCard({
             </Button>
           </>
         )}
+
+        <p className="text-sm text-muted-foreground">
+          Zentrale:{" "}
+          <a href={`tel:${OFFICE_PHONE}`} className="font-medium text-foreground hover:underline">
+            {OFFICE_PHONE_LABEL}
+          </a>
+        </p>
       </CardContent>
     </Card>
   );

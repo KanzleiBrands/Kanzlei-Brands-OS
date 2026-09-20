@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "../account/change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { ContactInfoForm } from "./contact-info-form";
+import { AvatarUploadForm } from "./avatar-upload-form";
 
 const ROLE_LABELS: Record<string, string> = {
   AGENCY_ADMIN: "Agentur-Admin",
@@ -16,6 +17,7 @@ export function AccountSection({
   organizationName,
   phone,
   calendlyUrl,
+  avatarUrl,
 }: {
   name: string;
   email: string;
@@ -23,6 +25,7 @@ export function AccountSection({
   organizationName?: string;
   phone: string | null;
   calendlyUrl: string | null;
+  avatarUrl: string | null;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -49,14 +52,25 @@ export function AccountSection({
       </Card>
 
       {role === "AGENCY_ADMIN" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Kontaktdaten</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ContactInfoForm phone={phone} calendlyUrl={calendlyUrl} />
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Profilbild</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AvatarUploadForm name={name} avatarUrl={avatarUrl} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Kontaktdaten</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContactInfoForm phone={phone} calendlyUrl={calendlyUrl} />
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <Card>

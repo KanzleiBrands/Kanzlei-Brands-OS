@@ -158,10 +158,11 @@ model User {
 
   // Nur relevant für Agentur-Mitarbeiter, die als Account Manager oder
   // Buchhaltungs-/Backoffice-Ansprechpartner im Kunden-Hub eines Kunden
-  // erscheinen: eigene Telefonnummer + persönlicher Calendly-Terminlink.
-  // Selbst gepflegt unter Einstellungen -> Account.
+  // erscheinen: eigene Telefonnummer + persönlicher Calendly-Terminlink +
+  // Profilbild. Selbst gepflegt unter Einstellungen -> Account.
   phone       String?
   calendlyUrl String?
+  avatarUrl   String?
 
   pipelineAccess           PipelineAccess[]
   activities               Activity[]

@@ -27,14 +27,14 @@ function navFor(role: string, campaignKinds: Set<string>) {
   }
 
   return [
+    { href: "/dashboard/hub", label: "Kunden Hub" },
+    ...common,
     { href: "/dashboard/pipelines", label: "Kampagnen" },
     ...(campaignKinds.has("LEADS") ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen" }] : []),
     ...(campaignKinds.has("APPLICANTS")
       ? [{ href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen" }]
       : []),
     { href: "/dashboard/tasks", label: "Wiedervorlagen" },
-    ...common,
-    { href: "/dashboard/hub", label: "Kunden Hub" },
   ];
 }
 

@@ -26,8 +26,8 @@ export default async function KundenHubPage() {
   const organization = await prisma.organization.findUnique({
     where: { id: session.user.organizationId },
     include: {
-      accountManager: { select: { name: true, phone: true, calendlyUrl: true } },
-      backofficeContact: { select: { name: true, phone: true, calendlyUrl: true } },
+      accountManager: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
+      backofficeContact: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
     },
   });
   if (!organization) redirect("/login");

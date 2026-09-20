@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { signOut } from "@/auth";
 import { IMPERSONATION_COOKIE } from "@/lib/impersonation";
+import { storeFile } from "@/lib/file-storage";
 
 export type ChangePasswordResult = { status: "error" | "success"; message: string } | undefined;
 
@@ -142,5 +143,30 @@ export async function updateContactInfo(
   });
 
   revalidatePath("/dashboard/settings");
+  return undefined;
+}
+
+/**
+ * Profilbild, das ein Agentur-Mitarbeiter selbst pflegt und das im
+ * Kunden-Hub in den Account Manager-/Backoffice-Kontaktkacheln angezeigt
+ * wird, sobald er dort als Ansprechpartner hinterlegt ist.
+ */
+export async function updateAvatar(
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  const session = await requireSession();
+  const file = formData.get("avatar");
+  if (!(file instanceof File) || file.size === 0) return "Bitte ein Bild auswählen.";
+  if (!file.type.startsWith("image/")) return "Bitte eine Bilddatei auswählen.";
+
+  const avatarUrl = await storeFile(file, "avatars");
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { avatarUrl },
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/hub");
   return undefined;
 }
