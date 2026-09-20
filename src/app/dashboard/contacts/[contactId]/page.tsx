@@ -24,6 +24,7 @@ import { AdditionalContactDialog } from "./additional-contact-dialog";
 import { RemoveAdditionalContactButton } from "./remove-additional-contact-button";
 import { NewTaskForm } from "./new-task-form";
 import { TaskList } from "./task-list";
+import { TalentPoolButton } from "./talent-pool-button";
 
 type Tab = "overview" | "tasks" | "notes" | "email" | "activity";
 
@@ -113,6 +114,15 @@ export default async function ContactDetailPage({
           </div>
           {contact.rejectionReason && (
             <p className="mt-1 text-sm text-destructive">Absagegrund: {contact.rejectionReason}</p>
+          )}
+          {contact.pipeline.kind === "APPLICANTS" && (
+            <div className="mt-2">
+              <TalentPoolButton
+                contactId={contact.id}
+                talentPool={contact.talentPool}
+                talentPoolNote={contact.talentPoolNote}
+              />
+            </div>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">

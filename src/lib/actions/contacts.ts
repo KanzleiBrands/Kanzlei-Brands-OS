@@ -10,6 +10,48 @@ import { extractContactFields, normalizeFieldKey, stripTrackingFields } from "@/
 import { storeFile } from "@/lib/file-storage";
 import { deriveWebsiteFromEmail } from "@/lib/company";
 
+const TALENTPOOL_FOLLOWUP_DAYS = 182; // ~6 Monate
+
+export async function setTalentPool(formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const enabled = formData.get("enabled") === "true";
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return;
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: { talentPool: enabled, talentPoolNote: enabled ? note : null },
+  });
+
+  if (enabled) {
+    await prisma.task.create({
+      data: {
+        contactId,
+        title: "Talentpool: erneut kontaktieren",
+        dueAt: new Date(Date.now() + TALENTPOOL_FOLLOWUP_DAYS * 24 * 60 * 60 * 1000),
+        createdByUserId: session.user.id,
+        assignedToUserId: session.user.id,
+      },
+    });
+  }
+
+  await logAudit({
+    action: enabled ? "contact.talentpool_added" : "contact.talentpool_removed",
+    entityType: "Contact",
+    entityId: contactId,
+    organizationId: (await prisma.pipeline.findUnique({ where: { id: contact.pipelineId } }))!.organizationId,
+    userId: session.user.id,
+  });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+  revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath("/dashboard/tasks");
+}
+
 export async function deleteContact(formData: FormData) {
   const session = await requireSession();
   const contactId = String(formData.get("contactId") ?? "");

@@ -5,7 +5,9 @@ import { useMemo, useTransition } from "react";
 import { moveContactStage } from "@/lib/actions/contacts";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
+import { StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -17,6 +19,7 @@ type Contact = {
   source: string;
   createdAt: Date;
   rejectionReason: string | null;
+  talentPool: boolean;
 };
 
 type Stage = {
@@ -90,7 +93,15 @@ export function ExcludedContactsTable({
                     {initialsOf(contact.firstName, contact.lastName)}
                   </span>
                   <span>
-                    <span className="block font-medium">{fullName}</span>
+                    <span className="flex items-center gap-1.5 font-medium">
+                      {fullName}
+                      {contact.talentPool && (
+                        <Badge variant="secondary" className="gap-1">
+                          <StarIcon className="size-3" />
+                          Talentpool
+                        </Badge>
+                      )}
+                    </span>
                     <span className="block text-sm text-muted-foreground">{contact.email}</span>
                   </span>
                 </Link>

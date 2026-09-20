@@ -22,6 +22,8 @@ type Contact = {
   createdAt: Date;
   customFields: unknown;
   rejectionReason: string | null;
+  talentPool: boolean;
+  talentPoolNote: string | null;
   _count: { activities: number };
 };
 
