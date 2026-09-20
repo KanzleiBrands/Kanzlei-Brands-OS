@@ -18,13 +18,12 @@ function countWithin30Days(dates: Date[]) {
 
 function trendCard(label: string, value: number, deltaLast30Days: number) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <p className="mb-1 text-sm text-muted-foreground">{label}</p>
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-semibold">{value}</span>
-        {deltaLast30Days > 0 && <span className="text-sm font-medium text-emerald-500">↗</span>}
+    <div className="rounded-lg border bg-card p-3">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="mt-0.5 flex items-baseline gap-1.5">
+        <span className="text-xl font-semibold">{value}</span>
+        {deltaLast30Days > 0 && <span className="text-sm font-medium text-emerald-500">↗ +{deltaLast30Days}</span>}
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">+{deltaLast30Days} in 30 Tagen</p>
     </div>
   );
 }
@@ -100,7 +99,7 @@ export default async function ClientsPage({
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Kunden-Übersicht</h1>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         {trendCard("Kunden", clients.length, clientsLast30Days)}
         {trendCard("Bewerbungen", jobsStats.totalContacts, jobsStats.newLast30Days)}
         {trendCard("Einstellungen", jobsCompleted.total, jobsCompleted.last30Days)}

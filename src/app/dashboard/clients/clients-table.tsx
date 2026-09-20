@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { avatarColorFor, initialsOf } from "@/lib/avatar";
 
 type ClientRow = {
@@ -22,12 +21,16 @@ type ClientRow = {
   applicantsQuota: number | null;
 };
 
-function QuotaCell({ used, quota }: { used: number; quota: number | null }) {
+function QuotaPill({ label, used, quota }: { label: string; used: number; quota: number | null }) {
   const effectiveQuota = quota ?? 0;
   const overQuota = used > effectiveQuota;
   return (
-    <span className={overQuota ? "font-medium text-destructive" : undefined}>
-      {used}/{effectiveQuota} verfügbar
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+        overQuota ? "border-destructive/50 text-destructive" : "text-muted-foreground"
+      }`}
+    >
+      {label} <span className={`font-medium ${overQuota ? "text-destructive" : "text-foreground"}`}>{used}/{effectiveQuota}</span>
     </span>
   );
 }
@@ -44,7 +47,7 @@ const SORT_OPTIONS = [
 type SortKey = (typeof SORT_OPTIONS)[number]["value"];
 
 function formatDate(value: string | null) {
-  if (!value) return "--";
+  if (!value) return "kein Lead bisher";
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
@@ -92,10 +95,10 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           placeholder="Kunden durchsuchen"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
+          className="w-full sm:max-w-xs"
         />
         <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-          <SelectTrigger className="w-56">
+          <SelectTrigger className="w-full sm:w-56">
             <SelectValue>{(value: string) => SORT_OPTIONS.find((o) => o.value === value)?.label ?? value}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -108,79 +111,46 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
         </Select>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Kunde</TableHead>
-            <TableHead>Stellenanzeigen</TableHead>
-            <TableHead>Mandatsakquise</TableHead>
-            <TableHead>Leads</TableHead>
-            <TableHead>Letzter Lead</TableHead>
-            <TableHead>Unbearbeitet</TableHead>
-            <TableHead>Überfällig</TableHead>
-            <TableHead>Neu (7 Tage)</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((client) => (
-            <TableRow key={client.id}>
-              <TableCell>
-                <Link href={`/dashboard/clients/${client.id}`} className="flex items-center gap-2 font-medium hover:underline">
-                  <span
-                    className="flex size-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                    style={{ backgroundColor: avatarColorFor(client.name) }}
-                  >
-                    {avatarFor(client.name)}
-                  </span>
-                  {client.name}
-                </Link>
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                <QuotaCell used={client.applicantsUsed} quota={client.applicantsQuota} />
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                <QuotaCell used={client.leadsUsed} quota={client.leadsQuota} />
-              </TableCell>
-              <TableCell>{client.totalContacts}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{formatDate(client.lastLeadAt)}</TableCell>
-              <TableCell>{client.unprocessed}</TableCell>
-              <TableCell>
-                {client.staleUnprocessed > 0 ? (
-                  <Badge variant="destructive">{client.staleUnprocessed}</Badge>
-                ) : (
-                  client.staleUnprocessed
-                )}
-              </TableCell>
-              <TableCell>
-                {client.newLast7Days > 0 ? <Badge>{client.newLast7Days}</Badge> : client.newLast7Days}
-              </TableCell>
-              <TableCell>
-                <Link
-                  href={`/dashboard/clients/${client.id}`}
-                  className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary/80"
-                >
-                  Einloggen →
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-          {sorted.length === 0 && clients.length > 0 && (
-            <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
-                Kein Kunde passt zur Suche.
-              </TableCell>
-            </TableRow>
-          )}
-          {clients.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
-                Noch keine Kunden angelegt.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <div className="flex flex-col gap-2">
+        {sorted.map((client) => (
+          <Link
+            key={client.id}
+            href={`/dashboard/clients/${client.id}`}
+            className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                className="flex size-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                style={{ backgroundColor: avatarColorFor(client.name) }}
+              >
+                {avatarFor(client.name)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{client.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {client.totalContacts} Leads gesamt · Letzter Lead: {formatDate(client.lastLeadAt)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <QuotaPill label="Stellenanzeigen" used={client.applicantsUsed} quota={client.applicantsQuota} />
+              <QuotaPill label="Mandatsakquise" used={client.leadsUsed} quota={client.leadsQuota} />
+              {client.unprocessed > 0 && <Badge variant="secondary">{client.unprocessed} unbearbeitet</Badge>}
+              {client.staleUnprocessed > 0 && <Badge variant="destructive">{client.staleUnprocessed} überfällig</Badge>}
+              {client.newLast7Days > 0 && <Badge>{client.newLast7Days} neu</Badge>}
+            </div>
+
+            <span className="flex-shrink-0 text-sm font-medium text-primary sm:ml-2">Einloggen →</span>
+          </Link>
+        ))}
+        {sorted.length === 0 && clients.length > 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">Kein Kunde passt zur Suche.</p>
+        )}
+        {clients.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">Noch keine Kunden angelegt.</p>
+        )}
+      </div>
     </div>
   );
 }
