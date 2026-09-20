@@ -15,6 +15,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
   if (role === "AGENCY_ADMIN") {
     return [
       { href: "/dashboard/clients", label: "Kunden" },
+      { href: "/dashboard/tasks", label: "Wiedervorlagen" },
       ...common,
       { href: "/dashboard/offers", label: "Angebote" },
       { href: "/dashboard/audit-log", label: "Audit-Log" },
@@ -27,6 +28,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
     ...(campaignKinds.has("APPLICANTS")
       ? [{ href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen" }]
       : []),
+    { href: "/dashboard/tasks", label: "Wiedervorlagen" },
     ...common,
     { href: "/dashboard/hub", label: "Angebote" },
   ];

@@ -22,8 +22,10 @@ import { AddCustomFieldDialog } from "./add-custom-field-dialog";
 import { CvUploadForm } from "./cv-upload-form";
 import { AdditionalContactDialog } from "./additional-contact-dialog";
 import { RemoveAdditionalContactButton } from "./remove-additional-contact-button";
+import { NewTaskForm } from "./new-task-form";
+import { TaskList } from "./task-list";
 
-type Tab = "overview" | "notes" | "email" | "activity";
+type Tab = "overview" | "tasks" | "notes" | "email" | "activity";
 
 export default async function ContactDetailPage({
   params,
@@ -48,6 +50,7 @@ export default async function ContactDetailPage({
       pipeline: { include: { stages: { orderBy: { order: "asc" } } } },
       activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
       additionalContacts: { orderBy: { createdAt: "asc" } },
+      tasks: { orderBy: { dueAt: "asc" } },
     },
   });
   if (!contact) notFound();
@@ -81,10 +84,15 @@ export default async function ContactDetailPage({
     userName: activity.user?.name ?? null,
   }));
 
+  const openTaskCount = contact.tasks.filter((t) => !t.completedAt).length;
+
   const tab: Tab =
-    tabParam === "notes" || tabParam === "email" || tabParam === "activity" ? tabParam : "overview";
+    tabParam === "tasks" || tabParam === "notes" || tabParam === "email" || tabParam === "activity"
+      ? tabParam
+      : "overview";
   const TAB_ORDER: { value: Tab; label: string; count?: number }[] = [
     { value: "overview", label: "Übersicht" },
+    { value: "tasks", label: "Wiedervorlage", count: openTaskCount },
     { value: "notes", label: "Notizen" },
     { value: "email", label: "E-Mail" },
     { value: "activity", label: "Verlauf", count: activities.length },
@@ -257,6 +265,26 @@ export default async function ContactDetailPage({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {tab === "tasks" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Wiedervorlage</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            <NewTaskForm contactId={contact.id} />
+            <TaskList
+              tasks={contact.tasks.map((t) => ({
+                id: t.id,
+                title: t.title,
+                dueAt: t.dueAt.toISOString(),
+                completedAt: t.completedAt?.toISOString() ?? null,
+                repeatIntervalDays: t.repeatIntervalDays,
+              }))}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {tab === "notes" && (

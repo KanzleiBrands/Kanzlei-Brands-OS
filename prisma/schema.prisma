@@ -16,10 +16,10 @@ enum OrganizationType {
 }
 
 model Organization {
-  id     String           @id @default(cuid())
-  type   OrganizationType
-  name   String
-  slug   String           @unique
+  id   String           @id @default(cuid())
+  type OrganizationType
+  name String
+  slug String           @unique
 
   // Branding (client orgs can override the agency defaults)
   logoUrl      String?
@@ -56,11 +56,25 @@ model Organization {
   parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
   children Organization[] @relation("OrgHierarchy")
 
-  users           User[]
-  pipelines       Pipeline[]
+  // Monatlicher Performance-Report per E-Mail an die Kunden-Admins - läuft
+  // immer am letzten Kalendertag des Monats, unabhängig davon wann der
+  // Kunde angelegt wurde (ein Kunde von Mitte des Monats bekommt dadurch
+  // automatisch seinen ersten Report nach ~2 Wochen). Default an, damit die
+  // Agentur es bewusst pro Kunde abschalten muss statt es aktivieren zu müssen.
+  monthlyReportEnabled Boolean   @default(true)
+  lastReportSentAt     DateTime?
+
+  // DSGVO: abgelehnte Kandidaten nach X Monaten automatisch anonymisieren.
+  // null = deaktiviert - bewusst nicht standardmäßig aktiv, weil das echte
+  // Bewerberdaten unwiderruflich löscht; muss pro Kunde bewusst gesetzt werden.
+  rejectedDataRetentionMonths Int?
+
+  users             User[]
+  pipelines         Pipeline[]
   courseAssignments CourseAssignment[]
-  webhookEndpoints WebhookEndpoint[]
-  auditLogs       AuditLog[]
+  webhookEndpoints  WebhookEndpoint[]
+  auditLogs         AuditLog[]
+  messageTemplates  MessageTemplate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,9 +87,9 @@ model Organization {
 // ---------------------------------------------------------------------------
 
 enum UserRole {
-  AGENCY_ADMIN  // Kanzlei Brands staff, full control over every client org
-  CLIENT_ADMIN  // Owner-level user at a client org, manages that org's staff/pipelines
-  CLIENT_STAFF  // Employee at a client org, access limited to assigned pipelines
+  AGENCY_ADMIN // Kanzlei Brands staff, full control over every client org
+  CLIENT_ADMIN // Owner-level user at a client org, manages that org's staff/pipelines
+  CLIENT_STAFF // Employee at a client org, access limited to assigned pipelines
 }
 
 model User {
@@ -87,20 +101,22 @@ model User {
 
   // Set when the user is invited via activation link instead of a password;
   // cleared once they complete activation and set their own password.
-  activationToken           String?   @unique
-  activationTokenExpiresAt  DateTime?
+  activationToken          String?   @unique
+  activationTokenExpiresAt DateTime?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  pipelineAccess PipelineAccess[]
-  activities     Activity[]
-  emailAccounts  EmailAccount[]
-  enrollments    Enrollment[]
-  auditLogs      AuditLog[]
-  offerInterests OfferInterest[]
-  automationRules AutomationRule[]
-  managedOrganizations Organization[] @relation("AccountManagerFor")
+  pipelineAccess       PipelineAccess[]
+  activities           Activity[]
+  emailAccounts        EmailAccount[]
+  enrollments          Enrollment[]
+  auditLogs            AuditLog[]
+  offerInterests       OfferInterest[]
+  automationRules      AutomationRule[]
+  managedOrganizations Organization[]   @relation("AccountManagerFor")
+  tasksCreated         Task[]           @relation("TaskCreatedBy")
+  tasksAssigned        Task[]           @relation("TaskAssignedTo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -128,7 +144,7 @@ model PipelineAccess {
 // ---------------------------------------------------------------------------
 
 enum PipelineKind {
-  LEADS      // Sales / CRM pipeline ("Mandatsakquise")
+  LEADS // Sales / CRM pipeline ("Mandatsakquise")
   APPLICANTS // Recruiting / ATS pipeline ("Recruiting")
 }
 
@@ -156,11 +172,11 @@ model Pipeline {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  stages          Stage[]
-  contacts        Contact[]
-  access          PipelineAccess[]
+  stages           Stage[]
+  contacts         Contact[]
+  access           PipelineAccess[]
   webhookEndpoints WebhookEndpoint[]
-  automationRules AutomationRule[]
+  automationRules  AutomationRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -169,11 +185,11 @@ model Pipeline {
 }
 
 model Stage {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   name       String
   order      Int
   color      String?
-  isRejected Boolean  @default(false)
+  isRejected Boolean @default(false)
 
   pipelineId String
   pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
@@ -204,15 +220,15 @@ enum ContactSource {
 
 // A Lead or an Applicant, depending on the pipeline's kind.
 model Contact {
-  id        String  @id @default(cuid())
-  firstName String?
-  lastName  String?
-  email     String?
-  phone     String?
-  location  String?
-  rating    Int?          @db.SmallInt // 1-5 star qualification rating, null = not yet rated
-  source    ContactSource @default(MANUAL)
-  cvUrl     String? // Uploaded manually or filled from a webhook payload (e.g. Perspektive/OnePage CV upload link)
+  id           String        @id @default(cuid())
+  firstName    String?
+  lastName     String?
+  email        String?
+  phone        String?
+  location     String?
+  rating       Int?          @db.SmallInt // 1-5 star qualification rating, null = not yet rated
+  source       ContactSource @default(MANUAL)
+  cvUrl        String? // Uploaded manually or filled from a webhook payload (e.g. Perspektive/OnePage CV upload link)
   // Raw/extra fields that don't map to a fixed column (form-specific answers, UTM data, ...)
   customFields Json?
 
@@ -229,15 +245,21 @@ model Contact {
   // lets the agency analyze per client why leads/applicants don't convert.
   rejectionReason String?
 
+  // Talentpool: passt aktuell nicht, grundsätzlich aber interessant - wird
+  // per Wiedervorlage (Task) automatisch nach einigen Monaten erneut vorgelegt.
+  talentPool     Boolean @default(false)
+  talentPoolNote String?
+
   pipelineId String
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   stageId    String
   stage      Stage    @relation(fields: [stageId], references: [id])
 
-  activities          Activity[]
-  emailMessages       EmailMessage[]
-  additionalContacts  AdditionalContact[]
-  automationLogs      AutomationLog[]
+  activities         Activity[]
+  emailMessages      EmailMessage[]
+  additionalContacts AdditionalContact[]
+  automationLogs     AutomationLog[]
+  tasks              Task[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -250,11 +272,11 @@ model Contact {
 // separate from Contact so a company lead can have several without
 // overloading the single-person Contact columns.
 model AdditionalContact {
-  id     String  @id @default(cuid())
-  name   String
-  role   String?
-  email  String?
-  phone  String?
+  id    String  @id @default(cuid())
+  name  String
+  role  String?
+  email String?
+  phone String?
 
   contactId String
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -270,13 +292,17 @@ enum ActivityType {
   EMAIL_IN
   EMAIL_OUT
   CALL
+  // Kommentar zwischen Kunde und Agentur an einem Kontakt - im Gegensatz zu
+  // NOTE löst das Erstellen eine E-Mail-Benachrichtigung an die jeweils
+  // andere Seite aus (siehe src/lib/actions/comments.ts).
+  COMMENT
 }
 
 model Activity {
-  id        String       @id @default(cuid())
-  type      ActivityType
-  content   String?
-  metadata  Json?
+  id       String       @id @default(cuid())
+  type     ActivityType
+  content  String?
+  metadata Json?
 
   contactId String
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -313,17 +339,17 @@ enum WebhookSource {
 // path segment used in the public URL, field mapping controls how the
 // arbitrary payload lands on Contact/customFields.
 model WebhookEndpoint {
-  id     String        @id @default(cuid())
-  token  String        @unique @default(cuid())
-  source WebhookSource
-  fieldMapping Json? // e.g. { "firstName": "data.first_name", "email": "data.email" }
+  id              String        @id @default(cuid())
+  token           String        @unique @default(cuid())
+  source          WebhookSource
+  fieldMapping    Json? // e.g. { "firstName": "data.first_name", "email": "data.email" }
   // Recruiting, multi-location jobs sharing one funnel/webhook: maps a
   // location answer value (as it appears anywhere in the payload) to the
   // Pipeline id it should actually be filed under, e.g.
   // { "Hamburg": "clx...pipelineIdHH", "Berlin": "clx...pipelineIdB" }.
   // Falls back to this endpoint's own pipelineId when nothing matches.
   locationRouting Json?
-  active Boolean       @default(true)
+  active          Boolean       @default(true)
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -340,13 +366,13 @@ model WebhookEndpoint {
 
 // Raw log of every inbound webhook call, kept for debugging failed mappings.
 model WebhookDelivery {
-  id          String   @id @default(cuid())
-  endpointId  String
-  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
-  rawPayload  Json
-  contactId   String?
-  error       String?
-  createdAt   DateTime @default(now())
+  id         String          @id @default(cuid())
+  endpointId String
+  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  rawPayload Json
+  contactId  String?
+  error      String?
+  createdAt  DateTime        @default(now())
 
   @@index([endpointId])
 }
@@ -389,7 +415,7 @@ model AutomationRule {
 // most once per contact per trigger even though the cron job re-scans
 // everything on every run.
 model AutomationLog {
-  id     String @id @default(cuid())
+  id     String         @id @default(cuid())
   ruleId String
   rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
@@ -400,6 +426,68 @@ model AutomationLog {
 
   @@unique([ruleId, contactId])
   @@index([contactId])
+}
+
+// ---------------------------------------------------------------------------
+// Wiedervorlage (Tasks)
+// ---------------------------------------------------------------------------
+
+// A follow-up reminder tied to a contact ("Wiedervorlage"). The daily cron
+// (src/app/api/cron/daily/route.ts) emails assignedTo once dueAt has passed,
+// tracked via reminderSentAt so it fires exactly once per task.
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  dueAt       DateTime
+  completedAt DateTime?
+
+  // If set, completing this task immediately creates the next occurrence
+  // (new dueAt = old dueAt + N days) instead of the series just ending -
+  // used for the Talentpool "erneut kontaktieren in 6 Monaten" reminder.
+  repeatIntervalDays Int?
+  reminderSentAt     DateTime?
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  createdByUserId  String?
+  createdBy        User?   @relation("TaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignedToUserId String?
+  assignedTo       User?   @relation("TaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contactId])
+  @@index([dueAt])
+  @@index([assignedToUserId])
+}
+
+// ---------------------------------------------------------------------------
+// Textbausteine (Vorlagen)
+// ---------------------------------------------------------------------------
+
+enum TemplateKind {
+  NOTE
+  EMAIL
+}
+
+// Reusable snippet for the Notiz-Formular oder E-Mail-Formular, owned by one
+// organization (Agentur oder Kunde) so each side manages its own set.
+model MessageTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  kind    TemplateKind
+  name    String
+  subject String? // nur bei kind = EMAIL genutzt
+  body    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 // ---------------------------------------------------------------------------
@@ -438,13 +526,13 @@ enum EmailDirection {
 }
 
 model EmailMessage {
-  id        String         @id @default(cuid())
-  direction EmailDirection
-  subject   String?
-  bodyText  String?
-  bodyHtml  String?
-  fromAddress String
-  toAddress   String
+  id                String         @id @default(cuid())
+  direction         EmailDirection
+  subject           String?
+  bodyText          String?
+  bodyHtml          String?
+  fromAddress       String
+  toAddress         String
   providerMessageId String
 
   emailAccountId String
@@ -465,7 +553,7 @@ model EmailMessage {
 
 enum CourseCategory {
   ONBOARDING // Required platform onboarding for new customers/staff
-  TRAINING   // General knowledge-transfer courses
+  TRAINING // General knowledge-transfer courses
 }
 
 // Courses are authored by the agency and only visible to clients they've been
@@ -501,10 +589,10 @@ model CourseAssignment {
 }
 
 model Lesson {
-  id       String @id @default(cuid())
-  title    String
-  order    Int
-  videoUrl String? // Vercel Blob URL (or external provider URL later)
+  id              String  @id @default(cuid())
+  title           String
+  order           Int
+  videoUrl        String? // Vercel Blob URL (or external provider URL later)
   durationSeconds Int?
 
   courseId String
@@ -523,7 +611,7 @@ model Enrollment {
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   progress  LessonProgress[]
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
   @@unique([userId, courseId])
 }
@@ -562,11 +650,11 @@ model Offer {
 // Recorded whenever a client user clicks the CTA on an offer, so the agency
 // gets notified instead of a payment flow running automatically.
 model OfferInterest {
-  id      String @id @default(cuid())
+  id      String  @id @default(cuid())
   offerId String
-  offer   Offer  @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offer   Offer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
   userId  String
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   note    String?
 
   createdAt DateTime @default(now())
@@ -579,7 +667,7 @@ model OfferInterest {
 // ---------------------------------------------------------------------------
 
 model AuditLog {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   action     String // e.g. "contact.viewed", "contact.updated", "user.invited"
   entityType String
   entityId   String
