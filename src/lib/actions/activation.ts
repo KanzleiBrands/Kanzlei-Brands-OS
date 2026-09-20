@@ -22,8 +22,10 @@ export async function activateAccount(_prevState: string | undefined, formData: 
 
   const user = await prisma.user.findUnique({ where: { activationToken: token } });
   if (!user || !user.activationTokenExpiresAt || user.activationTokenExpiresAt < new Date()) {
-    return "Dieser Aktivierungslink ist ungültig oder abgelaufen. Bitte einen neuen Link anfordern.";
+    return "Dieser Link ist ungültig oder abgelaufen. Bitte einen neuen Link anfordern.";
   }
+
+  const wasAlreadyActive = !!user.passwordHash;
 
   const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.update({
@@ -32,12 +34,12 @@ export async function activateAccount(_prevState: string | undefined, formData: 
   });
 
   await logAudit({
-    action: "user.activated",
+    action: wasAlreadyActive ? "user.password_reset" : "user.activated",
     entityType: "User",
     entityId: user.id,
     organizationId: user.organizationId,
     userId: user.id,
   });
 
-  redirect("/login?activated=1");
+  redirect(wasAlreadyActive ? "/login?reset=1" : "/login?activated=1");
 }

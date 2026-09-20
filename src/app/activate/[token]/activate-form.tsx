@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function ActivateForm({ token }: { token: string }) {
+export function ActivateForm({ token, isReset }: { token: string; isReset: boolean }) {
   const [error, formAction, isPending] = useActionState(activateAccount, undefined);
 
   return (
@@ -29,7 +29,7 @@ export function ActivateForm({ token }: { token: string }) {
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? "Wird aktiviert..." : "Konto aktivieren"}
+        {isPending ? "Wird gespeichert..." : isReset ? "Neues Passwort speichern" : "Konto aktivieren"}
       </Button>
     </form>
   );

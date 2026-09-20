@@ -9,6 +9,10 @@ export default async function ActivatePage({ params }: { params: Promise<{ token
 
   const user = await prisma.user.findUnique({ where: { activationToken: token } });
   const isValid = !!user && !!user.activationTokenExpiresAt && user.activationTokenExpiresAt > new Date();
+  // A user who already has a password is resetting it, not activating for
+  // the first time (see requestPasswordReset, which reuses this same token
+  // mechanism) - only the wording differs.
+  const isReset = isValid && !!user!.passwordHash;
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
@@ -20,21 +24,27 @@ export default async function ActivatePage({ params }: { params: Promise<{ token
           <Image src="/brand/logo-on-dark.svg" alt="Kanzlei Brands" width={180} height={72} priority />
           {isValid ? (
             <>
-              <CardTitle className="text-lg">Willkommen, {user!.name}</CardTitle>
-              <CardDescription className="text-base">Lege dein Passwort fest, um deinen Zugang zu aktivieren.</CardDescription>
+              <CardTitle className="text-lg">{isReset ? `Hallo, ${user!.name}` : `Willkommen, ${user!.name}`}</CardTitle>
+              <CardDescription className="text-base">
+                {isReset ? "Lege dein neues Passwort fest." : "Lege dein Passwort fest, um deinen Zugang zu aktivieren."}
+              </CardDescription>
             </>
           ) : (
             <CardDescription className="text-base">
-              Dieser Aktivierungslink ist ungültig oder abgelaufen.
+              Dieser Link ist ungültig oder abgelaufen.
             </CardDescription>
           )}
         </CardHeader>
         <CardContent className="pb-8 pt-2">
           {isValid ? (
-            <ActivateForm token={token} />
+            <ActivateForm token={token} isReset={isReset} />
           ) : (
             <p className="text-center text-sm text-muted-foreground">
-              Bitte einen neuen Aktivierungslink von deinem Admin anfordern, oder{" "}
+              Bitte einen neuen Link anfordern - {" "}
+              <Link href="/forgot-password" className="underline">
+                Passwort vergessen
+              </Link>
+              {" "}oder{" "}
               <Link href="/login" className="underline">
                 zum Login
               </Link>
