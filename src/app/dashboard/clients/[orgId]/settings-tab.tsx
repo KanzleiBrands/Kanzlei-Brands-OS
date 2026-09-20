@@ -11,6 +11,7 @@ import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { EditClientNameForm } from "./edit-client-name-form";
 import { QuotaSettingsForm } from "./quota-settings-form";
 import { IntakeSettingsForm } from "./intake-settings-form";
+import { MonthlyReportToggle } from "./monthly-report-toggle";
 
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
@@ -43,6 +44,7 @@ export function SettingsTab({
   leadsFormUrl,
   applicantsFormUrl,
   agencyUsers,
+  monthlyReportEnabled,
 }: {
   organizationId: string;
   organizationName: string;
@@ -60,6 +62,7 @@ export function SettingsTab({
   leadsFormUrl: string | null;
   applicantsFormUrl: string | null;
   agencyUsers: { id: string; name: string }[];
+  monthlyReportEnabled: boolean;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -84,6 +87,19 @@ export function SettingsTab({
             leadsUsed={leadsUsed}
             applicantsUsed={applicantsUsed}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reporting</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
+            Automatischer Performance-Report per E-Mail an die Admins dieses Kunden, immer am letzten Tag des
+            Monats.
+          </p>
+          <MonthlyReportToggle organizationId={organizationId} enabled={monthlyReportEnabled} />
         </CardContent>
       </Card>
 

@@ -3,12 +3,47 @@ import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
+import { computeOverviewStats } from "@/lib/dashboard-stats";
+
+const DAY_MS = 86_400_000;
+
+type StatPipeline = {
+  id: string;
+  name: string;
+  stages: { id: string; name: string; order: number; color: string | null }[];
+  contacts: { id: string; stageId: string; createdAt: Date; updatedAt: Date }[];
+};
+
+function isLastDayOfMonth(date: Date) {
+  const tomorrow = new Date(date);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.getMonth() !== date.getMonth();
+}
+
+/** Contacts currently sitting in their pipeline's final stage, whose last change falls on/after `since`. */
+function completedSince(pipelines: StatPipeline[], since: Date) {
+  let count = 0;
+  for (const pipeline of pipelines) {
+    const sorted = [...pipeline.stages].sort((a, b) => a.order - b.order);
+    if (sorted.length < 2) continue;
+    const firstStageId = sorted[0].id;
+    const lastStageId = sorted[sorted.length - 1].id;
+    for (const contact of pipeline.contacts) {
+      if (contact.stageId === lastStageId && contact.stageId !== firstStageId && contact.updatedAt >= since) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
 
 /**
  * Polled once a day by Vercel Cron (see vercel.json). Bundles every
  * once-a-day job in one route instead of one cron entry each, since cron
  * job counts are capped on most Vercel plans:
  *  - Wiedervorlage (Task) reminder emails, once per task at/after dueAt.
+ *  - Tages-Zusammenfassung an jeden Kunden (nur wenn es etwas zu berichten gibt).
+ *  - Monats-Performance-Report an jeden Kunden, nur am letzten Tag des Monats.
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -20,6 +55,7 @@ export async function GET(request: Request) {
   const baseUrl = await getBaseUrl();
   const errors: string[] = [];
 
+  // --- 1. Wiedervorlage-Erinnerungen -----------------------------------
   const dueTasks = await prisma.task.findMany({
     where: { completedAt: null, reminderSentAt: null, dueAt: { lte: now }, assignedToUserId: { not: null } },
     include: { contact: true, assignedTo: { select: { email: true, name: true } } },
@@ -41,5 +77,91 @@ export async function GET(request: Request) {
     taskRemindersSent++;
   }
 
-  return NextResponse.json({ ok: true, taskRemindersSent, errors });
+  // --- 2. Tägliche Zusammenfassung je Kunde -----------------------------
+  const clients = await prisma.organization.findMany({
+    where: { type: "CLIENT", archivedAt: null },
+    include: {
+      users: { where: { role: "CLIENT_ADMIN" }, select: { email: true, name: true } },
+      pipelines: {
+        select: {
+          id: true,
+          name: true,
+          stages: { select: { id: true, name: true, order: true, color: true } },
+          contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true } },
+        },
+      },
+    },
+  });
+
+  let digestsSent = 0;
+  const yesterday = new Date(now.getTime() - DAY_MS);
+
+  for (const client of clients) {
+    if (client.users.length === 0) continue;
+    const stats = computeOverviewStats(client.pipelines);
+    const newSinceYesterday = client.pipelines
+      .flatMap((p) => p.contacts)
+      .filter((c) => c.createdAt >= yesterday).length;
+
+    if (newSinceYesterday === 0 && stats.unprocessed === 0 && stats.staleUnprocessed === 0) continue;
+
+    const lines = [
+      newSinceYesterday > 0 ? `${newSinceYesterday} neu seit gestern` : null,
+      stats.unprocessed > 0 ? `${stats.unprocessed} unbearbeitet` : null,
+      stats.staleUnprocessed > 0 ? `${stats.staleUnprocessed} davon seit über 3 Tagen offen` : null,
+    ].filter(Boolean);
+
+    const subject = `Kanzlei Brands: ${lines.join(", ")}`;
+    const text = `Guten Morgen!\n\n${lines.join("\n")}\n\n${baseUrl}/dashboard/pipelines`;
+
+    for (const user of client.users) {
+      const result = await sendSystemEmail({ to: user.email, subject, text });
+      if (!result.ok) {
+        errors.push(`digest/${client.id}/${user.email}: ${result.error}`);
+        continue;
+      }
+      digestsSent++;
+    }
+  }
+
+  // --- 3. Monatlicher Performance-Report, nur am letzten Tag des Monats -
+  let reportsSent = 0;
+  if (isLastDayOfMonth(now)) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    for (const client of clients) {
+      if (!client.monthlyReportEnabled || client.users.length === 0) continue;
+
+      const stats = computeOverviewStats(client.pipelines);
+      const newThisMonth = client.pipelines
+        .flatMap((p) => p.contacts)
+        .filter((c) => c.createdAt >= monthStart).length;
+      const completedThisMonth = completedSince(client.pipelines, monthStart);
+
+      const monthLabel = now.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+      const subject = `Dein Kanzlei Brands Report für ${monthLabel}`;
+      const text = [
+        `Dein Performance-Report für ${monthLabel}:`,
+        "",
+        `${newThisMonth} neue Leads/Bewerbungen`,
+        `${completedThisMonth} abgeschlossen/eingestellt`,
+        `${stats.unprocessed} aktuell unbearbeitet`,
+        "",
+        `${baseUrl}/dashboard/pipelines`,
+      ].join("\n");
+
+      for (const user of client.users) {
+        const result = await sendSystemEmail({ to: user.email, subject, text });
+        if (!result.ok) {
+          errors.push(`report/${client.id}/${user.email}: ${result.error}`);
+          continue;
+        }
+        reportsSent++;
+      }
+
+      await prisma.organization.update({ where: { id: client.id }, data: { lastReportSentAt: now } });
+    }
+  }
+
+  return NextResponse.json({ ok: true, taskRemindersSent, digestsSent, reportsSent, errors });
 }

@@ -111,6 +111,30 @@ export async function updateOrganizationQuotas(_prevState: string | undefined, f
   revalidatePath(`/dashboard/clients/${organizationId}`);
 }
 
+export async function updateMonthlyReportSetting(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return;
+
+  const monthlyReportEnabled = formData.get("monthlyReportEnabled") === "true";
+
+  await prisma.organization.update({ where: { id: organizationId }, data: { monthlyReportEnabled } });
+
+  await logAudit({
+    action: "organization.monthly_report_setting_updated",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+    metadata: { monthlyReportEnabled },
+  });
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+}
+
 /**
  * Configures how a client can self-serve order more campaigns from their own
  * board: which Jotform to send them to per campaign kind, and who gets
