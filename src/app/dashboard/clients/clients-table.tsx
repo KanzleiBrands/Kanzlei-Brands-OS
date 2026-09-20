@@ -116,7 +116,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           <Link
             key={client.id}
             href={`/dashboard/clients/${client.id}`}
-            className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary sm:grid sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-center sm:gap-4"
           >
             <div className="flex min-w-0 items-center gap-3">
               <span
@@ -125,25 +125,20 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               >
                 {avatarFor(client.name)}
               </span>
-              <div className="min-w-0 max-w-[160px] sm:max-w-[200px] md:max-w-[280px] lg:max-w-[360px] xl:max-w-[440px]">
-                <p className="truncate font-medium" title={client.name}>
-                  {client.name}
-                </p>
-                <p className="truncate text-sm text-muted-foreground">
-                  {client.totalContacts} Leads gesamt · Letzter Lead: {formatDate(client.lastLeadAt)}
-                </p>
-              </div>
+              <p className="min-w-0 truncate font-medium" title={client.name}>
+                {client.name}
+              </p>
             </div>
 
-            <div className="flex flex-wrap items-start gap-2">
-              <div className="flex flex-col items-start gap-1.5">
+            <div className="flex flex-col items-start gap-1.5">
+              <p className="text-sm text-muted-foreground">
+                {client.totalContacts} Leads gesamt · Letzter Lead: {formatDate(client.lastLeadAt)}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
                 <QuotaPill label="Stellenanzeigen" used={client.applicantsUsed} quota={client.applicantsQuota} />
                 <QuotaPill label="Mandatsakquise" used={client.leadsUsed} quota={client.leadsQuota} />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
                 {client.unprocessed > 0 && <Badge variant="secondary">{client.unprocessed} unbearbeitet</Badge>}
                 {client.staleUnprocessed > 0 && <Badge variant="destructive">{client.staleUnprocessed} überfällig</Badge>}
-                {client.newLast7Days > 0 && <Badge>{client.newLast7Days} neu</Badge>}
               </div>
             </div>
 
