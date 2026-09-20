@@ -133,72 +133,74 @@ export default async function ContactDetailPage({
   return (
     <div className="p-4 sm:p-8">
       <BackLink href={`/dashboard/pipelines/${contact.pipelineId}`}>Zurück zur Kampagne</BackLink>
-      <div className="mt-2 mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{displayName}</h1>
-          <p className="text-muted-foreground">
-            {isB2BLead && `${fullName} · `}
-            {contact.email ?? "Keine E-Mail"} · {contact.phone ?? "Kein Telefon"}
-          </p>
-          <div className="mt-1">
-            <StarRating contactId={contact.id} rating={contact.rating} size="default" />
-          </div>
-          {contact.rejectionReason && (
-            <p className="mt-1 text-sm text-destructive">Absagegrund: {contact.rejectionReason}</p>
-          )}
-          {contact.pipeline.kind === "APPLICANTS" && (
-            <div className="mt-2">
-              <TalentPoolButton
-                contactId={contact.id}
-                talentPool={contact.talentPool}
-                talentPoolNote={contact.talentPoolNote}
-              />
+      <Card className="mt-2 mb-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">{displayName}</h1>
+            <p className="text-muted-foreground">
+              {isB2BLead && `${fullName} · `}
+              {contact.email ?? "Keine E-Mail"} · {contact.phone ?? "Kein Telefon"}
+            </p>
+            <div className="mt-1">
+              <StarRating contactId={contact.id} rating={contact.rating} size="default" />
             </div>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {contact.phone && (
-            <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
-              Anrufen
-            </Button>
-          )}
-          {contact.email && (
-            <Button
-              variant="outline"
-              size="sm"
-              nativeButton={false}
-              render={<a href={`mailto:${contact.email}`} />}
-            >
-              E-Mail
-            </Button>
-          )}
-          <Badge variant="secondary">{CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}</Badge>
-          <StageSelectForm
-            contactId={contact.id}
-            currentStageId={contact.stageId}
-            pipelineKind={contact.pipeline.kind}
-            stages={contact.pipeline.stages}
-            finalStageId={finalStageId(contact.pipeline.stages)}
-          />
-          <EditContactDialog
-            contactId={contact.id}
-            firstName={contact.firstName}
-            lastName={contact.lastName}
-            email={contact.email}
-            phone={contact.phone}
-            companyName={contact.companyName}
-            website={contact.website}
-            address={contact.address}
-            showCompanyFields={contact.pipeline.kind === "LEADS"}
-          />
-          <DeleteContactButton
-            contactId={contact.id}
-            contactName={fullName}
-            redirectTo={`/dashboard/pipelines/${contact.pipelineId}`}
-            variant="full"
-          />
-        </div>
-      </div>
+            {contact.rejectionReason && (
+              <p className="mt-1 text-sm text-destructive">Absagegrund: {contact.rejectionReason}</p>
+            )}
+            {contact.pipeline.kind === "APPLICANTS" && (
+              <div className="mt-2">
+                <TalentPoolButton
+                  contactId={contact.id}
+                  talentPool={contact.talentPool}
+                  talentPoolNote={contact.talentPoolNote}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {contact.phone && (
+              <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
+                Anrufen
+              </Button>
+            )}
+            {contact.email && (
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<a href={`mailto:${contact.email}`} />}
+              >
+                E-Mail
+              </Button>
+            )}
+            <Badge variant="secondary">{CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}</Badge>
+            <StageSelectForm
+              contactId={contact.id}
+              currentStageId={contact.stageId}
+              pipelineKind={contact.pipeline.kind}
+              stages={contact.pipeline.stages}
+              finalStageId={finalStageId(contact.pipeline.stages)}
+            />
+            <EditContactDialog
+              contactId={contact.id}
+              firstName={contact.firstName}
+              lastName={contact.lastName}
+              email={contact.email}
+              phone={contact.phone}
+              companyName={contact.companyName}
+              website={contact.website}
+              address={contact.address}
+              showCompanyFields={contact.pipeline.kind === "LEADS"}
+            />
+            <DeleteContactButton
+              contactId={contact.id}
+              contactName={fullName}
+              redirectTo={`/dashboard/pipelines/${contact.pipelineId}`}
+              variant="full"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b">
         {TAB_ORDER.map((item) => (
