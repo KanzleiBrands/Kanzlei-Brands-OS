@@ -64,6 +64,24 @@ model Organization {
   monthlyReportEnabled Boolean   @default(true)
   lastReportSentAt     DateTime?
 
+  // DSGVO: Kontakte in einer Ungeeignet-/Verloren-Stufe (Stage.isRejected)
+  // nach X Monaten vollständig löschen (nicht nur anonymisieren - entweder
+  // der ganze Datensatz oder gar nichts). Gilt kundenweit für alle
+  // Kampagnen dieses Typs, damit es nicht pro Kampagne einzeln gepflegt
+  // werden muss. null = deaktiviert - bewusst nicht standardmäßig aktiv, da
+  // dies echte Kontaktdaten unwiderruflich löscht; muss von der Agentur
+  // bewusst pro Kunde gesetzt werden. Für den Kunden selbst nur sichtbar,
+  // nicht änderbar (siehe /dashboard/settings, Reiter "Datenschutz").
+  //
+  // Recruiting: Empfehlung 6 Monate, siehe AGG §15 Abs. 4 (2 Monate
+  // Klagefrist für Entschädigungsansprüche nach Absage) + §61b ArbGG
+  // (weitere 3 Monate Klagefrist) + Sicherheitspuffer.
+  applicantDataRetentionMonths Int?
+  // Mandatsakquise: keine gesetzliche Mindestfrist für Anfragen ohne
+  // zustande gekommenes Mandat, siehe Grundsatz der Speicherbegrenzung
+  // (Art. 5 Abs. 1 lit. e DSGVO) - Empfehlung in der Praxis 6 Monate.
+  leadDataRetentionMonths      Int?
+
   users             User[]
   pipelines         Pipeline[]
   courseAssignments CourseAssignment[]
@@ -163,14 +181,6 @@ model Pipeline {
   active               Boolean      @default(true)
   showDuplicateWarning Boolean      @default(true)
   location             String? // Recruiting: which office/site this specific job posting is for
-
-  // DSGVO (Recruiting): abgelehnte Bewerber dieser Kampagne nach X Monaten
-  // automatisch anonymisieren. null = deaktiviert - bewusst nicht
-  // standardmäßig aktiv, da dies echte Bewerberdaten unwiderruflich löscht;
-  // muss pro Kampagne bewusst gesetzt werden. Empfehlung ist 6 Monate, siehe
-  // AGG §15 Abs. 4 (2 Monate Klagefrist) + §61b ArbGG (3 Monate Klagefrist)
-  // + Sicherheitspuffer.
-  rejectedDataRetentionMonths Int?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

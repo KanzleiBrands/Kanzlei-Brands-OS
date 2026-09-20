@@ -219,6 +219,8 @@ export default async function ClientDetailPage({
           applicantsFormUrl={organization.applicantsFormUrl}
           agencyUsers={agencyUsers}
           monthlyReportEnabled={organization.monthlyReportEnabled}
+          applicantDataRetentionMonths={organization.applicantDataRetentionMonths}
+          leadDataRetentionMonths={organization.leadDataRetentionMonths}
         />
       )}
     </div>

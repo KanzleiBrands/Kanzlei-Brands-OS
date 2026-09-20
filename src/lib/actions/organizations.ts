@@ -136,42 +136,54 @@ export async function updateMonthlyReportSetting(formData: FormData) {
 }
 
 /**
- * DSGVO (Recruiting): automatically anonymizes a campaign's rejected
- * applicants older than N months (see /api/cron/daily). Deliberately opt-in
- * per campaign (null = off) - never enabled without an admin explicitly
- * setting a value, since it's a destructive, irreversible action on real
- * applicant data. Scoped to APPLICANTS pipelines - AGG claim deadlines
- * (the legal reason for the recommended 6-month window) only apply to job
- * applicants, not Mandatsakquise leads.
+ * DSGVO: vollständig löscht (nicht nur anonymisiert) Kontakte in einer
+ * Ungeeignet-/Verloren-Stufe, die älter als N Monate sind (siehe
+ * /api/cron/daily). Kundenweit statt pro Kampagne, damit ein Kunde mit
+ * mehreren Kampagnen desselben Typs die Einstellung nicht mehrfach pflegen
+ * muss. Zwei getrennte Fristen, da für Bewerber (AGG/ArbGG-Klagefristen)
+ * eine andere rechtliche Grundlage gilt als für Mandatsanfragen
+ * (Speicherbegrenzung, Art. 5 Abs. 1 lit. e DSGVO, keine feste Frist).
+ * Deliberately opt-in (null = off) - never enabled without an admin
+ * explicitly setting a value, since it's a destructive, irreversible
+ * deletion of real contact data. Nur für die Agentur änderbar; der Kunde
+ * sieht die aktuelle Einstellung nur lesend (siehe /dashboard/settings).
  */
-export async function updatePipelineDataRetention(_prevState: string | undefined, formData: FormData) {
+export async function updateDataRetentionSettings(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können diese Einstellung ändern.";
 
-  const pipelineId = String(formData.get("pipelineId") ?? "");
-  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
-  if (!pipeline || pipeline.kind !== "APPLICANTS") return "Kampagne nicht gefunden.";
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
 
-  const rejectedDataRetentionMonths = parseQuota(formData.get("rejectedDataRetentionMonths"));
-  if (rejectedDataRetentionMonths === "invalid") {
+  const applicantDataRetentionMonths = parseQuota(formData.get("applicantDataRetentionMonths"));
+  const leadDataRetentionMonths = parseQuota(formData.get("leadDataRetentionMonths"));
+  if (applicantDataRetentionMonths === "invalid" || leadDataRetentionMonths === "invalid") {
     return "Bitte leer lassen (deaktiviert) oder eine positive ganze Zahl an Monaten angeben.";
   }
-  if (rejectedDataRetentionMonths !== null && rejectedDataRetentionMonths < 1) {
+  if (
+    (applicantDataRetentionMonths !== null && applicantDataRetentionMonths < 1) ||
+    (leadDataRetentionMonths !== null && leadDataRetentionMonths < 1)
+  ) {
     return "Mindestens 1 Monat.";
   }
 
-  await prisma.pipeline.update({ where: { id: pipelineId }, data: { rejectedDataRetentionMonths } });
-
-  await logAudit({
-    action: "pipeline.data_retention_updated",
-    entityType: "Pipeline",
-    entityId: pipelineId,
-    organizationId: pipeline.organizationId,
-    userId: session.user.id,
-    metadata: { rejectedDataRetentionMonths },
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { applicantDataRetentionMonths, leadDataRetentionMonths },
   });
 
-  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+  await logAudit({
+    action: "organization.data_retention_updated",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId,
+    userId: session.user.id,
+    metadata: { applicantDataRetentionMonths, leadDataRetentionMonths },
+  });
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidatePath("/dashboard/settings");
 }
 
 /**

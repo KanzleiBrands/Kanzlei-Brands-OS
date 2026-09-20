@@ -9,7 +9,6 @@ import { PipelineActiveToggle } from "./pipeline-active-toggle";
 import { DeletePipelineButton } from "./delete-pipeline-button";
 import { EditPipelineNameForm } from "./edit-pipeline-name-form";
 import { EditPipelineLocationForm } from "./edit-pipeline-location-form";
-import { DataRetentionForm } from "./data-retention-form";
 import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
 import { AutomationsPanel } from "./automations-panel";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
@@ -149,16 +148,6 @@ export default async function PipelineDetailPage({
                 Standort (z.B. wenn dieselbe Stelle an mehreren Standorten ausgeschrieben ist)
               </p>
               <EditPipelineLocationForm pipelineId={pipeline.id} location={pipeline.location} />
-            </div>
-          )}
-
-          {pipeline.kind === "APPLICANTS" && (
-            <div className="rounded-lg border bg-card p-4">
-              <p className="mb-2 font-medium">Datenschutz (DSGVO)</p>
-              <DataRetentionForm
-                pipelineId={pipeline.id}
-                rejectedDataRetentionMonths={pipeline.rejectedDataRetentionMonths}
-              />
             </div>
           )}
 

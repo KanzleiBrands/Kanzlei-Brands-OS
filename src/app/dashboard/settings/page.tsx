@@ -9,9 +9,10 @@ import { AgencyTeamSection } from "./agency-team-section";
 import { MailboxSection } from "./mailbox-section";
 import { StageTemplatesSection } from "./stage-templates-section";
 import { MessageTemplatesSection } from "./message-templates-section";
+import { PrivacySection } from "./privacy-section";
 import type { EditableStage } from "./stage-list-editor";
 
-type Tab = "account" | "team" | "mailbox" | "snippets" | "templates";
+type Tab = "account" | "team" | "mailbox" | "snippets" | "templates" | "privacy";
 
 export default async function SettingsPage({
   searchParams,
@@ -32,6 +33,7 @@ export default async function SettingsPage({
     ...(canUseMailbox ? (["mailbox"] as const) : []),
     "snippets",
     ...(isAgency ? (["templates"] as const) : []),
+    ...(!isAgency ? (["privacy"] as const) : []),
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
 
@@ -79,6 +81,14 @@ export default async function SettingsPage({
             Statusvorlagen
           </Link>
         )}
+        {!isAgency && (
+          <Link
+            href="/dashboard/settings?tab=privacy"
+            className={`border-b-2 px-3 py-2 text-sm ${tab === "privacy" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Datenschutz
+          </Link>
+        )}
       </div>
 
       {tab === "account" && (
@@ -105,6 +115,13 @@ export default async function SettingsPage({
       {tab === "snippets" && <MessageTemplatesSectionData organizationId={session.user.organizationId} />}
 
       {tab === "templates" && isAgency && <StageTemplatesSectionData />}
+
+      {tab === "privacy" && !isAgency && (
+        <PrivacySection
+          applicantDataRetentionMonths={organization?.applicantDataRetentionMonths ?? null}
+          leadDataRetentionMonths={organization?.leadDataRetentionMonths ?? null}
+        />
+      )}
     </div>
   );
 }

@@ -164,60 +164,68 @@ export async function GET(request: Request) {
     }
   }
 
-  // --- 4. DSGVO: abgelehnte Bewerber anonymisieren (nur wenn pro Recruiting-
-  // Kampagne explizit aktiviert - siehe Kommentar an
-  // updatePipelineDataRetention). Ein fehlendes E-Mail-Feld nach dem Lauf
-  // markiert "bereits anonymisiert", damit ein Kontakt nicht bei jedem
-  // Cron-Lauf erneut angefasst wird.
-  let anonymized = 0;
-  const retentionPipelines = await prisma.pipeline.findMany({
-    where: { kind: "APPLICANTS", rejectedDataRetentionMonths: { not: null } },
-    select: { id: true, organizationId: true, rejectedDataRetentionMonths: true },
+  // --- 4. DSGVO: Kontakte in einer Ungeeignet-Stufe vollständig löschen
+  // (nicht nur anonymisieren - siehe Kommentar an updateDataRetentionSettings).
+  // Kundenweit statt pro Kampagne konfiguriert, getrennt nach Bewerbern
+  // (Recruiting) und Mandatsanfragen (Mandatsakquise). Läuft unabhängig vom
+  // Archiv-Status eines Kunden, da die Löschpflicht dadurch nicht entfällt.
+  let deletedApplicants = 0;
+  let deletedLeads = 0;
+  const retentionOrgs = await prisma.organization.findMany({
+    where: {
+      type: "CLIENT",
+      OR: [{ applicantDataRetentionMonths: { not: null } }, { leadDataRetentionMonths: { not: null } }],
+    },
+    select: {
+      id: true,
+      applicantDataRetentionMonths: true,
+      leadDataRetentionMonths: true,
+      pipelines: { select: { id: true, kind: true } },
+    },
   });
 
-  for (const pipeline of retentionPipelines) {
-    if (!pipeline.rejectedDataRetentionMonths) continue;
+  for (const org of retentionOrgs) {
+    const retentionByKind = [
+      { kind: "APPLICANTS" as const, months: org.applicantDataRetentionMonths, reason: "applicant_data_retention" },
+      { kind: "LEADS" as const, months: org.leadDataRetentionMonths, reason: "lead_data_retention" },
+    ];
 
-    const cutoff = new Date(now);
-    cutoff.setMonth(cutoff.getMonth() - pipeline.rejectedDataRetentionMonths);
+    for (const { kind, months, reason } of retentionByKind) {
+      if (!months) continue;
 
-    const staleRejected = await prisma.contact.findMany({
-      where: {
-        pipelineId: pipeline.id,
-        stage: { isRejected: true },
-        updatedAt: { lt: cutoff },
-        email: { not: null },
-      },
-      select: { id: true },
-    });
+      const pipelineIds = org.pipelines.filter((p) => p.kind === kind).map((p) => p.id);
+      if (pipelineIds.length === 0) continue;
 
-    for (const contact of staleRejected) {
-      await prisma.contact.update({
-        where: { id: contact.id },
-        data: {
-          firstName: "Anonymisiert",
-          lastName: null,
-          email: null,
-          phone: null,
-          address: null,
-          cvUrl: null,
-          customFields: {},
-          companyName: null,
-          website: null,
-          talentPoolNote: null,
-        },
+      const cutoff = new Date(now);
+      cutoff.setMonth(cutoff.getMonth() - months);
+
+      const staleContacts = await prisma.contact.findMany({
+        where: { pipelineId: { in: pipelineIds }, stage: { isRejected: true }, updatedAt: { lt: cutoff } },
+        select: { id: true },
       });
-      await prisma.additionalContact.deleteMany({ where: { contactId: contact.id } });
-      await logAudit({
-        action: "contact.anonymized",
-        entityType: "Contact",
-        entityId: contact.id,
-        organizationId: pipeline.organizationId,
-        metadata: { reason: "rejected_data_retention", retentionMonths: pipeline.rejectedDataRetentionMonths, pipelineId: pipeline.id },
-      });
-      anonymized++;
+
+      for (const contact of staleContacts) {
+        await prisma.contact.delete({ where: { id: contact.id } });
+        await logAudit({
+          action: "contact.deleted",
+          entityType: "Contact",
+          entityId: contact.id,
+          organizationId: org.id,
+          metadata: { reason, retentionMonths: months },
+        });
+        if (kind === "APPLICANTS") deletedApplicants++;
+        else deletedLeads++;
+      }
     }
   }
 
-  return NextResponse.json({ ok: true, taskRemindersSent, digestsSent, reportsSent, anonymized, errors });
+  return NextResponse.json({
+    ok: true,
+    taskRemindersSent,
+    digestsSent,
+    reportsSent,
+    deletedApplicants,
+    deletedLeads,
+    errors,
+  });
 }
