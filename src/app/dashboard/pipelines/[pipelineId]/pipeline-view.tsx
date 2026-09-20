@@ -33,6 +33,7 @@ type Stage = {
   order: number;
   color: string | null;
   isRejected: boolean;
+  isFinal: boolean;
   contacts: Contact[];
 };
 
@@ -82,10 +83,7 @@ export function PipelineView({
 
   const qualifiedStages = useMemo(() => filteredStages.filter((s) => !s.isRejected), [filteredStages]);
   const excludedStages = useMemo(() => filteredStages.filter((s) => s.isRejected), [filteredStages]);
-  const finalStageId = useMemo(
-    () => [...qualifiedStages].sort((a, b) => a.order - b.order).at(-1)?.id,
-    [qualifiedStages],
-  );
+  const finalStageId = useMemo(() => stages.find((s) => s.isFinal)?.id, [stages]);
   const qualifiedCount = qualifiedStages.reduce((sum, s) => sum + s.contacts.length, 0);
   const excludedCount = excludedStages.reduce((sum, s) => sum + s.contacts.length, 0);
 

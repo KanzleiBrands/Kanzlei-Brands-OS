@@ -11,7 +11,7 @@ const DAY_MS = 86_400_000;
 type StatPipeline = {
   id: string;
   name: string;
-  stages: { id: string; name: string; order: number; color: string | null; isRejected: boolean }[];
+  stages: { id: string; name: string; order: number; color: string | null; isRejected: boolean; isFinal: boolean }[];
   contacts: { id: string; stageId: string; createdAt: Date; updatedAt: Date }[];
 };
 
@@ -21,17 +21,14 @@ function isLastDayOfMonth(date: Date) {
   return tomorrow.getMonth() !== date.getMonth();
 }
 
-/** Contacts currently sitting in their pipeline's final (non-Ungeeignet) stage, whose last change falls on/after `since`. */
+/** Contacts currently sitting in their pipeline's explicit final stage (Stage.isFinal), whose last change falls on/after `since`. */
 function completedSince(pipelines: StatPipeline[], since: Date) {
   let count = 0;
   for (const pipeline of pipelines) {
-    const sorted = [...pipeline.stages].sort((a, b) => a.order - b.order);
-    if (sorted.length < 2) continue;
-    const firstStageId = sorted[0].id;
-    const qualified = sorted.filter((s) => !s.isRejected);
-    const lastStageId = qualified[qualified.length - 1]?.id;
+    const lastStageId = pipeline.stages.find((s) => s.isFinal)?.id;
+    if (!lastStageId) continue;
     for (const contact of pipeline.contacts) {
-      if (contact.stageId === lastStageId && contact.stageId !== firstStageId && contact.updatedAt >= since) {
+      if (contact.stageId === lastStageId && contact.updatedAt >= since) {
         count++;
       }
     }
@@ -88,7 +85,7 @@ export async function GET(request: Request) {
         select: {
           id: true,
           name: true,
-          stages: { select: { id: true, name: true, order: true, color: true, isRejected: true } },
+          stages: { select: { id: true, name: true, order: true, color: true, isRejected: true, isFinal: true } },
           contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true } },
         },
       },

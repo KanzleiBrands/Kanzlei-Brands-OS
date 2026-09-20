@@ -63,7 +63,7 @@ export default async function ClientsPage({
             kind: true,
             active: true,
             createdAt: true,
-            stages: { select: { id: true, name: true, order: true, color: true, isRejected: true } },
+            stages: { select: { id: true, name: true, order: true, color: true, isRejected: true, isFinal: true } },
             contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true, dealVolumeEur: true } },
           },
         },

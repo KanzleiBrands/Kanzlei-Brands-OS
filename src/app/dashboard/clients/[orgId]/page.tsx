@@ -41,7 +41,7 @@ export default async function ClientDetailPage({
       pipelines: {
         orderBy: { createdAt: "asc" },
         include: {
-          stages: { select: { id: true, name: true, order: true, color: true, isRejected: true } },
+          stages: { select: { id: true, name: true, order: true, color: true, isRejected: true, isFinal: true } },
           contacts: { select: { id: true, stageId: true, createdAt: true, updatedAt: true, dealVolumeEur: true } },
         },
       },

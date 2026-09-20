@@ -1,10 +1,11 @@
 /**
- * The pipeline's actual "success" stage (eingestellt/gewonnen): the
- * highest-order stage among the non-rejected ones. Assumes `stages` is
- * already ordered by `order` ascending (true for every query feeding this).
- * Mirrors the equivalent logic in src/lib/dashboard-stats.ts.
+ * The pipeline's actual "success" stage (eingestellt/gewonnen) - explicitly
+ * marked via Stage.isFinal rather than inferred from stage order, since a
+ * non-rejected stage appended after it (e.g. a separate "Verloren" stage)
+ * would otherwise be mistaken for the real final stage. Mirrors the
+ * equivalent logic in src/lib/dashboard-stats.ts. Returns undefined if no
+ * stage is marked - the pipeline simply doesn't have one set yet.
  */
-export function finalStageId(stages: { id: string; isRejected: boolean }[]): string | undefined {
-  const qualified = stages.filter((s) => !s.isRejected);
-  return qualified[qualified.length - 1]?.id;
+export function finalStageId(stages: { id: string; isFinal: boolean }[]): string | undefined {
+  return stages.find((s) => s.isFinal)?.id;
 }

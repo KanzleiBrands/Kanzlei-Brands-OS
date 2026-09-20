@@ -4,18 +4,26 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 
-export type StageTemplateStage = { name: string; order: number; color: string; isRejected: boolean };
+export type StageTemplateStage = { name: string; order: number; color: string; isRejected: boolean; isFinal: boolean };
 
 function parseStages(raw: string): StageTemplateStage[] | null {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    return parsed.map((stage, index) => ({
-      name: String(stage.name ?? "").trim(),
-      order: index,
-      color: String(stage.color ?? "#6B7280"),
-      isRejected: Boolean(stage.isRejected),
-    }));
+    let sawFinal = false;
+    return parsed.map((stage, index) => {
+      // At most one final stage per template - the UI already enforces this
+      // radio-style, but guard here too in case of stale/hand-edited payloads.
+      const isFinal = !sawFinal && Boolean(stage.isFinal);
+      if (isFinal) sawFinal = true;
+      return {
+        name: String(stage.name ?? "").trim(),
+        order: index,
+        color: String(stage.color ?? "#6B7280"),
+        isRejected: Boolean(stage.isRejected),
+        isFinal,
+      };
+    });
   } catch {
     return null;
   }

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { BanIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon, XIcon } from "lucide-react";
+import { BanIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon, TrophyIcon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { STAGE_COLOR_PALETTE } from "@/lib/stage-colors";
 
-export type EditableStage = { name: string; color: string; isRejected?: boolean };
+export type EditableStage = { name: string; color: string; isRejected?: boolean; isFinal?: boolean };
 
 export function StageListEditor({
   initialStages,
@@ -27,6 +27,11 @@ export function StageListEditor({
       <p className="text-sm text-muted-foreground">
         <BanIcon className="mr-1 inline size-3 align-[-1px]" />
         markiert eine Ausschluss-Stufe (z.B. Absage): erscheint nicht im Kanban, sondern im Reiter „Ungeeignet“.
+      </p>
+      <p className="text-sm text-muted-foreground">
+        <TrophyIcon className="mr-1 inline size-3 align-[-1px]" />
+        markiert die Erfolgs-Stufe (Eingestellt/Gewonnen): löst beim Erreichen das Popup für Einstellungsdatum bzw.
+        Dealvolumen aus. Höchstens eine pro Vorlage.
       </p>
       {stages.map((stage, index) => (
         <div key={index} className="flex items-center gap-2">
@@ -72,6 +77,20 @@ export function StageListEditor({
             }}
           >
             <BanIcon className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={stage.isFinal ? "default" : "ghost"}
+            title="Als Erfolgs-Stufe markieren (Eingestellt/Gewonnen) - höchstens eine pro Vorlage"
+            aria-label="Als Erfolgs-Stufe markieren"
+            onClick={() => {
+              const makeFinal = !stage.isFinal;
+              const next = stages.map((s, i) => ({ ...s, isFinal: i === index ? makeFinal : false }));
+              update(next);
+            }}
+          >
+            <TrophyIcon className="size-4" />
           </Button>
           <Button
             type="button"

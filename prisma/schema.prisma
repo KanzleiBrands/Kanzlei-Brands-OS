@@ -216,6 +216,14 @@ model Stage {
   color      String?
   isRejected Boolean @default(false)
 
+  // Markiert die eine "Erfolgs"-Stufe der Kampagne (Eingestellt/Gewonnen) -
+  // bewusst explizit statt aus der Sortierreihenfolge abgeleitet, da eine
+  // nachträglich angehängte Ungeeignet-Stufe (oder eine eigene "Verloren"-
+  // Stufe danach) sonst fälschlich als "letzte" Stufe erkannt würde. Löst
+  // FinalStageDialog aus (Einstellungsdatum/Dealvolumen), siehe
+  // src/lib/final-stage.ts. Höchstens eine Stufe pro Kampagne.
+  isFinal Boolean @default(false)
+
   pipelineId String
   pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   contacts   Contact[]

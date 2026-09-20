@@ -1,17 +1,16 @@
 type StatContact = { id: string; stageId: string; createdAt: Date; updatedAt: Date; dealVolumeEur?: number | null };
-type StatStage = { id: string; name: string; order: number; color: string | null; isRejected?: boolean };
+type StatStage = { id: string; name: string; order: number; color: string | null; isRejected?: boolean; isFinal?: boolean };
 type StatPipeline = { id: string; name: string; organizationName?: string; stages: StatStage[]; contacts: StatContact[] };
 
 /**
- * The pipeline's actual "success" stage (eingestellt/gewonnen): the
- * highest-order stage among the NON-rejected ones. Using the highest-order
- * stage overall would be wrong wherever an isRejected stage (e.g.
- * "Ungeeignet") was appended after the real final stage, which is the norm -
- * see the leads_ungeeignet_stage migration.
+ * The pipeline's actual "success" stage (eingestellt/gewonnen) - explicitly
+ * marked via Stage.isFinal rather than inferred from stage order, since a
+ * non-rejected stage appended after it (e.g. a separate "Verloren" stage)
+ * would otherwise be mistaken for the real final stage. Mirrors
+ * src/lib/final-stage.ts. Returns undefined if no stage is marked yet.
  */
 function finalStageId(sortedStages: StatStage[]): string | undefined {
-  const qualified = sortedStages.filter((s) => !s.isRejected);
-  return qualified[qualified.length - 1]?.id;
+  return sortedStages.find((s) => s.isFinal)?.id;
 }
 
 export type OverviewStats = {
