@@ -45,20 +45,22 @@ function NewAgencyUserFormInner({ organizationId, onDone }: { organizationId: st
 
   return (
     <div className="flex flex-col gap-3">
-      <form action={formAction} className="flex flex-col gap-3">
-        <input type="hidden" name="organizationId" value={organizationId} />
-        <input type="hidden" name="role" value="AGENCY_ADMIN" />
-        <Input name="name" placeholder="Name" required />
-        <Input name="email" type="email" placeholder="E-Mail" required />
-        <p className="text-sm text-muted-foreground">
-          Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig. Hat vollen Zugriff auf
-          alle Kunden.
-        </p>
-        {result?.status === "error" && <p className="text-sm text-destructive">{result.message}</p>}
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Wird angelegt..." : "Hinzufügen"}
-        </Button>
-      </form>
+      {result?.status !== "success" && (
+        <form action={formAction} className="flex flex-col gap-3">
+          <input type="hidden" name="organizationId" value={organizationId} />
+          <input type="hidden" name="role" value="AGENCY_ADMIN" />
+          <Input name="name" placeholder="Name" required />
+          <Input name="email" type="email" placeholder="E-Mail" required />
+          <p className="text-sm text-muted-foreground">
+            Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig. Hat vollen Zugriff auf
+            alle Kunden.
+          </p>
+          {result?.status === "error" && <p className="text-sm text-destructive">{result.message}</p>}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Wird angelegt..." : "Hinzufügen"}
+          </Button>
+        </form>
+      )}
 
       {result?.status === "success" && (
         <div className="flex flex-col gap-2">

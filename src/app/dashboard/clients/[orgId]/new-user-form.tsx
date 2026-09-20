@@ -61,31 +61,33 @@ function NewUserFormInner({
 
   return (
     <div className="flex flex-col gap-3">
-      <form action={formAction} className="flex flex-col gap-3">
-        <input type="hidden" name="organizationId" value={organizationId} />
-        <Input name="name" placeholder="Name" required />
-        <Input name="email" type="email" placeholder="E-Mail" required />
-        {canAssignAdmin ? (
-          <Select name="role" defaultValue="CLIENT_STAFF">
-            <SelectTrigger>
-              <SelectValue>{(value: string) => (value === "CLIENT_ADMIN" ? "Admin" : "Mitarbeiter")}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CLIENT_STAFF">Mitarbeiter</SelectItem>
-              <SelectItem value="CLIENT_ADMIN">Admin</SelectItem>
-            </SelectContent>
-          </Select>
-        ) : (
-          <input type="hidden" name="role" value="CLIENT_STAFF" />
-        )}
-        <p className="text-sm text-muted-foreground">
-          Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig.
-        </p>
-        {result?.status === "error" && <p className="text-sm text-destructive">{result.message}</p>}
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Wird angelegt..." : "Hinzufügen"}
-        </Button>
-      </form>
+      {result?.status !== "success" && (
+        <form action={formAction} className="flex flex-col gap-3">
+          <input type="hidden" name="organizationId" value={organizationId} />
+          <Input name="name" placeholder="Name" required />
+          <Input name="email" type="email" placeholder="E-Mail" required />
+          {canAssignAdmin ? (
+            <Select name="role" defaultValue="CLIENT_STAFF">
+              <SelectTrigger>
+                <SelectValue>{(value: string) => (value === "CLIENT_ADMIN" ? "Admin" : "Mitarbeiter")}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CLIENT_STAFF">Mitarbeiter</SelectItem>
+                <SelectItem value="CLIENT_ADMIN">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <input type="hidden" name="role" value="CLIENT_STAFF" />
+          )}
+          <p className="text-sm text-muted-foreground">
+            Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig.
+          </p>
+          {result?.status === "error" && <p className="text-sm text-destructive">{result.message}</p>}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Wird angelegt..." : "Hinzufügen"}
+          </Button>
+        </form>
+      )}
 
       {result?.status === "success" && (
         <div className="flex flex-col gap-2">
