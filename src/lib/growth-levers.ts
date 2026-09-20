@@ -23,7 +23,7 @@ export const APPLICANT_GROWTH_LEVERS: GrowthLever[] = [
     label: "Social Media für Stellenanzeigen",
     kind: "channel",
     tag: "social_media",
-    suggestion: "Nutze deine offenen Stellen auch auf Social Media, um mehr passende Kandidat:innen zu erreichen.",
+    suggestion: "Nutze deine offenen Stellen auch auf Social Media, um mehr passende Kandidaten zu erreichen.",
   },
   {
     id: "stellenportale",
@@ -47,14 +47,6 @@ export const APPLICANT_GROWTH_LEVERS: GrowthLever[] = [
     suggestion:
       "Mit persönlichen, authentischen Reels von einem Drehtag kannst du deine Arbeitgebermarke extrem stärken.",
   },
-  {
-    id: "content_marketing",
-    label: "Content-Marketing / Expertenstatus",
-    kind: "channel",
-    tag: "content_marketing",
-    suggestion:
-      "Mit Einblicken in euren Arbeitsalltag und eurem Expertenwissen zeigst du potenziellen Bewerber:innen, wer bei euch arbeitet und warum sich das lohnt.",
-  },
 ];
 
 export const LEAD_GROWTH_LEVERS: GrowthLever[] = [
@@ -63,14 +55,14 @@ export const LEAD_GROWTH_LEVERS: GrowthLever[] = [
     label: "Google Ads",
     kind: "channel",
     tag: "google_ads",
-    suggestion: "Google Ads erreicht Mandant:innen genau im Moment ihres Bedarfs.",
+    suggestion: "Google Ads erreicht Mandanten genau im Moment ihres Bedarfs.",
   },
   {
     id: "meta_ads",
     label: "Meta Ads (Facebook/Instagram)",
     kind: "channel",
     tag: "meta_ads",
-    suggestion: "Mit Meta-Anzeigen (Facebook/Instagram) erreichst du zusätzliche Wunschmandant:innen.",
+    suggestion: "Mit Meta-Anzeigen (Facebook/Instagram) erreichst du zusätzliche Wunschmandanten.",
   },
   {
     id: "linkedin_ads",
@@ -78,14 +70,6 @@ export const LEAD_GROWTH_LEVERS: GrowthLever[] = [
     kind: "channel",
     tag: "linkedin_ads",
     suggestion: "LinkedIn eignet sich besonders gut, um B2B-Mandate gezielt anzusprechen.",
-  },
-  {
-    id: "content_marketing",
-    label: "Content-Marketing / Expertenstatus",
-    kind: "channel",
-    tag: "content_marketing",
-    suggestion:
-      "Durch dein Wissen und deinen Expertenstatus kannst du erklärungsbedürftige Themen deinen Wunschmandant:innen näherbringen.",
   },
 ];
 
