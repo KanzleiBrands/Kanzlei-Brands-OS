@@ -88,11 +88,16 @@ export default async function ClientsPage({
   const dealVolume = computeDealVolumeStats(leadPipelines);
   const eurFormatter = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
+  function lastCreatedAt(contacts: { createdAt: Date }[]) {
+    return contacts.reduce<Date | null>((latest, c) => (!latest || c.createdAt > latest ? c.createdAt : latest), null);
+  }
+
   const clientRows = clients.map((client) => {
+    const jobPipelinesForClient = client.pipelines.filter((p) => p.kind === "APPLICANTS");
+    const leadPipelinesForClient = client.pipelines.filter((p) => p.kind === "LEADS");
+    const jobContacts = jobPipelinesForClient.flatMap((p) => p.contacts);
+    const leadContacts = leadPipelinesForClient.flatMap((p) => p.contacts);
     const stats = computeOverviewStats(client.pipelines);
-    const lastLeadAt = client.pipelines
-      .flatMap((p) => p.contacts)
-      .reduce<Date | null>((latest, c) => (!latest || c.createdAt > latest ? c.createdAt : latest), null);
 
     return {
       id: client.id,
@@ -101,9 +106,12 @@ export default async function ClientsPage({
       unprocessed: stats.unprocessed,
       staleUnprocessed: stats.staleUnprocessed,
       newLast7Days: stats.newLast7Days,
-      lastLeadAt: lastLeadAt?.toISOString() ?? null,
-      leadsUsed: client.pipelines.filter((p) => p.kind === "LEADS").length,
-      applicantsUsed: client.pipelines.filter((p) => p.kind === "APPLICANTS").length,
+      applicantsTotalContacts: jobContacts.length,
+      leadsTotalContacts: leadContacts.length,
+      lastApplicantAt: lastCreatedAt(jobContacts)?.toISOString() ?? null,
+      lastLeadAt: lastCreatedAt(leadContacts)?.toISOString() ?? null,
+      leadsUsed: leadPipelinesForClient.length,
+      applicantsUsed: jobPipelinesForClient.length,
       leadsQuota: client.leadsQuota,
       applicantsQuota: client.applicantsQuota,
     };

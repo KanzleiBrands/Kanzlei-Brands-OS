@@ -14,6 +14,9 @@ type ClientRow = {
   unprocessed: number;
   staleUnprocessed: number;
   newLast7Days: number;
+  applicantsTotalContacts: number;
+  leadsTotalContacts: number;
+  lastApplicantAt: string | null;
   lastLeadAt: string | null;
   leadsUsed: number;
   applicantsUsed: number;
@@ -54,8 +57,8 @@ const SORT_OPTIONS = [
 
 type SortKey = (typeof SORT_OPTIONS)[number]["value"];
 
-function formatDate(value: string | null) {
-  if (!value) return "kein Lead bisher";
+function formatDate(value: string | null, fallback: string) {
+  if (!value) return fallback;
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
@@ -124,7 +127,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           <Link
             key={client.id}
             href={`/dashboard/clients/${client.id}`}
-            className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary sm:grid sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-center sm:gap-4"
+            className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary sm:grid sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-center sm:gap-8"
           >
             <div className="flex min-w-0 items-center gap-3">
               <span
@@ -139,10 +142,16 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
             </div>
 
             <div className="flex flex-col items-start gap-1.5">
-              <InfoPill>{client.totalContacts} Leads gesamt</InfoPill>
-              <InfoPill>Letzter Lead: {formatDate(client.lastLeadAt)}</InfoPill>
-              <QuotaPill label="Stellenanzeigen" used={client.applicantsUsed} quota={client.applicantsQuota} />
-              <QuotaPill label="Mandatsakquise" used={client.leadsUsed} quota={client.leadsQuota} />
+              <div className="flex flex-wrap items-center gap-2">
+                <QuotaPill label="Stellenanzeigen" used={client.applicantsUsed} quota={client.applicantsQuota} />
+                <InfoPill>{client.applicantsTotalContacts} Bewerber gesamt</InfoPill>
+                <InfoPill>Letzter Bewerber: {formatDate(client.lastApplicantAt, "keiner bisher")}</InfoPill>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <QuotaPill label="Mandatsakquise" used={client.leadsUsed} quota={client.leadsQuota} />
+                <InfoPill>{client.leadsTotalContacts} Leads gesamt</InfoPill>
+                <InfoPill>Letzter Lead: {formatDate(client.lastLeadAt, "keiner bisher")}</InfoPill>
+              </div>
               {(client.unprocessed > 0 || client.staleUnprocessed > 0) && (
                 <div className="flex flex-wrap items-center gap-2">
                   {client.unprocessed > 0 && <Badge variant="secondary">{client.unprocessed} unbearbeitet</Badge>}
