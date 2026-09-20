@@ -81,12 +81,16 @@ export function ContactCard({
           </>
         )}
 
-        <p className="text-sm text-muted-foreground">
-          Zentrale:{" "}
-          <a href={`tel:${OFFICE_PHONE}`} className="font-medium text-foreground hover:underline">
-            {OFFICE_PHONE_LABEL}
-          </a>
-        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          nativeButton={false}
+          render={<a href={`tel:${OFFICE_PHONE}`} />}
+        >
+          <PhoneIcon className="size-3.5" />
+          Zentrale: {OFFICE_PHONE_LABEL}
+        </Button>
       </CardContent>
     </Card>
   );
