@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
 import { computeOverviewStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/stat-tile";
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
   // Agency admins land on the richer Kunden-Übersicht instead of this page.

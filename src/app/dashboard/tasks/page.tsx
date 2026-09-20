@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { contactDisplayName } from "@/lib/contact-display";
 import { completeTask, reopenTask } from "@/lib/actions/tasks";
@@ -12,7 +12,7 @@ function formatDate(value: Date) {
 }
 
 export default async function TasksPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
   const tasks = await prisma.task.findMany({

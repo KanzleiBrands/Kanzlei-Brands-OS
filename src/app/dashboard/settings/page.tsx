@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/base-url";
 import { AccountSection } from "./account-section";
@@ -20,7 +20,7 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ tab?: string; connected?: string; error?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
   const { tab: tabParam, connected, error } = await searchParams;

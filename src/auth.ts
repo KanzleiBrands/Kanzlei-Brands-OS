@@ -18,6 +18,11 @@ declare module "next-auth" {
       role: UserRole;
       organizationId: string;
     };
+    impersonation?: {
+      realUserId: string;
+      realUserName: string;
+      realUserEmail: string;
+    };
   }
 }
 

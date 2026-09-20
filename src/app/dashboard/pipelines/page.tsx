@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 import { CampaignRequestCard } from "./campaign-request-card";
 
 export default async function PipelinesPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role === "AGENCY_ADMIN") redirect("/dashboard/clients");
 

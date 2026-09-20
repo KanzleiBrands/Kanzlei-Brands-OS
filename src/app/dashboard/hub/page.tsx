@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { InterestButton } from "./interest-button";
 
 export default async function KundenHubPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role === "AGENCY_ADMIN") redirect("/dashboard/clients");
 

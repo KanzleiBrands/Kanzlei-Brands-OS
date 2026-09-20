@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
 import { CrossPipelineContactsTable } from "./cross-pipeline-contacts-table";
@@ -14,7 +14,7 @@ export default async function CrossPipelineLeadsPage({
 }: {
   searchParams: Promise<{ kind?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role === "AGENCY_ADMIN") redirect("/dashboard/clients");
 

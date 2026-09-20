@@ -1,5 +1,5 @@
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/impersonation";
 import type { Session } from "next-auth";
 
 export class AccessDeniedError extends Error {
@@ -9,7 +9,7 @@ export class AccessDeniedError extends Error {
 }
 
 export async function requireSession(): Promise<Session> {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     throw new AccessDeniedError("Not authenticated");
   }

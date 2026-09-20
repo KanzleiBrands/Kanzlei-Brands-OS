@@ -1,11 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { signOut } from "@/auth";
+import { IMPERSONATION_COOKIE } from "@/lib/impersonation";
 
 export type ChangePasswordResult = { status: "error" | "success"; message: string } | undefined;
 
@@ -96,6 +98,8 @@ export async function changeEmail(
     metadata: { from: user.email, to: newEmail },
   });
 
+  const store = await cookies();
+  store.delete(IMPERSONATION_COOKIE);
   await signOut({ redirectTo: "/login?email_changed=1" });
 }
 

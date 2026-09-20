@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<{ orgId?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   // Internal to the agency only — clients never see the audit log.
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");

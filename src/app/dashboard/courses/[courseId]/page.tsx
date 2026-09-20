@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddLessonForm } from "./add-lesson-form";
@@ -8,7 +8,7 @@ import { PublishToggle } from "../publish-toggle";
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
   const course = await prisma.course.findUnique({

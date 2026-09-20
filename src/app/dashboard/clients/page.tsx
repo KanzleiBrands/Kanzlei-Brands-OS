@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { computeOverviewStats, computeCompletedStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
 import { NewClientForm } from "./new-client-form";
@@ -45,7 +45,7 @@ export default async function ClientsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");
 

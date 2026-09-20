@@ -6,6 +6,7 @@ import { PipelineAccessToggle } from "./pipeline-access-toggle";
 import { CourseAssignmentToggle } from "./course-assignment-toggle";
 import { ActivationStatus } from "@/components/activation-status";
 import { DeleteUserButton } from "./delete-user-button";
+import { ImpersonateUserButton } from "./impersonate-user-button";
 import { ArchiveOrganizationButton } from "./archive-organization-button";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { EditClientNameForm } from "./edit-client-name-form";
@@ -152,7 +153,7 @@ export function SettingsTab({
                 <TableHead>Rolle</TableHead>
                 <TableHead>Zugang</TableHead>
                 <TableHead>Kampagnen-Zugriff</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,7 +195,10 @@ export function SettingsTab({
                       )}
                     </TableCell>
                     <TableCell>
-                      <DeleteUserButton userId={user.id} userName={user.name} />
+                      <div className="flex items-center gap-0.5">
+                        <ImpersonateUserButton userId={user.id} userName={user.name} />
+                        <DeleteUserButton userId={user.id} userName={user.name} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

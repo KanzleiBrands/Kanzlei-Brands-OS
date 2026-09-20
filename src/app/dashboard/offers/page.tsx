@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +7,7 @@ import { NewOfferForm } from "./new-offer-form";
 import { OfferActiveToggle } from "./offer-active-toggle";
 
 export default async function OffersPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");
 

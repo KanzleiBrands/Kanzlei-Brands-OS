@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { computeOverviewStats, computeCampaignCardStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
 import { StatTile } from "@/components/stat-tile";
@@ -26,7 +26,7 @@ export default async function ClientDetailPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { orgId } = await params;
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");
 

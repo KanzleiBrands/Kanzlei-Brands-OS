@@ -1,13 +1,17 @@
 import Image from "next/image";
-import { auth, signOut } from "@/auth";
+import { cookies } from "next/headers";
+import { signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
+import { getSession, IMPERSONATION_COOKIE } from "@/lib/impersonation";
+import { stopImpersonation } from "@/lib/actions/impersonation";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
 import { SettingsLink } from "./settings-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileSidebarShell } from "./mobile-sidebar-shell";
+import { ImpersonationBanner } from "./impersonation-banner";
 
 function navFor(role: string, campaignKinds: Set<string>) {
   const common = [{ href: "/dashboard/courses", label: "Schulung" }];
@@ -35,7 +39,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
   let campaignKinds = new Set<string>();
@@ -94,6 +98,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <form
           action={async () => {
             "use server";
+            const store = await cookies();
+            store.delete(IMPERSONATION_COOKIE);
             await signOut({ redirectTo: "/login" });
           }}
         >
@@ -106,9 +112,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   );
 
   return (
-    <div className="flex flex-col md:h-dvh md:flex-row">
-      <MobileSidebarShell sidebar={sidebar} />
-      <main className="flex-1 md:overflow-y-auto">{children}</main>
+    <div className="flex flex-col md:h-dvh">
+      {session.impersonation && (
+        <ImpersonationBanner
+          realUserName={session.impersonation.realUserName}
+          viewingAsName={session.user.name}
+          onSwitchBack={stopImpersonation}
+        />
+      )}
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <MobileSidebarShell sidebar={sidebar} />
+        <main className="flex-1 md:overflow-y-auto">{children}</main>
+      </div>
     </div>
   );
 }
