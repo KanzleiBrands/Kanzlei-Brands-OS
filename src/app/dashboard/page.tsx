@@ -8,6 +8,14 @@ import { avatarColorFor, initialsOf } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/stat-tile";
+import { PotentialScoreCard } from "./potential-score-card";
+import {
+  APPLICANT_GROWTH_LEVERS,
+  LEAD_GROWTH_LEVERS,
+  APPLICANT_GENERIC_TIPS,
+  LEAD_GENERIC_TIPS,
+  computeGrowthScore,
+} from "@/lib/growth-levers";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -47,6 +55,25 @@ export default async function DashboardPage() {
     include: { stage: true, pipeline: { select: { name: true } } },
   });
 
+  // Potenzialscore: org-weit (nicht auf accessible Pipelines beschränkt), da
+  // Kontingente/Kanäle organisationsweit gelten, unabhängig vom Zugriff
+  // dieses einzelnen Mitarbeiters.
+  const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
+  const allOrgPipelines = await prisma.pipeline.findMany({
+    where: { organizationId: session.user.organizationId },
+    select: { kind: true },
+  });
+  const orgLeadsUsed = allOrgPipelines.filter((p) => p.kind === "LEADS").length;
+  const orgApplicantsUsed = allOrgPipelines.filter((p) => p.kind === "APPLICANTS").length;
+  const jobsBooked = organization !== null && (organization.applicantsQuota !== null || orgApplicantsUsed > 0);
+  const leadsBooked = organization !== null && (organization.leadsQuota !== null || orgLeadsUsed > 0);
+  const applicantScore = organization
+    ? computeGrowthScore(APPLICANT_GROWTH_LEVERS, organization.activeApplicantChannels, organization.bookedProductTags)
+    : null;
+  const leadScore = organization
+    ? computeGrowthScore(LEAD_GROWTH_LEVERS, organization.activeLeadChannels, organization.bookedProductTags)
+    : null;
+
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Übersicht</h1>
@@ -76,6 +103,30 @@ export default async function DashboardPage() {
           />
         )}
       </div>
+
+      {(jobsBooked || leadsBooked) && (
+        <>
+          <h2 className="mb-3 text-lg font-semibold">Dein Potenzialscore</h2>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {jobsBooked && applicantScore && (
+              <PotentialScoreCard
+                title="Recruiting-Kampagne"
+                percent={applicantScore.percent}
+                unmetLevers={applicantScore.unmetLevers}
+                genericTips={APPLICANT_GENERIC_TIPS}
+              />
+            )}
+            {leadsBooked && leadScore && (
+              <PotentialScoreCard
+                title="Mandatsakquise-Kampagne"
+                percent={leadScore.percent}
+                unmetLevers={leadScore.unmetLevers}
+                genericTips={LEAD_GENERIC_TIPS}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
         <Card>

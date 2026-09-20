@@ -6,14 +6,6 @@ import { CampaignRequestCard } from "../pipelines/campaign-request-card";
 import { ContactCard } from "./contact-card";
 import { ResourceLinksCard } from "./resource-links-card";
 import { InterestButton } from "./interest-button";
-import { PotentialScoreCard } from "./potential-score-card";
-import {
-  APPLICANT_GROWTH_LEVERS,
-  LEAD_GROWTH_LEVERS,
-  APPLICANT_GENERIC_TIPS,
-  LEAD_GENERIC_TIPS,
-  computeGrowthScore,
-} from "@/lib/growth-levers";
 
 const ACCOUNT_MANAGER_EMAIL = "support@kanzlei-brands.de";
 const BACKOFFICE_EMAIL = "buchhaltung@kanzlei-brands.de";
@@ -47,19 +39,6 @@ export default async function KundenHubPage() {
   const leadsUsed = allOrgPipelines.filter((p) => p.kind === "LEADS").length;
   const applicantsUsed = allOrgPipelines.filter((p) => p.kind === "APPLICANTS").length;
   const canRequest = session.user.role === "CLIENT_ADMIN";
-  const jobsBooked = organization.applicantsQuota !== null || applicantsUsed > 0;
-  const leadsBooked = organization.leadsQuota !== null || leadsUsed > 0;
-
-  const applicantScore = computeGrowthScore(
-    APPLICANT_GROWTH_LEVERS,
-    organization.activeApplicantChannels,
-    organization.bookedProductTags,
-  );
-  const leadScore = computeGrowthScore(
-    LEAD_GROWTH_LEVERS,
-    organization.activeLeadChannels,
-    organization.bookedProductTags,
-  );
 
   const offers = await prisma.offer.findMany({
     where: {
@@ -100,30 +79,6 @@ export default async function KundenHubPage() {
           linkedInAdLibraryUrl={organization.linkedInAdLibraryUrl}
         />
       </div>
-
-      {(jobsBooked || leadsBooked) && (
-        <>
-          <h2 className="mb-3 text-lg font-semibold">Dein Potenzialscore</h2>
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {jobsBooked && (
-              <PotentialScoreCard
-                title="Recruiting-Kampagne"
-                percent={applicantScore.percent}
-                unmetLevers={applicantScore.unmetLevers}
-                genericTips={APPLICANT_GENERIC_TIPS}
-              />
-            )}
-            {leadsBooked && (
-              <PotentialScoreCard
-                title="Mandatsakquise-Kampagne"
-                percent={leadScore.percent}
-                unmetLevers={leadScore.unmetLevers}
-                genericTips={LEAD_GENERIC_TIPS}
-              />
-            )}
-          </div>
-        </>
-      )}
 
       <h2 className="mb-3 text-lg font-semibold">Neue Kampagne einreichen</h2>
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
