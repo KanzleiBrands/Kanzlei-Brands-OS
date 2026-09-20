@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireSession, assertPipelineAccess } from "@/lib/access";
+import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
 import { extractContactFields, normalizeFieldKey, stripTrackingFields } from "@/lib/webhook-ingest";
@@ -59,6 +59,13 @@ export async function setTalentPool(formData: FormData) {
 
 export async function deleteContact(formData: FormData) {
   const session = await requireSession();
+  // Kontakte (Bewerber wie Kundenanfragen) dürfen ausschließlich von der
+  // Agentur gelöscht werden - Kunden sollen ihre eingehenden Leads nicht
+  // versehentlich (oder absichtlich) unwiderruflich entfernen können.
+  if (session.user.role !== "AGENCY_ADMIN") {
+    throw new AccessDeniedError("Nur die Agentur kann Kontakte löschen.");
+  }
+
   const contactId = String(formData.get("contactId") ?? "");
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });

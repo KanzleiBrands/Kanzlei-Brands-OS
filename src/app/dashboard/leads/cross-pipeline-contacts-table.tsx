@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { StarRating } from "@/components/star-rating";
-import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -121,7 +120,6 @@ export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
             <TableHead className="cursor-pointer" onClick={() => toggleSort("eingang")}>
               Eingang {sortKey === "eingang" ? (sortAsc ? "↑" : "↓") : ""}
             </TableHead>
-            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -170,22 +168,19 @@ export function CrossPipelineContactsTable({ rows }: { rows: Row[] }) {
                     year: "numeric",
                   })}
                 </TableCell>
-                <TableCell>
-                  <DeleteContactButton contactId={contact.id} contactName={fullName} />
-                </TableCell>
               </TableRow>
             );
           })}
           {sorted.length === 0 && rows.length > 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
+              <TableCell colSpan={6} className="text-center text-muted-foreground">
                 Kein Kontakt passt zur Suche.
               </TableCell>
             </TableRow>
           )}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
+              <TableCell colSpan={6} className="text-center text-muted-foreground">
                 Noch keine Kontakte.
               </TableCell>
             </TableRow>

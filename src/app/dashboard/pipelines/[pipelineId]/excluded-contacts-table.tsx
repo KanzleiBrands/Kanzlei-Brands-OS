@@ -55,9 +55,11 @@ function ReactivateButton({ contactId, reactivateStageId }: { contactId: string;
 export function ExcludedContactsTable({
   stages,
   reactivateStageId,
+  canDeleteContacts,
 }: {
   stages: Stage[];
   reactivateStageId: string | undefined;
+  canDeleteContacts: boolean;
 }) {
   const rows = useMemo(
     () =>
@@ -125,7 +127,7 @@ export function ExcludedContactsTable({
               <TableCell>
                 <div className="flex items-center gap-2">
                   {reactivateStageId && <ReactivateButton contactId={contact.id} reactivateStageId={reactivateStageId} />}
-                  <DeleteContactButton contactId={contact.id} contactName={fullName} />
+                  {canDeleteContacts && <DeleteContactButton contactId={contact.id} contactName={fullName} />}
                 </div>
               </TableCell>
             </TableRow>

@@ -39,11 +39,13 @@ export function ContactsTable({
   allStages,
   pipelineKind,
   duplicateEmails,
+  canDeleteContacts,
 }: {
   stages: Stage[];
   allStages: SelectableStage[];
   pipelineKind: string;
   duplicateEmails: Set<string>;
+  canDeleteContacts: boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("eingang");
   const [sortAsc, setSortAsc] = useState(false);
@@ -142,7 +144,7 @@ export function ContactsTable({
                 {contact.createdAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
               </TableCell>
               <TableCell>
-                <DeleteContactButton contactId={contact.id} contactName={fullName} />
+                {canDeleteContacts && <DeleteContactButton contactId={contact.id} contactName={fullName} />}
               </TableCell>
             </TableRow>
           );

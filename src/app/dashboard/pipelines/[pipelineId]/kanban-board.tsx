@@ -62,12 +62,14 @@ export function KanbanBoard({
   rejectStageId,
   finalStageId,
   pipelineKind,
+  canDeleteContacts,
 }: {
   stages: Stage[];
   duplicateEmails: Set<string>;
   rejectStageId?: string;
   finalStageId?: string;
   pipelineKind: string;
+  canDeleteContacts: boolean;
 }) {
   const rejectLabel = "Als ungeeignet markieren";
   const [isPending, startTransition] = useTransition();
@@ -172,7 +174,7 @@ export function KanbanBoard({
                           <BanIcon className="size-3.5" />
                         </button>
                       )}
-                      <DeleteContactButton contactId={contact.id} contactName={fullName} />
+                      {canDeleteContacts && <DeleteContactButton contactId={contact.id} contactName={fullName} />}
                     </div>
                     <div className="flex items-center gap-2 overflow-hidden pr-0 sm:pr-14">
                       <span

@@ -204,12 +204,14 @@ export default async function ContactDetailPage({
               address={contact.address}
               showCompanyFields={contact.pipeline.kind === "LEADS"}
             />
-            <DeleteContactButton
-              contactId={contact.id}
-              contactName={fullName}
-              redirectTo={`/dashboard/pipelines/${contact.pipelineId}`}
-              variant="full"
-            />
+            {session.user.role === "AGENCY_ADMIN" && (
+              <DeleteContactButton
+                contactId={contact.id}
+                contactName={fullName}
+                redirectTo={`/dashboard/pipelines/${contact.pipelineId}`}
+                variant="full"
+              />
+            )}
           </div>
         </CardContent>
       </Card>
