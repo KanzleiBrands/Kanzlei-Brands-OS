@@ -9,6 +9,9 @@ import { csvToObjects } from "@/lib/csv";
 import { extractContactFields, normalizeFieldKey, stripTrackingFields } from "@/lib/webhook-ingest";
 import { storeFile } from "@/lib/file-storage";
 import { deriveWebsiteFromEmail } from "@/lib/company";
+import { sendSystemEmail } from "@/lib/email/resend";
+import { contactDisplayName } from "@/lib/contact-display";
+import { getBaseUrl } from "@/lib/base-url";
 
 const TALENTPOOL_FOLLOWUP_DAYS = 182; // ~6 Monate
 
@@ -321,6 +324,56 @@ export async function addNote(_prevState: string | undefined, formData: FormData
   await prisma.activity.create({
     data: { contactId, userId: session.user.id, type, content },
   });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
+/**
+ * A comment between client and agency staff on a contact - unlike a plain
+ * Notiz, posting one emails whoever is on the other side, so the platform
+ * replaces the WhatsApp/E-Mail back-and-forth agencies and clients tend to
+ * fall back to outside the system.
+ */
+export async function postComment(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const content = String(formData.get("content") ?? "").trim();
+  if (!content) return "Kommentar darf nicht leer sein.";
+
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    include: { pipeline: { include: { organization: true } } },
+  });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.activity.create({
+    data: { contactId, userId: session.user.id, type: "COMMENT", content },
+  });
+
+  const clientOrg = contact.pipeline.organization;
+  const isFromAgency = session.user.role === "AGENCY_ADMIN";
+
+  const recipients = isFromAgency
+    ? await prisma.user.findMany({ where: { organizationId: clientOrg.id, role: "CLIENT_ADMIN" }, select: { email: true } })
+    : clientOrg.accountManagerId
+      ? await prisma.user.findMany({ where: { id: clientOrg.accountManagerId }, select: { email: true } })
+      : clientOrg.parentId
+        ? await prisma.user.findMany({
+            where: { organizationId: clientOrg.parentId, role: "AGENCY_ADMIN" },
+            select: { email: true },
+          })
+        : [];
+
+  if (recipients.length > 0) {
+    const baseUrl = await getBaseUrl();
+    const name = contactDisplayName(contact);
+    const subject = `Neuer Kommentar zu ${name}${!isFromAgency ? ` (${clientOrg.name})` : ""}`;
+    const text = `${session.user.name} hat einen Kommentar hinterlassen:\n\n"${content}"\n\n${baseUrl}/dashboard/contacts/${contactId}?tab=comments`;
+    for (const recipient of recipients) {
+      await sendSystemEmail({ to: recipient.email, subject, text });
+    }
+  }
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
 }

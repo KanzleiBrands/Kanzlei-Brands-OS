@@ -25,8 +25,9 @@ import { RemoveAdditionalContactButton } from "./remove-additional-contact-butto
 import { NewTaskForm } from "./new-task-form";
 import { TaskList } from "./task-list";
 import { TalentPoolButton } from "./talent-pool-button";
+import { CommentForm } from "./comment-form";
 
-type Tab = "overview" | "tasks" | "notes" | "email" | "activity";
+type Tab = "overview" | "tasks" | "comments" | "notes" | "email" | "activity";
 
 export default async function ContactDetailPage({
   params,
@@ -94,13 +95,20 @@ export default async function ContactDetailPage({
 
   const openTaskCount = contact.tasks.filter((t) => !t.completedAt).length;
 
+  const commentCount = activities.filter((a) => a.type === "COMMENT").length;
+
   const tab: Tab =
-    tabParam === "tasks" || tabParam === "notes" || tabParam === "email" || tabParam === "activity"
+    tabParam === "tasks" ||
+    tabParam === "comments" ||
+    tabParam === "notes" ||
+    tabParam === "email" ||
+    tabParam === "activity"
       ? tabParam
       : "overview";
   const TAB_ORDER: { value: Tab; label: string; count?: number }[] = [
     { value: "overview", label: "Übersicht" },
     { value: "tasks", label: "Wiedervorlage", count: openTaskCount },
+    { value: "comments", label: "Kommentare", count: commentCount },
     { value: "notes", label: "Notizen" },
     { value: "email", label: "E-Mail" },
     { value: "activity", label: "Verlauf", count: activities.length },
@@ -302,6 +310,27 @@ export default async function ContactDetailPage({
             />
           </CardContent>
         </Card>
+      )}
+
+      {tab === "comments" && (
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Kommentar an Kunde/Agentur</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommentForm contactId={contact.id} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Verlauf</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline activities={activities} onlyTypes={["COMMENT"]} />
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {tab === "notes" && (

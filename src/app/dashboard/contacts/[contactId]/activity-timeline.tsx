@@ -13,6 +13,7 @@ type Activity = {
 
 const TABS: { key: string; label: string; types?: string[] }[] = [
   { key: "all", label: "Alle" },
+  { key: "comments", label: "Kommentare", types: ["COMMENT"] },
   { key: "notes", label: "Notizen", types: ["NOTE"] },
   { key: "emails", label: "E-Mails", types: ["EMAIL_IN", "EMAIL_OUT"] },
   { key: "calls", label: "Anrufe", types: ["CALL"] },
@@ -25,6 +26,7 @@ const TYPE_META: Record<string, { label: string; variant: "default" | "secondary
   EMAIL_IN: { label: "E-Mail (eingehend)", variant: "default" },
   EMAIL_OUT: { label: "E-Mail (ausgehend)", variant: "default" },
   CALL: { label: "Anruf", variant: "destructive" },
+  COMMENT: { label: "Kommentar", variant: "default" },
 };
 
 /**
