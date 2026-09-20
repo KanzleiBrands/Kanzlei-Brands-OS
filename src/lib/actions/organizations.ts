@@ -136,6 +136,42 @@ export async function updateMonthlyReportSetting(formData: FormData) {
 }
 
 /**
+ * DSGVO: automatically anonymizes rejected candidates older than N months
+ * (see /api/cron/daily). Deliberately opt-in per client (null = off) - never
+ * enabled without an admin explicitly setting a value, since it's a
+ * destructive, irreversible action on real applicant data.
+ */
+export async function updateDataRetentionSetting(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können diese Einstellung ändern.";
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
+
+  const rejectedDataRetentionMonths = parseQuota(formData.get("rejectedDataRetentionMonths"));
+  if (rejectedDataRetentionMonths === "invalid") {
+    return "Bitte leer lassen (deaktiviert) oder eine positive ganze Zahl an Monaten angeben.";
+  }
+  if (rejectedDataRetentionMonths !== null && rejectedDataRetentionMonths < 1) {
+    return "Mindestens 1 Monat.";
+  }
+
+  await prisma.organization.update({ where: { id: organizationId }, data: { rejectedDataRetentionMonths } });
+
+  await logAudit({
+    action: "organization.data_retention_updated",
+    entityType: "Organization",
+    entityId: organizationId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+    metadata: { rejectedDataRetentionMonths },
+  });
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+}
+
+/**
  * Configures how a client can self-serve order more campaigns from their own
  * board: which Jotform to send them to per campaign kind, and who gets
  * notified when they've run out of quota and need to order more.

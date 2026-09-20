@@ -4,6 +4,7 @@ import { sendSystemEmail } from "@/lib/email/resend";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
 import { computeOverviewStats } from "@/lib/dashboard-stats";
+import { logAudit } from "@/lib/audit";
 
 const DAY_MS = 86_400_000;
 
@@ -163,5 +164,54 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, taskRemindersSent, digestsSent, reportsSent, errors });
+  // --- 4. DSGVO: abgelehnte Kandidaten anonymisieren (nur wenn pro Kunde --
+  // explizit aktiviert - siehe Kommentar an updateDataRetentionSetting). Ein
+  // fehlendes E-Mail-Feld nach dem Lauf markiert "bereits anonymisiert", damit
+  // ein Kontakt nicht bei jedem Cron-Lauf erneut angefasst wird.
+  let anonymized = 0;
+  for (const client of clients) {
+    if (!client.rejectedDataRetentionMonths) continue;
+
+    const cutoff = new Date(now);
+    cutoff.setMonth(cutoff.getMonth() - client.rejectedDataRetentionMonths);
+
+    const staleRejected = await prisma.contact.findMany({
+      where: {
+        pipeline: { organizationId: client.id },
+        stage: { isRejected: true },
+        updatedAt: { lt: cutoff },
+        email: { not: null },
+      },
+      select: { id: true },
+    });
+
+    for (const contact of staleRejected) {
+      await prisma.contact.update({
+        where: { id: contact.id },
+        data: {
+          firstName: "Anonymisiert",
+          lastName: null,
+          email: null,
+          phone: null,
+          address: null,
+          cvUrl: null,
+          customFields: {},
+          companyName: null,
+          website: null,
+          talentPoolNote: null,
+        },
+      });
+      await prisma.additionalContact.deleteMany({ where: { contactId: contact.id } });
+      await logAudit({
+        action: "contact.anonymized",
+        entityType: "Contact",
+        entityId: contact.id,
+        organizationId: client.id,
+        metadata: { reason: "rejected_data_retention", retentionMonths: client.rejectedDataRetentionMonths },
+      });
+      anonymized++;
+    }
+  }
+
+  return NextResponse.json({ ok: true, taskRemindersSent, digestsSent, reportsSent, anonymized, errors });
 }

@@ -12,6 +12,7 @@ import { EditClientNameForm } from "./edit-client-name-form";
 import { QuotaSettingsForm } from "./quota-settings-form";
 import { IntakeSettingsForm } from "./intake-settings-form";
 import { MonthlyReportToggle } from "./monthly-report-toggle";
+import { DataRetentionForm } from "./data-retention-form";
 
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
@@ -45,6 +46,7 @@ export function SettingsTab({
   applicantsFormUrl,
   agencyUsers,
   monthlyReportEnabled,
+  rejectedDataRetentionMonths,
 }: {
   organizationId: string;
   organizationName: string;
@@ -63,6 +65,7 @@ export function SettingsTab({
   applicantsFormUrl: string | null;
   agencyUsers: { id: string; name: string }[];
   monthlyReportEnabled: boolean;
+  rejectedDataRetentionMonths: number | null;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -207,6 +210,15 @@ export function SettingsTab({
             ))}
             {courses.length === 0 && <span className="text-sm text-muted-foreground">Noch keine Kurse angelegt.</span>}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Datenschutz (DSGVO)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DataRetentionForm organizationId={organizationId} rejectedDataRetentionMonths={rejectedDataRetentionMonths} />
         </CardContent>
       </Card>
 
