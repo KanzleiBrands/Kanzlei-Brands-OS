@@ -29,68 +29,50 @@ export function ContactCard({
         <p className="text-sm text-muted-foreground">{description}</p>
 
         {contact ? (
-          <>
-            <div className="flex items-center gap-3">
-              {contact.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={contact.avatarUrl}
-                  alt={contact.name}
-                  className="size-10 rounded-full object-cover"
-                />
-              ) : (
-                <div
-                  className="flex size-10 items-center justify-center rounded-full text-sm font-medium text-white"
-                  style={{ backgroundColor: avatarColorFor(contact.name) }}
-                >
-                  {initialsOf(firstName ?? null, lastName)}
-                </div>
-              )}
-              <p className="font-medium">{contact.name}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {contact.phone && (
-                <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
-                  <PhoneIcon className="size-3.5" />
-                  Anrufen
-                </Button>
-              )}
-              <Button variant="outline" size="sm" nativeButton={false} render={<a href={`mailto:${teamEmail}`} />}>
-                <MailIcon className="size-3.5" />
-                E-Mail
-              </Button>
-              {contact.calendlyUrl && (
-                <Button
-                  size="sm"
-                  nativeButton={false}
-                  render={<a href={contact.calendlyUrl} target="_blank" rel="noopener noreferrer" />}
-                >
-                  <CalendarIcon className="size-3.5" />
-                  Termin buchen
-                </Button>
-              )}
-            </div>
-          </>
+          <div className="flex items-center gap-3">
+            {contact.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={contact.avatarUrl} alt={contact.name} className="size-10 rounded-full object-cover" />
+            ) : (
+              <div
+                className="flex size-10 items-center justify-center rounded-full text-sm font-medium text-white"
+                style={{ backgroundColor: avatarColorFor(contact.name) }}
+              >
+                {initialsOf(firstName ?? null, lastName)}
+              </div>
+            )}
+            <p className="font-medium">{contact.name}</p>
+          </div>
         ) : (
-          <>
-            <p className="text-sm text-muted-foreground">Noch nicht zugewiesen.</p>
-            <Button variant="outline" size="sm" nativeButton={false} render={<a href={`mailto:${teamEmail}`} />}>
-              <MailIcon className="size-3.5" />
-              E-Mail
-            </Button>
-          </>
+          <p className="text-sm text-muted-foreground">Noch nicht zugewiesen.</p>
         )}
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          nativeButton={false}
-          render={<a href={`tel:${OFFICE_PHONE}`} />}
-        >
-          <PhoneIcon className="size-3.5" />
-          Zentrale: {OFFICE_PHONE_LABEL}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {contact?.phone && (
+            <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
+              <PhoneIcon className="size-3.5" />
+              Anrufen
+            </Button>
+          )}
+          <Button variant="outline" size="sm" nativeButton={false} render={<a href={`mailto:${teamEmail}`} />}>
+            <MailIcon className="size-3.5" />
+            E-Mail
+          </Button>
+          {contact?.calendlyUrl && (
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={<a href={contact.calendlyUrl} target="_blank" rel="noopener noreferrer" />}
+            >
+              <CalendarIcon className="size-3.5" />
+              Termin buchen
+            </Button>
+          )}
+          <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${OFFICE_PHONE}`} />}>
+            <PhoneIcon className="size-3.5" />
+            Zentrale: {OFFICE_PHONE_LABEL}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
