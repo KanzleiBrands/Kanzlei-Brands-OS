@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,11 +26,19 @@ function QuotaPill({ label, used, quota }: { label: string; used: number; quota:
   const overQuota = used > effectiveQuota;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+      className={`inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
         overQuota ? "border-destructive/50 text-destructive" : "text-muted-foreground"
       }`}
     >
       {label} <span className={`font-medium ${overQuota ? "text-destructive" : "text-foreground"}`}>{used}/{effectiveQuota}</span>
+    </span>
+  );
+}
+
+function InfoPill({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+      {children}
     </span>
   );
 }
@@ -131,15 +139,16 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
             </div>
 
             <div className="flex flex-col items-start gap-1.5">
-              <p className="text-sm text-muted-foreground">
-                {client.totalContacts} Leads gesamt · Letzter Lead: {formatDate(client.lastLeadAt)}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <QuotaPill label="Stellenanzeigen" used={client.applicantsUsed} quota={client.applicantsQuota} />
-                <QuotaPill label="Mandatsakquise" used={client.leadsUsed} quota={client.leadsQuota} />
-                {client.unprocessed > 0 && <Badge variant="secondary">{client.unprocessed} unbearbeitet</Badge>}
-                {client.staleUnprocessed > 0 && <Badge variant="destructive">{client.staleUnprocessed} überfällig</Badge>}
-              </div>
+              <InfoPill>{client.totalContacts} Leads gesamt</InfoPill>
+              <InfoPill>Letzter Lead: {formatDate(client.lastLeadAt)}</InfoPill>
+              <QuotaPill label="Stellenanzeigen" used={client.applicantsUsed} quota={client.applicantsQuota} />
+              <QuotaPill label="Mandatsakquise" used={client.leadsUsed} quota={client.leadsQuota} />
+              {(client.unprocessed > 0 || client.staleUnprocessed > 0) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {client.unprocessed > 0 && <Badge variant="secondary">{client.unprocessed} unbearbeitet</Badge>}
+                  {client.staleUnprocessed > 0 && <Badge variant="destructive">{client.staleUnprocessed} überfällig</Badge>}
+                </div>
+              )}
             </div>
 
             <span className="flex-shrink-0 text-sm font-medium text-primary sm:ml-2">Einloggen →</span>
