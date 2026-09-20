@@ -144,7 +144,7 @@ export function KanbanBoard({
                       isPending ? "opacity-60" : ""
                     }`}
                   >
-                    <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute top-1 right-1 hidden items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 sm:flex">
                       {rejectStageId && stage.id !== rejectStageId && (
                         <button
                           type="button"
@@ -161,7 +161,7 @@ export function KanbanBoard({
                       )}
                       <DeleteContactButton contactId={contact.id} contactName={fullName} />
                     </div>
-                    <div className="flex items-center gap-2 overflow-hidden pr-14">
+                    <div className="flex items-center gap-2 overflow-hidden pr-0 sm:pr-14">
                       <span
                         className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                         style={{ backgroundColor: avatarColorFor(fullName) }}
@@ -169,7 +169,9 @@ export function KanbanBoard({
                         {initialsOf(contact.firstName, contact.lastName)}
                       </span>
                       <p className="min-w-0 flex-1 truncate font-medium">{fullName}</p>
-                      <TimeBadge createdAt={contact.createdAt} isFirstStage={stageIndex === 0} />
+                      <span className="flex-shrink-0">
+                        <TimeBadge createdAt={contact.createdAt} isFirstStage={stageIndex === 0} />
+                      </span>
                     </div>
 
                     {isDuplicate && (
