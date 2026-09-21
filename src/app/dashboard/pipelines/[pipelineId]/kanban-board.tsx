@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BanIcon, TrophyIcon } from "lucide-react";
-import { toast } from "sonner";
+import { BanIcon } from "lucide-react";
 import { moveContactStage } from "@/lib/actions/contacts";
-import { setStageFlag } from "@/lib/actions/organizations";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { contactDisplayName } from "@/lib/contact-display";
@@ -68,7 +66,6 @@ export function KanbanBoard({
   finalStageId,
   pipelineKind,
   canDeleteContacts,
-  canManageStages,
 }: {
   stages: Stage[];
   duplicateContacts: DuplicateContactKeys;
@@ -76,7 +73,6 @@ export function KanbanBoard({
   finalStageId?: string;
   pipelineKind: string;
   canDeleteContacts: boolean;
-  canManageStages: boolean;
 }) {
   const rejectLabel = "Als ungeeignet markieren";
   const [isPending, startTransition] = useTransition();
@@ -118,21 +114,6 @@ export function KanbanBoard({
     setFinalizingContactId(null);
   }
 
-  function toggleStageFlag(stageId: string, flag: "isFinal" | "isRejected", nextValue: boolean) {
-    const formData = new FormData();
-    formData.set("stageId", stageId);
-    formData.set("flag", flag);
-    formData.set("value", String(nextValue));
-    startTransition(async () => {
-      try {
-        await setStageFlag(formData);
-        toast.success("Gespeichert.");
-      } catch {
-        toast.error("Konnte nicht gespeichert werden.");
-      }
-    });
-  }
-
   return (
     <div>
       <div className="flex gap-4 overflow-x-auto pb-4">
@@ -160,34 +141,6 @@ export function KanbanBoard({
                 style={{ backgroundColor: stage.color ?? "var(--muted-foreground)" }}
               />
               {stage.name}
-              {canManageStages && (
-                <span className="ml-auto flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    title="Als Ausschluss-Stufe markieren (z.B. Absage)"
-                    aria-label="Als Ausschluss-Stufe markieren"
-                    disabled={isPending}
-                    className={`flex size-5 items-center justify-center rounded ${
-                      stage.isRejected ? "text-destructive" : "text-muted-foreground/40 hover:text-muted-foreground"
-                    }`}
-                    onClick={() => toggleStageFlag(stage.id, "isRejected", !stage.isRejected)}
-                  >
-                    <BanIcon className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Als Erfolgs-Stufe markieren (Eingestellt/Gewonnen)"
-                    aria-label="Als Erfolgs-Stufe markieren"
-                    disabled={isPending}
-                    className={`flex size-5 items-center justify-center rounded ${
-                      stage.isFinal ? "text-amber-500" : "text-muted-foreground/40 hover:text-muted-foreground"
-                    }`}
-                    onClick={() => toggleStageFlag(stage.id, "isFinal", !stage.isFinal)}
-                  >
-                    <TrophyIcon className="size-3.5" />
-                  </button>
-                </span>
-              )}
               <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                 {stage.contacts.length}
               </span>
