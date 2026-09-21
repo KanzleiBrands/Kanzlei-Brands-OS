@@ -73,11 +73,6 @@ export const LEAD_GROWTH_LEVERS: GrowthLever[] = [
   },
 ];
 
-// Generische Tipps, die nicht in den Score einfließen (wir haben keine
-// Daten zu Radius/Budget), aber immer als Denkanstoß mitgegeben werden.
-export const APPLICANT_GENERIC_TIPS = ["Den Recruiting-Radius erweitern", "Das Kampagnenbudget erhöhen"];
-export const LEAD_GENERIC_TIPS = ["Das Zielgebiet erweitern", "Das Kampagnenbudget erhöhen"];
-
 export type GrowthScore = {
   percent: number;
   metLevers: GrowthLever[];

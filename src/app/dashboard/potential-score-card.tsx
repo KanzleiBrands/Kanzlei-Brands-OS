@@ -5,12 +5,10 @@ export function PotentialScoreCard({
   title,
   percent,
   unmetLevers,
-  genericTips,
 }: {
   title: string;
   percent: number;
   unmetLevers: GrowthLever[];
-  genericTips: string[];
 }) {
   return (
     <Card>
@@ -40,12 +38,6 @@ export function PotentialScoreCard({
                 <li key={lever.id} className="flex gap-2">
                   <span aria-hidden>•</span>
                   <span>{lever.suggestion}</span>
-                </li>
-              ))}
-              {genericTips.map((tip) => (
-                <li key={tip} className="flex gap-2">
-                  <span aria-hidden>•</span>
-                  <span>{tip}</span>
                 </li>
               ))}
             </ul>

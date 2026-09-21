@@ -9,13 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/stat-tile";
 import { PotentialScoreCard } from "./potential-score-card";
-import {
-  APPLICANT_GROWTH_LEVERS,
-  LEAD_GROWTH_LEVERS,
-  APPLICANT_GENERIC_TIPS,
-  LEAD_GENERIC_TIPS,
-  computeGrowthScore,
-} from "@/lib/growth-levers";
+import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS, computeGrowthScore } from "@/lib/growth-levers";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -113,7 +107,6 @@ export default async function DashboardPage() {
                 title="Recruiting-Kampagne"
                 percent={applicantScore.percent}
                 unmetLevers={applicantScore.unmetLevers}
-                genericTips={APPLICANT_GENERIC_TIPS}
               />
             )}
             {leadsBooked && leadScore && (
@@ -121,7 +114,6 @@ export default async function DashboardPage() {
                 title="Mandatsakquise-Kampagne"
                 percent={leadScore.percent}
                 unmetLevers={leadScore.unmetLevers}
-                genericTips={LEAD_GENERIC_TIPS}
               />
             )}
           </div>
