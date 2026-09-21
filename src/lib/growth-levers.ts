@@ -40,6 +40,13 @@ export const APPLICANT_GROWTH_LEVERS: GrowthLever[] = [
     suggestion: "Eine überzeugende Karriereseite erhöht die Bewerbungsquote spürbar.",
   },
   {
+    id: "social_media_content",
+    label: "Social Media Content",
+    kind: "channel",
+    tag: "social_media_content",
+    suggestion: "Regelmäßiger Content zu Team und Arbeitsalltag stärkt deine Arbeitgebermarke und bringt mehr Bewerbungen.",
+  },
+  {
     id: "drehtag",
     label: "Drehtag / Reels",
     kind: "product",
