@@ -120,7 +120,7 @@ export default async function DashboardPage() {
             />
             <StatTile label="In Bearbeitung" value={applicantStats.inProgress} subtext="aktuell in Bearbeitung" />
             <StatTile
-              label="Abgeschlossen in 12 Monaten"
+              label="Eingestellt in 12 Monaten"
               value={applicantStats.completedLast365Days}
               subtext={`${applicantStats.completedTotal} gesamt`}
             />
