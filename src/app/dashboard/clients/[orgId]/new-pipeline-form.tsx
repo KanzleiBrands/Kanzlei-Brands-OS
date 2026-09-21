@@ -5,6 +5,7 @@ import { createPipeline } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewPipelineForm({
@@ -36,18 +37,23 @@ export function NewPipelineForm({
       <input type="hidden" name="organizationId" value={organizationId} />
       <input type="hidden" name="kind" value={kind} />
       <Input name="name" placeholder="Kampagnen-Name (z.B. Kampagne X)" required className="max-w-xs" />
-      <Select name="templateId" defaultValue={templates[0]?.id}>
-        <SelectTrigger className="w-48">
-          <SelectValue>{(value: string) => templates.find((t) => t.id === value)?.name ?? "Statusvorlage"}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {templates.map((template) => (
-            <SelectItem key={template.id} value={template.id}>
-              {template.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="new-pipeline-template" className="text-xs text-muted-foreground">
+          Statusvorlage
+        </Label>
+        <Select name="templateId" defaultValue={templates[0]?.id}>
+          <SelectTrigger id="new-pipeline-template" className="w-48">
+            <SelectValue>{(value: string) => templates.find((t) => t.id === value)?.name ?? "Statusvorlage"}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {templates.map((template) => (
+              <SelectItem key={template.id} value={template.id}>
+                {template.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <Button type="submit" disabled={isPending || templates.length === 0}>
         {isPending ? "Wird angelegt..." : "Kampagne anlegen"}
       </Button>
