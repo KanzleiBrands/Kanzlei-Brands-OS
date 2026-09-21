@@ -77,7 +77,7 @@ export function MetaConnectionsPanel({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle>Facebook & Instagram (Meta Ads)</CardTitle>
+        <CardTitle>Meta Lead Ads</CardTitle>
         {metaConfigured && (
           <Button
             type="button"
@@ -99,6 +99,13 @@ export function MetaConnectionsPanel({
             ganz ohne Zapier.
           </p>
         )}
+        <p className="text-sm text-muted-foreground">
+          Voraussetzung zum Verbinden: die Facebook-Seite muss dir im Business Manager mit der Aufgabe
+          &bdquo;Seite verwalten&ldquo; (oder höher) zugewiesen sein - reiner Lesezugriff reicht nicht. Solange die
+          Meta-App im Entwicklungsmodus läuft, musst du außerdem im Meta-Entwicklerportal unter App-Rollen als
+          Tester/Entwickler/Admin eingetragen sein, sonst zeigt Facebook beim Verbinden gar keine Berechtigungsabfrage
+          an.
+        </p>
       </CardContent>
     </Card>
   );
