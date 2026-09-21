@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { MailIcon, PhoneIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
@@ -285,7 +286,31 @@ export default async function ContactDetailPage({
                             {[person.role, person.email, person.phone].filter(Boolean).join(" · ")}
                           </p>
                         </div>
-                        <RemoveAdditionalContactButton id={person.id} />
+                        <div className="flex items-center gap-1">
+                          {person.phone && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              nativeButton={false}
+                              aria-label={`${person.name} anrufen`}
+                              render={<a href={`tel:${person.phone}`} />}
+                            >
+                              <PhoneIcon className="size-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {person.email && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              nativeButton={false}
+                              aria-label={`E-Mail an ${person.name}`}
+                              render={<a href={`mailto:${person.email}`} />}
+                            >
+                              <MailIcon className="size-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          <RemoveAdditionalContactButton id={person.id} />
+                        </div>
                       </div>
                     ))}
                   </div>
