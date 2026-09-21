@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { signOut } from "@/auth";
 import { IMPERSONATION_COOKIE } from "@/lib/impersonation";
 import { storeFile } from "@/lib/file-storage";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 
 export type ChangePasswordResult = { status: "error" | "success"; message: string } | undefined;
 export type SaveResult = { status: "error" | "success"; message: string } | undefined;
@@ -163,6 +164,7 @@ export async function updateAvatar(
   const file = formData.get("avatar");
   if (!(file instanceof File) || file.size === 0) return "Bitte ein Bild auswählen.";
   if (!file.type.startsWith("image/")) return "Bitte eine Bilddatei auswählen.";
+  if (file.size > MAX_UPLOAD_BYTES) return "Datei ist zu groß. Maximal 5 MB.";
 
   let avatarUrl: string;
   try {

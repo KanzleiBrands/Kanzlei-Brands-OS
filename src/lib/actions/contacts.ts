@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
 import { extractContactFields, normalizeFieldKey, stripTrackingFields } from "@/lib/webhook-ingest";
 import { storeFile } from "@/lib/file-storage";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { deriveWebsiteFromEmail } from "@/lib/company";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { contactDisplayName } from "@/lib/contact-display";
@@ -298,6 +299,7 @@ export async function uploadContactCv(_prevState: string | undefined, formData: 
   const contactId = String(formData.get("contactId") ?? "");
   const file = formData.get("cv");
   if (!(file instanceof File) || file.size === 0) return "Bitte eine Datei auswählen.";
+  if (file.size > MAX_UPLOAD_BYTES) return "Datei ist zu groß. Maximal 5 MB.";
 
   const contact = await prisma.contact.findUnique({ where: { id: contactId } });
   if (!contact) return "Kontakt nicht gefunden.";
