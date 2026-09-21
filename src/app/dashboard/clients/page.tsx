@@ -16,16 +16,24 @@ function countWithin30Days(dates: Date[]) {
   return dates.filter((date) => now - date.getTime() <= 30 * DAY_MS).length;
 }
 
-function trendCard(label: string, value: number, deltaLast30Days: number) {
-  return (
-    <div className="rounded-lg border bg-card p-3">
+function trendCard(label: string, value: number, deltaLast30Days: number, href?: string) {
+  const content = (
+    <>
       <p className="text-sm text-muted-foreground">{label}</p>
       <div className="mt-0.5 flex items-baseline gap-1.5">
         <span className="text-xl font-semibold">{value}</span>
         {deltaLast30Days > 0 && <span className="text-sm font-medium text-emerald-500">↗ +{deltaLast30Days}</span>}
       </div>
-    </div>
+    </>
   );
+  if (href) {
+    return (
+      <Link href={href} className="rounded-lg border bg-card p-3 transition-colors hover:border-primary">
+        {content}
+      </Link>
+    );
+  }
+  return <div className="rounded-lg border bg-card p-3">{content}</div>;
 }
 
 function currencyTrendCard(label: string, valueLabel: string, deltaLabel: string | null) {
@@ -124,9 +132,9 @@ export default async function ClientsPage({
       <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
         {trendCard("Kunden", clients.length, clientsLast30Days)}
         {trendCard("Bewerbungen", jobsStats.totalContacts, jobsStats.newLast30Days)}
-        {trendCard("Einstellungen", jobsCompleted.total, jobsCompleted.last30Days)}
+        {trendCard("Einstellungen", jobsCompleted.total, jobsCompleted.last30Days, "/dashboard/clients/completions?kind=hires")}
         {trendCard("Mandatsanfragen", leadsStats.totalContacts, leadsStats.newLast30Days)}
-        {trendCard("Abschlüsse", leadsCompleted.total, leadsCompleted.last30Days)}
+        {trendCard("Abschlüsse", leadsCompleted.total, leadsCompleted.last30Days, "/dashboard/clients/completions?kind=deals")}
         {currencyTrendCard(
           "Dealvolumen",
           eurFormatter.format(dealVolume.totalEur),
