@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
-import { computeOverviewStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
+import { computeOverviewStats, computeDealVolumeStats, computeCompletedStats } from "@/lib/dashboard-stats";
 import { avatarColorFor, initialsOf } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,9 +37,12 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "asc" },
   });
 
-  const stats = computeOverviewStats(pipelines);
   const leadPipelines = pipelines.filter((p) => p.kind === "LEADS");
+  const applicantPipelines = pipelines.filter((p) => p.kind === "APPLICANTS");
+  const leadStats = computeOverviewStats(leadPipelines);
+  const applicantStats = computeOverviewStats(applicantPipelines);
   const dealVolumeStats = computeDealVolumeStats(leadPipelines);
+  const applicantsCompleted = computeCompletedStats(applicantPipelines);
   const eurFormatter = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
   const recentContacts = await prisma.contact.findMany({
@@ -72,31 +75,63 @@ export default async function DashboardPage() {
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Übersicht - {session.user.name}</h1>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label="Neu in 30 Tagen"
-          value={stats.newLast30Days}
-          subtext={`${stats.totalContacts} Kontakte gesamt`}
-        />
-        <StatTile
-          label="Unbearbeitet"
-          value={stats.unprocessed}
-          subtext={`${stats.staleUnprocessed} seit über 3 Tagen offen`}
-        />
-        <StatTile label="In Bearbeitung" value={stats.inProgress} subtext="aktuell in Bearbeitung" />
-        <StatTile
-          label="Abgeschlossen in 12 Monaten"
-          value={stats.completedLast365Days}
-          subtext={`${stats.completedTotal} gesamt`}
-        />
-        {leadPipelines.length > 0 && (
-          <StatTile
-            label="Dealvolumen (30 Tage)"
-            value={eurFormatter.format(dealVolumeStats.last30DaysEur)}
-            subtext={`${eurFormatter.format(dealVolumeStats.totalEur)} gesamt`}
-          />
-        )}
-      </div>
+      {leadPipelines.length > 0 && (
+        <>
+          <h2 className="mb-3 text-lg font-semibold">Mandatsakquise</h2>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatTile
+              label="Neu in 30 Tagen"
+              value={leadStats.newLast30Days}
+              subtext={`${leadStats.totalContacts} Kontakte gesamt`}
+            />
+            <StatTile
+              label="Unbearbeitet"
+              value={leadStats.unprocessed}
+              subtext={`${leadStats.staleUnprocessed} seit über 3 Tagen offen`}
+            />
+            <StatTile label="In Bearbeitung" value={leadStats.inProgress} subtext="aktuell in Bearbeitung" />
+            <StatTile
+              label="Abgeschlossen in 12 Monaten"
+              value={leadStats.completedLast365Days}
+              subtext={`${leadStats.completedTotal} gesamt`}
+            />
+            <StatTile
+              label="Dealvolumen (30 Tage)"
+              value={eurFormatter.format(dealVolumeStats.last30DaysEur)}
+              subtext={`${eurFormatter.format(dealVolumeStats.totalEur)} gesamt`}
+            />
+          </div>
+        </>
+      )}
+
+      {applicantPipelines.length > 0 && (
+        <>
+          <h2 className="mb-3 text-lg font-semibold">Bewerbungen</h2>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatTile
+              label="Neu in 30 Tagen"
+              value={applicantStats.newLast30Days}
+              subtext={`${applicantStats.totalContacts} Kontakte gesamt`}
+            />
+            <StatTile
+              label="Unbearbeitet"
+              value={applicantStats.unprocessed}
+              subtext={`${applicantStats.staleUnprocessed} seit über 3 Tagen offen`}
+            />
+            <StatTile label="In Bearbeitung" value={applicantStats.inProgress} subtext="aktuell in Bearbeitung" />
+            <StatTile
+              label="Abgeschlossen in 12 Monaten"
+              value={applicantStats.completedLast365Days}
+              subtext={`${applicantStats.completedTotal} gesamt`}
+            />
+            <StatTile
+              label="Einstellungen (30 Tage)"
+              value={applicantsCompleted.last30Days}
+              subtext={`${applicantsCompleted.total} gesamt`}
+            />
+          </div>
+        </>
+      )}
 
       {(jobsBooked || leadsBooked) && (
         <>
