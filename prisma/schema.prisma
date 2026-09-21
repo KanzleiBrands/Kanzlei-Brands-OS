@@ -126,6 +126,7 @@ model Organization {
   metaLeadFormConnections MetaLeadFormConnection[]
   auditLogs               AuditLog[]
   messageTemplates        MessageTemplate[]
+  talentPools             TalentPool[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -334,7 +335,9 @@ model Contact {
 
   // Talentpool: passt aktuell nicht, grundsätzlich aber interessant - wird
   // per Wiedervorlage (Task) automatisch nach einigen Monaten erneut vorgelegt.
-  talentPool     Boolean @default(false)
+  // Ein Kontakt gehört höchstens einem (benannten) Pool an.
+  talentPoolId   String?
+  talentPool     TalentPool? @relation(fields: [talentPoolId], references: [id], onDelete: SetNull)
   talentPoolNote String?
 
   // Nur bei Erreichen der jeweils letzten (nicht-abgelehnten) Stufe der
@@ -361,6 +364,24 @@ model Contact {
 
   @@index([pipelineId])
   @@index([stageId])
+  @@index([talentPoolId])
+}
+
+// Named group a contact can be placed into when they don't fit right now but
+// are worth keeping - a client can create and name as many pools as they
+// like (e.g. by role, by seniority). Org-scoped, not campaign-scoped, since
+// a good candidate found via one campaign may fit a future one.
+model TalentPool {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+
+  contacts Contact[]
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
 }
 
 // Extra people at the same B2B company (Contact.companyName set). Kept

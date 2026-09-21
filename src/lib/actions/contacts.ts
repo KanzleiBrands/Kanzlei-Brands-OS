@@ -23,14 +23,31 @@ export async function setTalentPool(formData: FormData) {
   const contactId = String(formData.get("contactId") ?? "");
   const enabled = formData.get("enabled") === "true";
   const note = String(formData.get("note") ?? "").trim() || null;
+  const poolId = String(formData.get("poolId") ?? "").trim() || null;
+  const newPoolName = String(formData.get("newPoolName") ?? "").trim() || null;
 
-  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  const contact = await prisma.contact.findUnique({ where: { id: contactId }, include: { pipeline: true } });
   if (!contact) return;
   await assertPipelineAccess(session, contact.pipelineId);
+  const organizationId = contact.pipeline.organizationId;
+
+  let talentPoolId: string | null = null;
+  if (enabled) {
+    if (poolId) {
+      const pool = await prisma.talentPool.findUnique({ where: { id: poolId } });
+      if (!pool || pool.organizationId !== organizationId) return;
+      talentPoolId = pool.id;
+    } else if (newPoolName) {
+      const pool = await prisma.talentPool.create({ data: { organizationId, name: newPoolName } });
+      talentPoolId = pool.id;
+    } else {
+      return;
+    }
+  }
 
   await prisma.contact.update({
     where: { id: contactId },
-    data: { talentPool: enabled, talentPoolNote: enabled ? note : null },
+    data: { talentPoolId, talentPoolNote: enabled ? note : null },
   });
 
   if (enabled) {
@@ -49,13 +66,36 @@ export async function setTalentPool(formData: FormData) {
     action: enabled ? "contact.talentpool_added" : "contact.talentpool_removed",
     entityType: "Contact",
     entityId: contactId,
-    organizationId: (await prisma.pipeline.findUnique({ where: { id: contact.pipelineId } }))!.organizationId,
+    organizationId,
     userId: session.user.id,
   });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
   revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath("/dashboard/talentpool");
   revalidatePath("/dashboard/tasks");
+}
+
+export async function createTalentPool(formData: FormData) {
+  const session = await requireSession();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+
+  await prisma.talentPool.create({ data: { organizationId: session.user.organizationId, name } });
+  revalidatePath("/dashboard/talentpool");
+}
+
+export async function renameTalentPool(formData: FormData) {
+  const session = await requireSession();
+  const poolId = String(formData.get("poolId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+
+  const pool = await prisma.talentPool.findUnique({ where: { id: poolId } });
+  if (!pool || pool.organizationId !== session.user.organizationId) return;
+
+  await prisma.talentPool.update({ where: { id: poolId }, data: { name } });
+  revalidatePath("/dashboard/talentpool");
 }
 
 export async function deleteContact(formData: FormData) {

@@ -22,7 +22,7 @@ type Contact = {
   createdAt: Date;
   customFields: unknown;
   rejectionReason: string | null;
-  talentPool: boolean;
+  talentPoolId: string | null;
   talentPoolNote: string | null;
   _count: { activities: number };
 };

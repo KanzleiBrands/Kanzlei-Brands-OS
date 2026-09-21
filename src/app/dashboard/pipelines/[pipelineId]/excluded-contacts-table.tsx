@@ -19,7 +19,7 @@ type Contact = {
   source: string;
   createdAt: Date;
   rejectionReason: string | null;
-  talentPool: boolean;
+  talentPoolId: string | null;
 };
 
 type Stage = {
@@ -97,7 +97,7 @@ export function ExcludedContactsTable({
                   <span>
                     <span className="flex items-center gap-1.5 font-medium">
                       {fullName}
-                      {contact.talentPool && (
+                      {contact.talentPoolId && (
                         <Badge variant="secondary" className="gap-1">
                           <StarIcon className="size-3" />
                           Talentpool

@@ -57,6 +57,7 @@ export default async function ContactDetailPage({
       activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
       additionalContacts: { orderBy: { createdAt: "asc" } },
       tasks: { orderBy: { dueAt: "asc" } },
+      talentPool: true,
     },
   });
   if (!contact) notFound();
@@ -167,6 +168,11 @@ export default async function ContactDetailPage({
                   contactId={contact.id}
                   talentPool={contact.talentPool}
                   talentPoolNote={contact.talentPoolNote}
+                  availablePools={await prisma.talentPool.findMany({
+                    where: { organizationId: contact.pipeline.organizationId },
+                    select: { id: true, name: true },
+                    orderBy: { name: "asc" },
+                  })}
                 />
               </div>
             )}

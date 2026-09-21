@@ -34,7 +34,10 @@ function navFor(role: string, campaignKinds: Set<string>) {
     { href: "/dashboard/pipelines", label: "Kampagnen" },
     ...(campaignKinds.has("LEADS") ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen" }] : []),
     ...(campaignKinds.has("APPLICANTS")
-      ? [{ href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen" }]
+      ? [
+          { href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen" },
+          { href: "/dashboard/talentpool", label: "Talentpool" },
+        ]
       : []),
     { href: "/dashboard/tasks", label: "Wiedervorlagen" },
   ];
