@@ -303,7 +303,13 @@ export async function uploadContactCv(_prevState: string | undefined, formData: 
   if (!contact) return "Kontakt nicht gefunden.";
   await assertPipelineAccess(session, contact.pipelineId);
 
-  const cvUrl = await storeFile(file, "cvs");
+  let cvUrl: string;
+  try {
+    cvUrl = await storeFile(file, "cvs");
+  } catch (error) {
+    console.error("[uploadContactCv] storeFile failed:", error);
+    return "Datei konnte nicht hochgeladen werden. Bitte später erneut versuchen.";
+  }
   await prisma.contact.update({ where: { id: contactId }, data: { cvUrl } });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
