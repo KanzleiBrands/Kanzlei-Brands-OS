@@ -35,7 +35,7 @@ export function NotificationsSection({ notifyOnNewContact }: { notifyOnNewContac
           Per E-Mail benachrichtigen, wenn ein neuer Lead oder eine neue Bewerbung eingeht
         </label>
         <p className="text-sm text-muted-foreground">
-          Gilt nur für Kampagnen, auf die du Zugriff hast, und nur wenn die Agentur die Benachrichtigung für die
+          Gilt nur für Kampagnen, auf die du Zugriff hast, und nur wenn Kanzlei Brands die Benachrichtigung für die
           jeweilige Kampagne aktiviert hat (in den Kampagnen-Einstellungen).
         </p>
       </CardContent>

@@ -65,7 +65,7 @@ export function PrivacySection({
             label="Nicht zustande gekommene Mandatsanfragen"
             months={leadDataRetentionMonths}
             description="Kontakte in einer Ungeeignet-Stufe deiner Mandatsakquise-Kampagnen werden"
-            legalBasis="Rechtsgrundlage: Grundsatz der Speicherbegrenzung (Art. 5 Abs. 1 lit. e DSGVO) und Recht auf Löschung (Art. 17 DSGVO). Für Mandatsanfragen gibt es keine gesetzliche Mindestfrist wie beim AGG - die Frist wird individuell mit deiner Agentur abgestimmt."
+            legalBasis="Rechtsgrundlage: Grundsatz der Speicherbegrenzung (Art. 5 Abs. 1 lit. e DSGVO) und Recht auf Löschung (Art. 17 DSGVO). Für Mandatsanfragen gibt es keine gesetzliche Mindestfrist wie beim AGG - die Frist wird individuell mit Kanzlei Brands abgestimmt."
           />
         </CardContent>
       </Card>
