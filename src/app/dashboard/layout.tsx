@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +13,7 @@ import { SettingsLink } from "./settings-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileSidebarShell } from "./mobile-sidebar-shell";
 import { ImpersonationBanner } from "./impersonation-banner";
+import { MainScrollReset } from "./main-scroll-reset";
 
 function navFor(role: string, campaignKinds: Set<string>) {
   const common = [{ href: "/dashboard/courses", label: "Schulung" }];
@@ -120,9 +122,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
           onSwitchBack={stopImpersonation}
         />
       )}
+      <Suspense fallback={null}>
+        <MainScrollReset />
+      </Suspense>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <MobileSidebarShell sidebar={sidebar} />
-        <main className="flex-1 md:overflow-y-auto">{children}</main>
+        <main id="dashboard-main" className="flex-1 md:overflow-y-auto">
+          {children}
+        </main>
       </div>
     </div>
   );
