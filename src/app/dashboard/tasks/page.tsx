@@ -66,7 +66,7 @@ export default async function TasksPage() {
 
   return (
     <div className="p-4 sm:p-8">
-      <h1 className="mb-2 text-2xl font-semibold">Meine Wiedervorlagen</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Meine Wiedervorlagen - {session.user.name}</h1>
       <p className="mb-6 text-muted-foreground">
         Alle deine Wiedervorlagen aus jeder Kampagne an einem Ort. Bei Fälligkeit bekommst du zusätzlich eine
         E-Mail-Erinnerung.

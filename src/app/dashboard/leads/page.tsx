@@ -68,7 +68,9 @@ export default async function CrossPipelineLeadsPage({
 
   return (
     <div className="p-4 sm:p-8">
-      <h1 className="mb-2 text-2xl font-semibold">{TITLES[kind]}</h1>
+      <h1 className="mb-2 text-2xl font-semibold">
+        {TITLES[kind]} - {session.user.name}
+      </h1>
       <p className="mb-6 text-muted-foreground">
         Alle {kind === "APPLICANTS" ? "Bewerber" : "Anfragen"} aus allen deinen{" "}
         {kind === "APPLICANTS" ? "Recruiting" : "Mandatsakquise"}-Kampagnen an einem Ort.
