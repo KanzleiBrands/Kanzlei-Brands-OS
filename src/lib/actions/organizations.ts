@@ -651,6 +651,45 @@ export async function updatePipelineLocation(_prevState: string | undefined, for
   revalidatePath(`/dashboard/clients/${pipeline.organizationId}`);
 }
 
+/**
+ * Stages are copied once from a StageTemplate when a pipeline is created
+ * (createPipeline) and never synced afterward - if the template didn't have
+ * an Erfolgs-Stufe marked, the pipeline is stuck forever with no stage
+ * counting as a hire/win (Einstellungen/Abschlüsse stay 0, and the
+ * FinalStageDialog for Startdatum/Dealvolumen never triggers). This lets an
+ * agency admin fix an already-created pipeline's stages directly, without
+ * needing to recreate the campaign.
+ */
+export async function setStageFlag(formData: FormData) {
+  const session = await requireSession();
+  const stageId = String(formData.get("stageId") ?? "");
+  const flag = String(formData.get("flag") ?? "");
+  const value = formData.get("value") === "true";
+  if (flag !== "isFinal" && flag !== "isRejected") return;
+
+  const stage = await prisma.stage.findUnique({ where: { id: stageId }, include: { pipeline: true } });
+  if (!stage) return;
+  try {
+    assertOrganizationAccess(session, stage.pipeline.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return;
+    throw error;
+  }
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  if (flag === "isFinal" && value) {
+    // At most one final stage per pipeline.
+    await prisma.$transaction([
+      prisma.stage.updateMany({ where: { pipelineId: stage.pipelineId, isFinal: true }, data: { isFinal: false } }),
+      prisma.stage.update({ where: { id: stageId }, data: { isFinal: true } }),
+    ]);
+  } else {
+    await prisma.stage.update({ where: { id: stageId }, data: { [flag]: value } });
+  }
+
+  revalidatePath(`/dashboard/pipelines/${stage.pipelineId}`);
+}
+
 export async function toggleDuplicateWarning(formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");

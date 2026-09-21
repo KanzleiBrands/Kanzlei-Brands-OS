@@ -38,6 +38,9 @@ export async function createStageTemplate(_prevState: string | undefined, formDa
 
   const stages = parseStages(String(formData.get("stages") ?? ""));
   if (!stages || stages.some((s) => !s.name)) return "Mindestens ein benannter Status ist erforderlich.";
+  if (!stages.some((s) => s.isFinal)) {
+    return "Bitte markiere eine Erfolgs-Stufe (Trophäe) - sonst werden Einstellungen/Abschlüsse nie gezählt.";
+  }
 
   await prisma.stageTemplate.create({ data: { name, stages } });
 
@@ -54,6 +57,9 @@ export async function updateStageTemplate(_prevState: string | undefined, formDa
 
   const stages = parseStages(String(formData.get("stages") ?? ""));
   if (!stages || stages.some((s) => !s.name)) return "Mindestens ein benannter Status ist erforderlich.";
+  if (!stages.some((s) => s.isFinal)) {
+    return "Bitte markiere eine Erfolgs-Stufe (Trophäe) - sonst werden Einstellungen/Abschlüsse nie gezählt.";
+  }
 
   await prisma.stageTemplate.update({ where: { id }, data: { name, stages } });
 

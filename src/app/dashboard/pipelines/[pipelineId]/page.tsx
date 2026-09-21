@@ -137,6 +137,7 @@ export default async function PipelineDetailPage({
             stages={pipeline.stages}
             showDuplicateWarning={pipeline.showDuplicateWarning}
             canDeleteContacts={session.user.role === "AGENCY_ADMIN"}
+            canManageStages={session.user.role === "AGENCY_ADMIN"}
           />
         </div>
       )}
