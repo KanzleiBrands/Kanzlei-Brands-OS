@@ -34,6 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const applicantsFormUrl = normalize(body.jotformStellenonboarding);
   const leadsFormUrl = normalize(body.jotformMandatsakquiseBriefing);
+  const driveFolderUrl = normalize(body.driveFolderLink);
   const contactFirstName = normalize(body.hauptApVorname);
   const contactLastName = normalize(body.hauptApNachname);
   const contactEmail = normalize(body.hauptApEmail)?.toLowerCase() ?? null;
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           name: firma,
           applicantsFormUrl,
           leadsFormUrl,
+          driveFolderUrl,
           ...(accountManager ? { accountManagerId: accountManager.id } : {}),
         },
       })
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           airtableRecordId: recordId,
           applicantsFormUrl,
           leadsFormUrl,
+          driveFolderUrl,
           accountManagerId: accountManager?.id,
         },
       });
