@@ -10,6 +10,12 @@ import { InterestButton } from "./interest-button";
 const ACCOUNT_MANAGER_EMAIL = "support@kanzlei-brands.de";
 const BACKOFFICE_EMAIL = "buchhaltung@kanzlei-brands.de";
 
+// Die Angebote-Sektion im Kunden-Hub ist noch nicht fertig entwickelt und
+// daher für Kunden vorerst ausgeblendet. Auf true setzen, um sie wieder
+// einzublenden, sobald sie fertig ist. Die Angebote-Verwaltung für
+// Agentur-Admins (/dashboard/offers) ist davon unabhängig und bleibt aktiv.
+const OFFERS_SECTION_ENABLED = false;
+
 export default async function KundenHubPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
@@ -40,20 +46,24 @@ export default async function KundenHubPage() {
   const applicantsUsed = allOrgPipelines.filter((p) => p.kind === "APPLICANTS").length;
   const canRequest = session.user.role === "CLIENT_ADMIN";
 
-  const offers = await prisma.offer.findMany({
-    where: {
-      active: true,
-      OR: [{ productTag: null }, { productTag: { notIn: organization.bookedProductTags } }],
-    },
-    include: { interests: { where: { userId: session.user.id } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const offers = OFFERS_SECTION_ENABLED
+    ? await prisma.offer.findMany({
+        where: {
+          active: true,
+          OR: [{ productTag: null }, { productTag: { notIn: organization.bookedProductTags } }],
+        },
+        include: { interests: { where: { userId: session.user.id } } },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
 
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-2 text-2xl font-semibold">Kunden-Hub</h1>
       <p className="mb-6 text-muted-foreground">
-        Deine Ansprechpartner, Ressourcen und Angebote von Kanzlei Brands an einem Ort.
+        {OFFERS_SECTION_ENABLED
+          ? "Deine Ansprechpartner, Ressourcen und Angebote von Kanzlei Brands an einem Ort."
+          : "Deine Ansprechpartner und Ressourcen von Kanzlei Brands an einem Ort."}
       </p>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -100,25 +110,29 @@ export default async function KundenHubPage() {
         />
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold">Angebote</h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {offers.map((offer) => (
-          <Card key={offer.id}>
-            {offer.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={offer.imageUrl} alt={offer.title} className="h-32 w-full rounded-t-md object-cover" />
-            )}
-            <CardHeader>
-              <CardTitle>{offer.title}</CardTitle>
-              {offer.description && <CardDescription>{offer.description}</CardDescription>}
-            </CardHeader>
-            <CardContent>
-              <InterestButton offerId={offer.id} ctaLabel={offer.ctaLabel} already={offer.interests.length > 0} />
-            </CardContent>
-          </Card>
-        ))}
-        {offers.length === 0 && <p className="text-muted-foreground">Aktuell keine Angebote verfügbar.</p>}
-      </div>
+      {OFFERS_SECTION_ENABLED && (
+        <>
+          <h2 className="mb-3 text-lg font-semibold">Angebote</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {offers.map((offer) => (
+              <Card key={offer.id}>
+                {offer.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={offer.imageUrl} alt={offer.title} className="h-32 w-full rounded-t-md object-cover" />
+                )}
+                <CardHeader>
+                  <CardTitle>{offer.title}</CardTitle>
+                  {offer.description && <CardDescription>{offer.description}</CardDescription>}
+                </CardHeader>
+                <CardContent>
+                  <InterestButton offerId={offer.id} ctaLabel={offer.ctaLabel} already={offer.interests.length > 0} />
+                </CardContent>
+              </Card>
+            ))}
+            {offers.length === 0 && <p className="text-muted-foreground">Aktuell keine Angebote verfügbar.</p>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
