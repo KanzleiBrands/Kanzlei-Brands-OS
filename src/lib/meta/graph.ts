@@ -5,9 +5,18 @@
 const GRAPH_VERSION = "v21.0";
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
-const META_SCOPES = ["pages_show_list", "pages_manage_metadata", "pages_read_engagement", "leads_retrieval"].join(
-  ",",
-);
+// business_management is needed on top of pages_show_list because /me/accounts
+// only ever returns Pages the user is a classic per-Page admin on. Pages a client
+// only shared with our agency's Business Manager (Partner/"client page" access,
+// the normal setup for this agency's customers) are invisible on /me/accounts and
+// only show up via the /{business_id}/client_pages and /owned_pages edges below.
+const META_SCOPES = [
+  "pages_show_list",
+  "pages_manage_metadata",
+  "pages_read_engagement",
+  "leads_retrieval",
+  "business_management",
+].join(",");
 
 function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/meta/callback`;
@@ -90,6 +99,74 @@ export async function listMetaPages(userAccessToken: string): Promise<MetaPage[]
     nextUrl = data.paging?.next ?? null;
   }
   return pages;
+}
+
+async function paginate<T>(firstUrl: string): Promise<T[]> {
+  const items: T[] = [];
+  let nextUrl: string | null = firstUrl;
+  while (nextUrl) {
+    const data: { data: T[]; paging?: { next?: string } } = await graphFetch(nextUrl);
+    items.push(...data.data);
+    nextUrl = data.paging?.next ?? null;
+  }
+  return items;
+}
+
+type MetaBusiness = { id: string; name: string };
+
+async function listMetaBusinesses(userAccessToken: string): Promise<MetaBusiness[]> {
+  const url = new URL(`${GRAPH_BASE}/me/businesses`);
+  url.searchParams.set("access_token", userAccessToken);
+  url.searchParams.set("fields", "id,name");
+  return paginate<MetaBusiness>(url.toString());
+}
+
+/** Pages a Business Manager owns directly, plus Pages a client shared with it as a Partner ("client pages") - together these cover every Page an agency typically manages for a customer without the customer ever adding the agency's users as classic per-Page admins. */
+async function listPagesForBusiness(businessId: string, userAccessToken: string): Promise<MetaPage[]> {
+  const edges = ["owned_pages", "client_pages"];
+  const results = await Promise.all(
+    edges.map(async (edge) => {
+      const url = new URL(`${GRAPH_BASE}/${businessId}/${edge}`);
+      url.searchParams.set("access_token", userAccessToken);
+      url.searchParams.set("fields", "id,name,access_token");
+      try {
+        return await paginate<MetaPage>(url.toString());
+      } catch (error) {
+        // Missing task/permission on this specific business+edge shouldn't
+        // block the rest of the page list from loading.
+        console.error(`[meta] failed to list ${edge} for business ${businessId}:`, error);
+        return [];
+      }
+    }),
+  );
+  return results.flat();
+}
+
+/**
+ * Every Page the user can act on: classic per-Page admins via /me/accounts,
+ * plus everything reachable through any Business Manager they belong to
+ * (owned or shared-as-client), deduplicated by Page id. See META_SCOPES
+ * comment above for why /me/accounts alone misses most of this agency's
+ * client Pages.
+ */
+export async function listAllMetaPages(userAccessToken: string): Promise<MetaPage[]> {
+  const [personalPages, businesses] = await Promise.all([
+    listMetaPages(userAccessToken),
+    listMetaBusinesses(userAccessToken).catch((error) => {
+      console.error("[meta] failed to list businesses:", error);
+      return [] as MetaBusiness[];
+    }),
+  ]);
+
+  const businessPages = (
+    await Promise.all(businesses.map((business) => listPagesForBusiness(business.id, userAccessToken)))
+  ).flat();
+
+  const byId = new Map<string, MetaPage>();
+  for (const page of [...personalPages, ...businessPages]) {
+    if (page.access_token) byId.set(page.id, page);
+  }
+  return [...byId.values()];
 }
 
 export type MetaLeadForm = { id: string; name: string; status: string };

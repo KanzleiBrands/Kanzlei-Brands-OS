@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { readPendingConnection } from "@/lib/meta/pending-connection";
-import { listMetaPages } from "@/lib/meta/graph";
+import { listAllMetaPages } from "@/lib/meta/graph";
 import { MetaConnectWizard } from "./meta-connect-wizard";
 
 export default async function ConnectMetaPage({ params }: { params: Promise<{ pipelineId: string }> }) {
@@ -28,7 +28,7 @@ export default async function ConnectMetaPage({ params }: { params: Promise<{ pi
   let pages: { id: string; name: string }[] = [];
   let loadError: string | null = null;
   try {
-    pages = (await listMetaPages(pending.userAccessToken)).map((p) => ({ id: p.id, name: p.name }));
+    pages = (await listAllMetaPages(pending.userAccessToken)).map((p) => ({ id: p.id, name: p.name }));
   } catch (error) {
     loadError =
       error instanceof Error ? error.message : "Facebook-Seiten konnten nicht geladen werden.";

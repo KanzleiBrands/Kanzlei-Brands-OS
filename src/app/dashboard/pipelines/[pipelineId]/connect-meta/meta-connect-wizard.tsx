@@ -8,6 +8,15 @@ import { listMetaLeadFormsForPage, finalizeMetaConnection } from "@/lib/actions/
 type Page = { id: string; name: string };
 type Form = { id: string; name: string };
 
+/** A malformed/oversized Server Action response (e.g. a slow Meta call hitting the function timeout) surfaces client-side as a raw, unlocalized "Minified React error #…" - never show that to the user. */
+function friendlyMetaError(e: unknown): string {
+  const message = e instanceof Error ? e.message : "";
+  if (!message || /React error #\d+/.test(message)) {
+    return "Die Anfrage an Facebook hat zu lange gedauert oder ist fehlgeschlagen. Bitte versuche es erneut.";
+  }
+  return message;
+}
+
 export function MetaConnectWizard({ pipelineId, pages }: { pipelineId: string; pages: Page[] }) {
   const router = useRouter();
   const [selectedPage, setSelectedPage] = useState<Page | null>(null);
@@ -26,7 +35,7 @@ export function MetaConnectWizard({ pipelineId, pages }: { pipelineId: string; p
         const result = await listMetaLeadFormsForPage(pipelineId, page.id);
         setForms(result);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Formulare konnten nicht geladen werden.");
+        setError(friendlyMetaError(e));
       }
     });
   }
@@ -39,7 +48,7 @@ export function MetaConnectWizard({ pipelineId, pages }: { pipelineId: string; p
         await finalizeMetaConnection(pipelineId, selectedPage.id, selectedForm.id, selectedForm.name);
         router.push(`/dashboard/pipelines/${pipelineId}?tab=sources&metaConnected=1`);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Verbindung konnte nicht gespeichert werden.");
+        setError(friendlyMetaError(e));
       }
     });
   }
