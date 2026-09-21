@@ -57,7 +57,7 @@ export function SidebarNav({
           </span>
           <span className="min-w-0 flex-1 overflow-hidden">
             <span className="block truncate text-sm font-semibold">{clientOrg.name}</span>
-            <span className="block text-sm text-muted-foreground">Zurück zum Kunden</span>
+            <span className="block text-sm text-muted-foreground">zum Kunden</span>
           </span>
           <ChevronRightIcon className="size-4 flex-shrink-0 text-muted-foreground" />
         </Link>
