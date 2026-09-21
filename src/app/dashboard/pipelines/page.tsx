@@ -41,28 +41,33 @@ export default async function PipelinesPage() {
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Kampagnen</h1>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {pipelines.map((pipeline) => (
-          <Link key={pipeline.id} href={`/dashboard/pipelines/${pipeline.id}`}>
-            <Card className="transition-colors hover:bg-muted/50">
-              <CardHeader>
-                <CardTitle>{pipeline.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind}
-                  {pipeline.location && ` · ${pipeline.location}`} · {pipeline._count.contacts} Kontakte
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-        {pipelines.length === 0 && (
-          <p className="text-muted-foreground">Dir wurde noch keine Kampagne zugewiesen.</p>
-        )}
 
-        {organization && (
-          <>
+      {pipelines.length > 0 ? (
+        <div className="mb-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {pipelines.map((pipeline) => (
+            <Link key={pipeline.id} href={`/dashboard/pipelines/${pipeline.id}`}>
+              <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent shadow-sm transition-colors hover:border-primary/50 hover:bg-primary/10">
+                <CardHeader>
+                  <CardTitle className="text-lg">{pipeline.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {CAMPAIGN_KIND_LABELS[pipeline.kind] ?? pipeline.kind}
+                    {pipeline.location && ` · ${pipeline.location}`} · {pipeline._count.contacts} Kontakte
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-10 text-muted-foreground">Dir wurde noch keine Kampagne zugewiesen.</p>
+      )}
+
+      {organization && (
+        <div className="border-t pt-6">
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Weitere Kampagne beauftragen</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <CampaignRequestCard
               organizationId={session.user.organizationId}
               kind="APPLICANTS"
@@ -79,9 +84,9 @@ export default async function PipelinesPage() {
               formUrl={organization.leadsFormUrl}
               canRequest={canRequest}
             />
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
