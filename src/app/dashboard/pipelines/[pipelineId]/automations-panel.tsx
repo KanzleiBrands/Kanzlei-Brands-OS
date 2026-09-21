@@ -58,6 +58,7 @@ function RuleRow({
             <SelectValue>{(value: string) => users.find((u) => u.id === value)?.name ?? "Empfänger wählen"}</SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="">– (kein Empfänger)</SelectItem>
             {users.map((user) => (
               <SelectItem key={user.id} value={user.id}>
                 {user.name}
