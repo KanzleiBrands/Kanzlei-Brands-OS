@@ -67,7 +67,7 @@ export function EditContactDialog({
           <Input name="phone" placeholder="Telefon" defaultValue={phone ?? ""} />
           {showCompanyFields && (
             <>
-              <Input name="website" placeholder="Website" defaultValue={website ?? ""} />
+              <Input name="website" placeholder="Webseite" defaultValue={website ?? ""} />
               <Input name="address" placeholder="Adresse" defaultValue={address ?? ""} />
             </>
           )}

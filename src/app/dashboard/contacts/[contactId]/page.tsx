@@ -23,6 +23,7 @@ import { CustomFieldRow } from "./custom-field-row";
 import { AddCustomFieldDialog } from "./add-custom-field-dialog";
 import { CvUploadForm } from "./cv-upload-form";
 import { AdditionalContactDialog } from "./additional-contact-dialog";
+import { CompanyInfoForm } from "./company-info-form";
 import { RemoveAdditionalContactButton } from "./remove-additional-contact-button";
 import { NewTaskForm } from "./new-task-form";
 import { TaskList } from "./task-list";
@@ -248,21 +249,8 @@ export default async function ContactDetailPage({
               <CardHeader>
                 <CardTitle>Firma</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col gap-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Website</span>
-                  {contact.website ? (
-                    <a href={contact.website} target="_blank" rel="noreferrer" className="text-primary underline">
-                      {contact.website}
-                    </a>
-                  ) : (
-                    <span>-</span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Adresse</span>
-                  <span>{contact.address ?? "-"}</span>
-                </div>
+              <CardContent>
+                <CompanyInfoForm contactId={contact.id} website={contact.website} address={contact.address} />
               </CardContent>
             </Card>
           )}

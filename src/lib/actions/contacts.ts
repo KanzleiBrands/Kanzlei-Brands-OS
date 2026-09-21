@@ -250,6 +250,25 @@ export async function updateContact(_prevState: string | undefined, formData: Fo
   revalidatePath("/dashboard/leads");
 }
 
+export async function updateContactCompanyInfo(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const website = String(formData.get("website") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return "Kontakt nicht gefunden.";
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: { website: website || null, address: address || null },
+  });
+
+  revalidatePath(`/dashboard/pipelines/${contact.pipelineId}`);
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
 export async function setCustomField(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const contactId = String(formData.get("contactId") ?? "");
