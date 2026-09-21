@@ -110,7 +110,7 @@ export default async function PipelineDetailPage({
             href={`/dashboard/pipelines/${pipeline.id}?tab=leads`}
             className={`border-b-2 px-3 py-2 text-sm ${tab === "leads" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
-            Leads
+            {pipeline.kind === "APPLICANTS" ? "Bewerbungen" : "Leads"}
           </Link>
           <Link
             href={`/dashboard/pipelines/${pipeline.id}?tab=settings`}
