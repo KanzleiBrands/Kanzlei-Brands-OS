@@ -8,15 +8,17 @@ import { getBaseUrl } from "@/lib/base-url";
 import { getClientReadiness } from "@/lib/client-readiness";
 import { CampaignsTab } from "./campaigns-tab";
 import { SettingsTab } from "./settings-tab";
+import { ClientLogTab } from "./client-log-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 
-type Tab = "overview" | "jobs" | "leads" | "settings";
+type Tab = "overview" | "jobs" | "leads" | "settings" | "log";
 
 const TAB_ORDER: { value: Tab; label: string }[] = [
   { value: "overview", label: "Übersicht" },
   { value: "jobs", label: "Stellenanzeigen" },
   { value: "leads", label: "Mandatsakquise" },
   { value: "settings", label: "Kundeneinstellungen" },
+  { value: "log", label: "Kunden-Log" },
 ];
 
 export default async function ClientDetailPage({
@@ -33,7 +35,9 @@ export default async function ClientDetailPage({
 
   const { tab: tabParam } = await searchParams;
   const tab: Tab =
-    tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" ? tabParam : "overview";
+    tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" || tabParam === "log"
+      ? tabParam
+      : "overview";
 
   const organization = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -78,6 +82,15 @@ export default async function ClientDetailPage({
         })
       : [];
   const inviteReadiness = tab === "settings" ? await getClientReadiness(organization.id) : { ready: true, missing: [] };
+  const auditEntries =
+    tab === "log"
+      ? await prisma.auditLog.findMany({
+          where: { organizationId: organization.id },
+          include: { user: true },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+        })
+      : [];
   const availableProductTags =
     tab === "settings"
       ? (
@@ -254,6 +267,8 @@ export default async function ClientDetailPage({
           inviteReadiness={inviteReadiness}
         />
       )}
+
+      {tab === "log" && <ClientLogTab users={organization.users} entries={auditEntries} />}
     </div>
   );
 }

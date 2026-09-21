@@ -4,28 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-const ACTION_LABELS: Record<string, string> = {
-  "organization.created": "Kunde angelegt",
-  "user.created": "Nutzer angelegt",
-  "pipeline.created": "Kampagne angelegt",
-  "pipeline.deleted": "Kampagne gelöscht",
-  "pipeline_access.granted": "Kampagnen-Zugriff gewährt",
-  "pipeline_access.revoked": "Kampagnen-Zugriff entzogen",
-  "contact.deleted": "Kontakt gelöscht",
-  "contacts.csv_imported": "Kontakte per CSV importiert",
-  "user.activated": "Zugang aktiviert",
-  "user.deleted": "Mitarbeiter gelöscht",
-  "organization.archived": "Kunde archiviert",
-  "organization.reactivated": "Kunde reaktiviert",
-  "organization.renamed": "Kunde umbenannt",
-  "pipeline.renamed": "Kampagne umbenannt",
-  "contact.stage_changed": "Kontakt-Status geändert",
-  "contact.viewed": "Kontakt angesehen",
-  "offer_interest.created": "Interesse an Angebot bekundet",
-  "user.password_changed": "Passwort geändert",
-  "user.email_changed": "E-Mail geändert",
-};
+import { ACTION_LABELS } from "@/lib/audit-log-labels";
 
 export default async function AuditLogPage({
   searchParams,

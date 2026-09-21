@@ -172,6 +172,10 @@ model User {
   calendlyUrl String?
   avatarUrl   String?
 
+  // Set on every successful credentials login (src/auth.ts authorize
+  // callback) - powers the "letzter Login" column on the Kunden-Log tab.
+  lastLoginAt DateTime?
+
   pipelineAccess           PipelineAccess[]
   activities               Activity[]
   emailAccounts            EmailAccount[]
