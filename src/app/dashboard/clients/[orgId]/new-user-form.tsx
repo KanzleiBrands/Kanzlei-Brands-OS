@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, TriangleAlertIcon } from "lucide-react";
 import { createOrgUser } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
 
-export function NewUserForm({ organizationId, canAssignAdmin }: { organizationId: string; canAssignAdmin: boolean }) {
+export function NewUserForm({
+  organizationId,
+  canAssignAdmin,
+  inviteReadiness,
+}: {
+  organizationId: string;
+  canAssignAdmin: boolean;
+  inviteReadiness: { ready: boolean; missing: string[] };
+}) {
   const [open, setOpen] = useState(false);
   // Remount the inner form on every open so a previous invite's activation
   // link/state never lingers into the next one.
@@ -37,12 +45,26 @@ export function NewUserForm({ organizationId, canAssignAdmin }: { organizationId
         <DialogHeader>
           <DialogTitle>Mitarbeiter einladen</DialogTitle>
         </DialogHeader>
-        <NewUserFormInner
-          key={formKey}
-          organizationId={organizationId}
-          canAssignAdmin={canAssignAdmin}
-          onDone={() => setOpen(false)}
-        />
+        {inviteReadiness.ready ? (
+          <NewUserFormInner
+            key={formKey}
+            organizationId={organizationId}
+            canAssignAdmin={canAssignAdmin}
+            onDone={() => setOpen(false)}
+          />
+        ) : (
+          <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+            <div className="flex items-start gap-2">
+              <TriangleAlertIcon className="mt-0.5 size-4 flex-shrink-0 text-amber-500" />
+              <div>
+                <p className="font-medium">Account noch nicht vollständig eingerichtet</p>
+                <p className="text-muted-foreground">
+                  Bevor du einen Kunden einladen kannst, fehlt noch: {inviteReadiness.missing.join(", ")}.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

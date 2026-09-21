@@ -25,19 +25,21 @@ export function TeamSection({
   pipelines,
   baseUrl,
   currentUserId,
+  inviteReadiness,
 }: {
   organizationId: string;
   users: TeamUser[];
   pipelines: Pipeline[];
   baseUrl: string;
   currentUserId: string;
+  inviteReadiness: { ready: boolean; missing: string[] };
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Team</CardTitle>
         <CardAction>
-          <NewUserForm organizationId={organizationId} canAssignAdmin={false} />
+          <NewUserForm organizationId={organizationId} canAssignAdmin={false} inviteReadiness={inviteReadiness} />
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

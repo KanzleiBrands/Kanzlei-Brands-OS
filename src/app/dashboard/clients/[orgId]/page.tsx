@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { computeOverviewStats, computeCampaignCardStats, computeDealVolumeStats } from "@/lib/dashboard-stats";
 import { StatTile } from "@/components/stat-tile";
 import { getBaseUrl } from "@/lib/base-url";
+import { getClientReadiness } from "@/lib/client-readiness";
 import { CampaignsTab } from "./campaigns-tab";
 import { SettingsTab } from "./settings-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
@@ -76,6 +77,7 @@ export default async function ClientDetailPage({
           orderBy: { name: "asc" },
         })
       : [];
+  const inviteReadiness = tab === "settings" ? await getClientReadiness(organization.id) : { ready: true, missing: [] };
   const availableProductTags =
     tab === "settings"
       ? (
@@ -249,6 +251,7 @@ export default async function ClientDetailPage({
           activeLeadChannels={organization.activeLeadChannels}
           jobsBooked={jobsBooked}
           leadsBooked={leadsBooked}
+          inviteReadiness={inviteReadiness}
         />
       )}
     </div>

@@ -60,6 +60,7 @@ export function SettingsTab({
   activeLeadChannels,
   jobsBooked,
   leadsBooked,
+  inviteReadiness,
 }: {
   organizationId: string;
   organizationName: string;
@@ -90,6 +91,7 @@ export function SettingsTab({
   activeLeadChannels: string[];
   jobsBooked: boolean;
   leadsBooked: boolean;
+  inviteReadiness: { ready: boolean; missing: string[] };
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -183,7 +185,7 @@ export function SettingsTab({
         <CardHeader>
           <CardTitle>Mitarbeiter</CardTitle>
           <CardAction>
-            <NewUserForm organizationId={organizationId} canAssignAdmin />
+            <NewUserForm organizationId={organizationId} canAssignAdmin inviteReadiness={inviteReadiness} />
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

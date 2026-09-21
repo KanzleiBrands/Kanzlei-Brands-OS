@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/base-url";
+import { getClientReadiness } from "@/lib/client-readiness";
 import { AccountSection } from "./account-section";
 import { TeamSection } from "./team-section";
 import { AgencyTeamSection } from "./agency-team-section";
@@ -203,6 +204,8 @@ async function TeamSectionData({
     );
   }
 
+  const inviteReadiness = await getClientReadiness(organization.id);
+
   return (
     <TeamSection
       organizationId={organization.id}
@@ -210,6 +213,7 @@ async function TeamSectionData({
       pipelines={organization.pipelines}
       baseUrl={baseUrl}
       currentUserId={currentUserId}
+      inviteReadiness={inviteReadiness}
     />
   );
 }

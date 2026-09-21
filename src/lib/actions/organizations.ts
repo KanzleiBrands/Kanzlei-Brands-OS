@@ -7,6 +7,7 @@ import { requireSession, assertOrganizationAccess, AccessDeniedError } from "@/l
 import { logAudit } from "@/lib/audit";
 import { generateActivationToken } from "@/lib/invite";
 import { getBaseUrl } from "@/lib/base-url";
+import { getClientReadiness } from "@/lib/client-readiness";
 
 import { slugify } from "@/lib/slugify";
 
@@ -322,6 +323,16 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
     }
   } else if (role !== "CLIENT_ADMIN" && role !== "CLIENT_STAFF") {
     return { status: "error", message: "Ungültige Rolle." };
+  }
+
+  if (role === "CLIENT_ADMIN" || role === "CLIENT_STAFF") {
+    const readiness = await getClientReadiness(organizationId);
+    if (!readiness.ready) {
+      return {
+        status: "error",
+        message: `Account noch nicht vollständig eingerichtet - es fehlt noch: ${readiness.missing.join(", ")}.`,
+      };
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
