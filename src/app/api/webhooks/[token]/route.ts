@@ -16,7 +16,8 @@ import { handleNewContactCreated } from "@/lib/notify-new-contact";
 async function mirrorExternalFile(url: string): Promise<string> {
   try {
     return await storeFileFromUrl(url, "leads");
-  } catch {
+  } catch (error) {
+    console.error("[webhook] mirrorExternalFile failed, keeping original link:", url, error);
     return url;
   }
 }
