@@ -59,7 +59,7 @@ export default async function KundenHubPage() {
 
   return (
     <div className="p-4 sm:p-8">
-      <h1 className="mb-2 text-2xl font-semibold">Kunden-Hub</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Kunden-Hub - {session.user.name}</h1>
       <p className="mb-6 text-muted-foreground">
         {OFFERS_SECTION_ENABLED
           ? "Deine Ansprechpartner, Ressourcen und Angebote von Kanzlei Brands an einem Ort."
