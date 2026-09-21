@@ -5,6 +5,7 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/forgot-password",
   "/activate",
+  "/rechtliches",
   "/api/auth",
   "/api/webhooks",
   "/api/cron",
