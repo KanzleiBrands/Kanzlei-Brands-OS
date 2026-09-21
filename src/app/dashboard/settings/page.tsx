@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/base-url";
 import { getClientReadiness } from "@/lib/client-readiness";
 import { AccountSection } from "./account-section";
+import { ClientHubSettingsSection } from "./client-hub-settings-section";
 import { TeamSection } from "./team-section";
 import { AgencyTeamSection } from "./agency-team-section";
 import { MailboxSection } from "./mailbox-section";
@@ -14,7 +15,7 @@ import { PrivacySection } from "./privacy-section";
 import { NotificationsSection } from "./notifications-section";
 import type { EditableStage } from "./stage-list-editor";
 
-type Tab = "account" | "notifications" | "team" | "mailbox" | "snippets" | "templates" | "privacy";
+type Tab = "account" | "notifications" | "team" | "mailbox" | "snippets" | "templates" | "hubsettings" | "privacy";
 
 export default async function SettingsPage({
   searchParams,
@@ -35,7 +36,7 @@ export default async function SettingsPage({
     ...(canManageTeam ? (["team"] as const) : []),
     ...(canUseMailbox ? (["mailbox"] as const) : []),
     "snippets",
-    ...(isAgency ? (["templates"] as const) : []),
+    ...(isAgency ? (["templates", "hubsettings"] as const) : []),
     ...(!isAgency ? (["privacy"] as const) : []),
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
@@ -101,6 +102,14 @@ export default async function SettingsPage({
             Statusvorlagen
           </Link>
         )}
+        {isAgency && (
+          <Link
+            href="/dashboard/settings?tab=hubsettings"
+            className={`border-b-2 px-3 py-2 text-sm ${tab === "hubsettings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Einstellung Kundenhub
+          </Link>
+        )}
         {!isAgency && (
           <Link
             href="/dashboard/settings?tab=privacy"
@@ -117,11 +126,7 @@ export default async function SettingsPage({
           email={session.user.email}
           role={session.user.role}
           organizationName={organization?.name}
-          phone={currentUser?.phone ?? null}
-          calendlyUrl={currentUser?.calendlyUrl ?? null}
           avatarUrl={currentUser?.avatarUrl ?? null}
-          backofficeContactId={organization?.backofficeContactId ?? null}
-          agencyUsers={agencyUsers}
         />
       )}
 
@@ -144,6 +149,15 @@ export default async function SettingsPage({
       {tab === "snippets" && <MessageTemplatesSectionData organizationId={session.user.organizationId} />}
 
       {tab === "templates" && isAgency && <StageTemplatesSectionData />}
+
+      {tab === "hubsettings" && isAgency && (
+        <ClientHubSettingsSection
+          phone={currentUser?.phone ?? null}
+          calendlyUrl={currentUser?.calendlyUrl ?? null}
+          backofficeContactId={organization?.backofficeContactId ?? null}
+          agencyUsers={agencyUsers}
+        />
+      )}
 
       {tab === "privacy" && !isAgency && (
         <PrivacySection
