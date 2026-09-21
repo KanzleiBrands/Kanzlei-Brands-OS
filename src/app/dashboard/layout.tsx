@@ -112,7 +112,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   );
 
   return (
-    <div className="flex flex-col md:h-dvh">
+    <div className="flex flex-col md:h-dvh md:overflow-hidden">
       {session.impersonation && (
         <ImpersonationBanner
           realUserName={session.impersonation.realUserName}
