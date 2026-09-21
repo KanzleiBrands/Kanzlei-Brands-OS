@@ -92,7 +92,7 @@ function NewUserFormInner({
       {result?.status === "success" && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-2">
-            <code className="flex-1 truncate text-xs">{result.link}</code>
+            <code className="min-w-0 flex-1 truncate text-xs">{result.link}</code>
             <Button
               type="button"
               size="sm"

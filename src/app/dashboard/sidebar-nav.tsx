@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronRightIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 
@@ -46,14 +47,19 @@ export function SidebarNav({
   if (clientOrg) {
     return (
       <nav className="flex flex-1 flex-col">
-        <Link href={`/dashboard/clients/${clientOrg.id}`} className="mb-4 flex items-center gap-2 px-2">
+        <Link
+          href={`/dashboard/clients/${clientOrg.id}`}
+          title="Zur Übersicht dieses Kunden"
+          className="mb-4 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
+        >
           <span className="flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
             {clientOrg.name[0]?.toUpperCase()}
           </span>
-          <span className="overflow-hidden">
+          <span className="min-w-0 flex-1 overflow-hidden">
             <span className="block truncate text-sm font-semibold">{clientOrg.name}</span>
-            <span className="block text-sm text-muted-foreground">Kunde</span>
+            <span className="block text-sm text-muted-foreground">Zur Kunden-Übersicht</span>
           </span>
+          <ChevronRightIcon className="size-4 flex-shrink-0 text-muted-foreground" />
         </Link>
 
         <div className="mb-4 px-2">

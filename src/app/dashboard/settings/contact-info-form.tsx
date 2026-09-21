@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function ContactInfoForm({ phone, calendlyUrl }: { phone: string | null; calendlyUrl: string | null }) {
-  const [, formAction, isPending] = useActionState(updateContactInfo, undefined);
+  const [result, formAction, isPending] = useActionState(updateContactInfo, undefined);
 
   return (
     <form action={formAction} className="flex max-w-sm flex-col gap-4">
@@ -29,9 +29,13 @@ export function ContactInfoForm({ phone, calendlyUrl }: { phone: string | null; 
         Wird angezeigt, wenn du als Account Manager oder Buchhaltungs-Ansprechpartner in einem Kunden-Hub hinterlegt
         bist.
       </p>
-      <Button type="submit" disabled={isPending} className="self-start">
-        {isPending ? "Speichern..." : "Speichern"}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={isPending} className="self-start">
+          {isPending ? "Speichern..." : "Speichern"}
+        </Button>
+        {result?.status === "success" && <p className="text-sm text-emerald-500">{result.message}</p>}
+        {result?.status === "error" && <p className="text-sm text-destructive">{result.message}</p>}
+      </div>
     </form>
   );
 }

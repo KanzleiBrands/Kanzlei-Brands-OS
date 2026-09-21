@@ -11,6 +11,7 @@ import { IMPERSONATION_COOKIE } from "@/lib/impersonation";
 import { storeFile } from "@/lib/file-storage";
 
 export type ChangePasswordResult = { status: "error" | "success"; message: string } | undefined;
+export type SaveResult = { status: "error" | "success"; message: string } | undefined;
 
 export async function changePassword(
   _prevState: ChangePasswordResult,
@@ -130,21 +131,23 @@ export async function updateNotificationPreference(formData: FormData) {
  * Ansprechpartner (siehe Organization.backofficeContactId auf der
  * Agentur-Organisation) im Kunden-Hub angezeigt wird.
  */
-export async function updateContactInfo(
-  _prevState: string | undefined,
-  formData: FormData,
-): Promise<string | undefined> {
+export async function updateContactInfo(_prevState: SaveResult, formData: FormData): Promise<SaveResult> {
   const session = await requireSession();
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const calendlyUrl = String(formData.get("calendlyUrl") ?? "").trim() || null;
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { phone, calendlyUrl },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { phone, calendlyUrl },
+    });
+  } catch (error) {
+    console.error("[updateContactInfo] failed:", error);
+    return { status: "error", message: "Konnte nicht gespeichert werden. Bitte erneut versuchen." };
+  }
 
   revalidatePath("/dashboard/settings");
-  return undefined;
+  return { status: "success", message: "Gespeichert." };
 }
 
 /**
@@ -161,7 +164,17 @@ export async function updateAvatar(
   if (!(file instanceof File) || file.size === 0) return "Bitte ein Bild auswählen.";
   if (!file.type.startsWith("image/")) return "Bitte eine Bilddatei auswählen.";
 
-  const avatarUrl = await storeFile(file, "avatars");
+  let avatarUrl: string;
+  try {
+    avatarUrl = await storeFile(file, "avatars");
+  } catch (error) {
+    // Ein Speicherfehler (z.B. Blob-Storage nicht konfiguriert) darf nie die
+    // ganze Seite abstürzen lassen - stattdessen eine verständliche
+    // Fehlermeldung im Formular zeigen.
+    console.error("[updateAvatar] storeFile failed:", error);
+    return "Bild konnte nicht hochgeladen werden. Bitte später erneut versuchen.";
+  }
+
   await prisma.user.update({
     where: { id: session.user.id },
     data: { avatarUrl },
