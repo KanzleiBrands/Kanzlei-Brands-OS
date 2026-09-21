@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { toggleLessonComplete } from "@/lib/actions/courses";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function CompleteToggle({
   courseId,
@@ -16,15 +17,14 @@ export function CompleteToggle({
 
   return (
     <label className="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
+      <Checkbox
         defaultChecked={completed}
         disabled={isPending}
-        onChange={(event) => {
+        onCheckedChange={(checked) => {
           const formData = new FormData();
           formData.set("courseId", courseId);
           formData.set("lessonId", lessonId);
-          formData.set("complete", String(event.target.checked));
+          formData.set("complete", String(checked));
           startTransition(() => {
             toggleLessonComplete(formData);
           });

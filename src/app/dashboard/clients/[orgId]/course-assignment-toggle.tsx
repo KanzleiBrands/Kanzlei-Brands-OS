@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { setCourseAssignment } from "@/lib/actions/courses";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function CourseAssignmentToggle({
   organizationId,
@@ -15,15 +16,14 @@ export function CourseAssignmentToggle({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <input
-      type="checkbox"
+    <Checkbox
       defaultChecked={assigned}
       disabled={isPending}
-      onChange={(event) => {
+      onCheckedChange={(checked) => {
         const formData = new FormData();
         formData.set("organizationId", organizationId);
         formData.set("courseId", courseId);
-        formData.set("assign", String(event.target.checked));
+        formData.set("assign", String(checked));
         startTransition(() => {
           setCourseAssignment(formData);
         });

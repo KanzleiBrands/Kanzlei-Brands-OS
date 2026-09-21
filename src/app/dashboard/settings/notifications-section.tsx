@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { updateNotificationPreference } from "@/lib/actions/account";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function NotificationsSection({ notifyOnNewContact }: { notifyOnNewContact: boolean }) {
   const [isPending, startTransition] = useTransition();
@@ -14,13 +15,12 @@ export function NotificationsSection({ notifyOnNewContact }: { notifyOnNewContac
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             defaultChecked={notifyOnNewContact}
             disabled={isPending}
-            onChange={(e) => {
+            onCheckedChange={(checked) => {
               const formData = new FormData();
-              formData.set("notifyOnNewContact", String(e.target.checked));
+              formData.set("notifyOnNewContact", String(checked));
               startTransition(() => {
                 updateNotificationPreference(formData);
               });

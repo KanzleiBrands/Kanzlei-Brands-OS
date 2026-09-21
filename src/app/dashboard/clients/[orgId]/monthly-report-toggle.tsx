@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { updateMonthlyReportSetting } from "@/lib/actions/organizations";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function MonthlyReportToggle({
   organizationId,
@@ -14,14 +15,13 @@ export function MonthlyReportToggle({
 
   return (
     <label className="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
+      <Checkbox
         defaultChecked={enabled}
         disabled={isPending}
-        onChange={(e) => {
+        onCheckedChange={(checked) => {
           const formData = new FormData();
           formData.set("organizationId", organizationId);
-          formData.set("monthlyReportEnabled", String(e.target.checked));
+          formData.set("monthlyReportEnabled", String(checked));
           startTransition(() => {
             updateMonthlyReportSetting(formData);
           });

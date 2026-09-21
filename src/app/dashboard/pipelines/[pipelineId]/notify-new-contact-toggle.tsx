@@ -2,17 +2,17 @@
 
 import { useTransition } from "react";
 import { toggleNotifyOnNewContact } from "@/lib/actions/organizations";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function NotifyNewContactToggle({ pipelineId, enabled }: { pipelineId: string; enabled: boolean }) {
   const [isPending, startTransition] = useTransition();
 
   return (
     <label className="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
+      <Checkbox
         defaultChecked={enabled}
         disabled={isPending}
-        onChange={() => {
+        onCheckedChange={() => {
           const formData = new FormData();
           formData.set("pipelineId", pipelineId);
           startTransition(() => {

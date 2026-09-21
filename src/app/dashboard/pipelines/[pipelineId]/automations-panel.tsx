@@ -6,6 +6,7 @@ import { toggleAutomationRule, updateAutomationRecipient } from "@/lib/actions/a
 import { automationTriggerLabel, AUTOMATION_TRIGGERS } from "@/lib/automation-labels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Rule = { trigger: AutomationTrigger; active: boolean; recipientUserId: string | null };
 type OrgUser = { id: string; name: string };
@@ -60,15 +61,14 @@ function RuleRow({
         </Select>
 
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             defaultChecked={rule.active}
             disabled={isPending}
-            onChange={(e) => {
+            onCheckedChange={(checked) => {
               const formData = new FormData();
               formData.set("pipelineId", pipelineId);
               formData.set("trigger", rule.trigger);
-              formData.set("active", String(e.target.checked));
+              formData.set("active", String(checked));
               startTransition(() => {
                 toggleAutomationRule(formData);
               });

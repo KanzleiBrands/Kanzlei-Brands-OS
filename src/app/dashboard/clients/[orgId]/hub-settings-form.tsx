@@ -1,11 +1,55 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { CheckIcon } from "lucide-react";
 import { updateHubSettings } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "cn";
 import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS } from "@/lib/growth-levers";
+
+// A real (visually hidden) checkbox input next to a styled indicator, so the
+// browser's native multi-value form submission (name + value per checked
+// box) still works when this is submitted as part of the surrounding
+// <form action> - unlike the reusable Checkbox component, this list needs a
+// distinct `value` per option, which that component's underlying primitive
+// doesn't support.
+function CheckboxTile({
+  name,
+  value,
+  checked,
+  onChange,
+  children,
+}: {
+  name: string;
+  value: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+      <input
+        type="checkbox"
+        name={name}
+        value={value}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="sr-only"
+      />
+      <span
+        className={cn(
+          "flex size-5 flex-shrink-0 items-center justify-center rounded-full border transition-colors",
+          checked ? "border-primary bg-primary" : "border-input bg-background",
+        )}
+      >
+        {checked && <CheckIcon className="size-3 text-primary-foreground" strokeWidth={3} />}
+      </span>
+      {children}
+    </label>
+  );
+}
 
 function ChannelCheckboxList({
   name,
@@ -20,21 +64,20 @@ function ChannelCheckboxList({
   return (
     <div className="flex flex-wrap gap-3">
       {options.map((option) => (
-        <label key={option.tag} className="flex items-center gap-1.5 text-sm">
-          <input
-            type="checkbox"
-            name={name}
-            value={option.tag}
-            checked={checked.has(option.tag)}
-            onChange={(e) => {
-              const next = new Set(checked);
-              if (e.target.checked) next.add(option.tag);
-              else next.delete(option.tag);
-              setChecked(next);
-            }}
-          />
+        <CheckboxTile
+          key={option.tag}
+          name={name}
+          value={option.tag}
+          checked={checked.has(option.tag)}
+          onChange={(isChecked) => {
+            const next = new Set(checked);
+            if (isChecked) next.add(option.tag);
+            else next.delete(option.tag);
+            setChecked(next);
+          }}
+        >
           {option.label}
-        </label>
+        </CheckboxTile>
       ))}
     </div>
   );
@@ -138,21 +181,20 @@ export function HubSettingsForm({
         {availableProductTags.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             {availableProductTags.map((tag) => (
-              <label key={tag} className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  name="bookedProductTags"
-                  value={tag}
-                  checked={checkedTags.has(tag)}
-                  onChange={(e) => {
-                    const next = new Set(checkedTags);
-                    if (e.target.checked) next.add(tag);
-                    else next.delete(tag);
-                    setCheckedTags(next);
-                  }}
-                />
+              <CheckboxTile
+                key={tag}
+                name="bookedProductTags"
+                value={tag}
+                checked={checkedTags.has(tag)}
+                onChange={(isChecked) => {
+                  const next = new Set(checkedTags);
+                  if (isChecked) next.add(tag);
+                  else next.delete(tag);
+                  setCheckedTags(next);
+                }}
+              >
                 {tag}
-              </label>
+              </CheckboxTile>
             ))}
           </div>
         ) : (

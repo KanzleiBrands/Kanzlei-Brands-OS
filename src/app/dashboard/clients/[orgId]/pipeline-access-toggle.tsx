@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { setPipelineAccess } from "@/lib/actions/organizations";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function PipelineAccessToggle({
   userId,
@@ -15,15 +16,14 @@ export function PipelineAccessToggle({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <input
-      type="checkbox"
+    <Checkbox
       defaultChecked={granted}
       disabled={isPending}
-      onChange={(event) => {
+      onCheckedChange={(checked) => {
         const formData = new FormData();
         formData.set("userId", userId);
         formData.set("pipelineId", pipelineId);
-        formData.set("grant", String(event.target.checked));
+        formData.set("grant", String(checked));
         startTransition(() => {
           setPipelineAccess(formData);
         });

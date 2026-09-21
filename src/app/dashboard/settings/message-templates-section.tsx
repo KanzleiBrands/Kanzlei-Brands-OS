@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Template = {
   id: string;
@@ -67,15 +68,14 @@ function DefaultForKindCheckbox({
 
   return (
     <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
-      <input
-        type="checkbox"
+      <Checkbox
         defaultChecked={checked}
         disabled={isPending}
-        onChange={(e) => {
+        onCheckedChange={(nextChecked) => {
           const formData = new FormData();
           formData.set("templateId", templateId);
           formData.set("defaultForKind", kind);
-          formData.set("checked", String(e.target.checked));
+          formData.set("checked", String(nextChecked));
           startTransition(() => {
             setTemplateDefaultForKind(formData);
           });
