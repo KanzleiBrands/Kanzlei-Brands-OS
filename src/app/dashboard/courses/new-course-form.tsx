@@ -13,12 +13,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 const LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
 
 export function NewCourseForm() {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createCourse, undefined);
+  useSaveToast(error, isPending, "Kurs angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 

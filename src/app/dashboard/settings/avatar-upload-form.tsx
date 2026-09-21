@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { updateAvatar } from "@/lib/actions/account";
 import { Button } from "@/components/ui/button";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function AvatarUploadForm({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   const [replacing, setReplacing] = useState(false);
@@ -16,6 +17,7 @@ export function AvatarUploadForm({ name, avatarUrl }: { name: string; avatarUrl:
     }
     return result;
   }, undefined);
+  useSaveToast(error, isPending, "Profilbild aktualisiert.");
 
   const [firstName, ...rest] = name.trim().split(/\s+/);
   const lastName = rest.at(-1) ?? null;

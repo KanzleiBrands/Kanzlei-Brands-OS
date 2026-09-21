@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updatePortalBackofficeContact } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type AgencyUser = { id: string; name: string };
 
@@ -15,6 +16,7 @@ export function BackofficeContactForm({
   agencyUsers: AgencyUser[];
 }) {
   const [error, formAction, isPending] = useActionState(updatePortalBackofficeContact, undefined);
+  useSaveToast(error, isPending);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">

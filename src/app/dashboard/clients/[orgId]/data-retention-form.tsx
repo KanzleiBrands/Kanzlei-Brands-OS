@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updateDataRetentionSettings } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function DataRetentionForm({
   organizationId,
@@ -15,6 +16,7 @@ export function DataRetentionForm({
   leadDataRetentionMonths: number | null;
 }) {
   const [error, formAction, isPending] = useActionState(updateDataRetentionSettings, undefined);
+  useSaveToast(error, isPending);
 
   return (
     <form action={formAction} className="flex flex-col gap-6">

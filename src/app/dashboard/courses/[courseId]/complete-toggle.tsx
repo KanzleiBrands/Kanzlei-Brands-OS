@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { toggleLessonComplete } from "@/lib/actions/courses";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -25,9 +26,14 @@ export function CompleteToggle({
           formData.set("courseId", courseId);
           formData.set("lessonId", lessonId);
           formData.set("complete", String(checked));
-          startTransition(() => {
-            toggleLessonComplete(formData);
-          });
+          startTransition(async () => {
+            try {
+              await toggleLessonComplete(formData);
+              toast.success("Gespeichert.");
+            } catch {
+              toast.error("Konnte nicht gespeichert werden.");
+            }
+        });
         }}
       />
       Abgeschlossen

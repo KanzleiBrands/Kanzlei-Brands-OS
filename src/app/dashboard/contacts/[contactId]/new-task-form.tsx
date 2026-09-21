@@ -4,9 +4,11 @@ import { useActionState, useEffect, useRef } from "react";
 import { createTask } from "@/lib/actions/tasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewTaskForm({ contactId }: { contactId: string }) {
   const [error, formAction, isPending] = useActionState(createTask, undefined);
+  useSaveToast(error, isPending, "Aufgabe erstellt.");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 

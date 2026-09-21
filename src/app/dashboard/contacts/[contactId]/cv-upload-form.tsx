@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { FileTextIcon } from "lucide-react";
 import { uploadContactCv } from "@/lib/actions/contacts";
 import { Button } from "@/components/ui/button";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function CvUploadForm({ contactId, cvUrl }: { contactId: string; cvUrl: string | null }) {
   const [replacing, setReplacing] = useState(false);
@@ -16,6 +17,7 @@ export function CvUploadForm({ contactId, cvUrl }: { contactId: string; cvUrl: s
     }
     return result;
   }, undefined);
+  useSaveToast(error, isPending, "Lebenslauf hochgeladen.");
 
   if (cvUrl && !replacing) {
     return (

@@ -5,11 +5,13 @@ import { addNote } from "@/lib/actions/contacts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type Template = { id: string; name: string; body: string };
 
 export function NoteForm({ contactId, templates = [] }: { contactId: string; templates?: Template[] }) {
   const [error, formAction, isPending] = useActionState(addNote, undefined);
+  useSaveToast(error, isPending, "Notiz hinzugefügt.");
   const [type, setType] = useState<"NOTE" | "CALL">("NOTE");
   const [templateId, setTemplateId] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);

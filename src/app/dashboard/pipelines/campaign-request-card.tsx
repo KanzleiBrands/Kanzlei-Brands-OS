@@ -5,6 +5,7 @@ import { ExternalLinkIcon, LockIcon, PlusIcon } from "lucide-react";
 import { requestAdditionalQuota } from "@/lib/actions/campaign-requests";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type Kind = "LEADS" | "APPLICANTS";
 
@@ -29,6 +30,7 @@ export function CampaignRequestCard({
   canRequest: boolean;
 }) {
   const [error, formAction, isPending] = useActionState(requestAdditionalQuota, undefined);
+  useSaveToast(error, isPending, "Anfrage gesendet.");
   const [sent, setSent] = useState(false);
   const wasPending = useRef(false);
 

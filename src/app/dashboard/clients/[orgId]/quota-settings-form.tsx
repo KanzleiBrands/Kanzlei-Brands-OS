@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updateOrganizationQuotas } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function QuotaSettingsForm({
   organizationId,
@@ -19,6 +20,7 @@ export function QuotaSettingsForm({
   applicantsUsed: number;
 }) {
   const [error, formAction, isPending] = useActionState(updateOrganizationQuotas, undefined);
+  useSaveToast(error, isPending);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

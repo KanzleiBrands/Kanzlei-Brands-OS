@@ -5,6 +5,7 @@ import { PencilIcon } from "lucide-react";
 import { updateDealOutcome } from "@/lib/actions/contacts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 const eurFormatter = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
@@ -22,6 +23,7 @@ export function DealOutcomeEditor({
   const isApplicant = pipelineKind === "APPLICANTS";
   const [editing, setEditing] = useState(false);
   const [error, formAction, isPending] = useActionState(updateDealOutcome, undefined);
+  useSaveToast(error, isPending);
   const wasPending = useRef(false);
 
   useEffect(() => {

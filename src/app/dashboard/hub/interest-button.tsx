@@ -3,9 +3,11 @@
 import { useActionState } from "react";
 import { registerInterest } from "@/lib/actions/offers";
 import { Button } from "@/components/ui/button";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function InterestButton({ offerId, ctaLabel, already }: { offerId: string; ctaLabel: string; already: boolean }) {
   const [error, formAction, isPending] = useActionState(registerInterest, undefined);
+  useSaveToast(error, isPending, "Interesse gemeldet.");
 
   if (already) {
     return <p className="text-sm text-green-600">Interesse übermittelt – wir melden uns bei dir.</p>;

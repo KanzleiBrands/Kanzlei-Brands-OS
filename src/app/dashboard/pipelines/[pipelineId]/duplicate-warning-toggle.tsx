@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { toggleDuplicateWarning } from "@/lib/actions/organizations";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -15,9 +16,14 @@ export function DuplicateWarningToggle({ pipelineId, enabled }: { pipelineId: st
         onCheckedChange={() => {
           const formData = new FormData();
           formData.set("pipelineId", pipelineId);
-          startTransition(() => {
-            toggleDuplicateWarning(formData);
-          });
+          startTransition(async () => {
+            try {
+              await toggleDuplicateWarning(formData);
+              toast.success("Gespeichert.");
+            } catch {
+              toast.error("Konnte nicht gespeichert werden.");
+            }
+        });
         }}
       />
       Duplikat-Hinweis anzeigen

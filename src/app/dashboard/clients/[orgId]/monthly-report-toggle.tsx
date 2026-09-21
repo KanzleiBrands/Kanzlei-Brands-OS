@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { updateMonthlyReportSetting } from "@/lib/actions/organizations";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -22,9 +23,14 @@ export function MonthlyReportToggle({
           const formData = new FormData();
           formData.set("organizationId", organizationId);
           formData.set("monthlyReportEnabled", String(checked));
-          startTransition(() => {
-            updateMonthlyReportSetting(formData);
-          });
+          startTransition(async () => {
+            try {
+              await updateMonthlyReportSetting(formData);
+              toast.success("Gespeichert.");
+            } catch {
+              toast.error("Konnte nicht gespeichert werden.");
+            }
+        });
         }}
       />
       Performance-Report monatlich per E-Mail verschicken

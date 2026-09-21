@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { StageListEditor, type EditableStage } from "./stage-list-editor";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function EditStageTemplateDialog({
   templateId,
@@ -25,6 +26,7 @@ export function EditStageTemplateDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(updateStageTemplate, undefined);
+  useSaveToast(error, isPending);
   const [stagesState, setStagesState] = useState<EditableStage[]>(stages);
   const wasPending = useRef(false);
 

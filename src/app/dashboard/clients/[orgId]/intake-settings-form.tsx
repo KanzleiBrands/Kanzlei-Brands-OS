@@ -5,6 +5,7 @@ import { updateOrganizationIntakeSettings } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type AgencyUser = { id: string; name: string };
 
@@ -22,6 +23,7 @@ export function IntakeSettingsForm({
   agencyUsers: AgencyUser[];
 }) {
   const [error, formAction, isPending] = useActionState(updateOrganizationIntakeSettings, undefined);
+  useSaveToast(error, isPending);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

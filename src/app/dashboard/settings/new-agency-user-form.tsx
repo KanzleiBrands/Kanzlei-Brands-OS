@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewAgencyUserForm({ organizationId }: { organizationId: string }) {
   const [open, setOpen] = useState(false);
@@ -41,6 +42,14 @@ export function NewAgencyUserForm({ organizationId }: { organizationId: string }
 
 function NewAgencyUserFormInner({ organizationId, onDone }: { organizationId: string; onDone: () => void }) {
   const [result, formAction, isPending] = useActionState(createOrgUser, undefined);
+  useSaveToast(
+    result?.status === "success"
+      ? { status: "success", message: "Mitarbeiter angelegt." }
+      : result?.status === "error"
+        ? result.message
+        : undefined,
+    isPending,
+  );
   const [copied, setCopied] = useState(false);
 
   return (

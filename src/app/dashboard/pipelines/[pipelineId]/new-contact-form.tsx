@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewContactForm({
   pipelineId,
@@ -25,6 +26,7 @@ export function NewContactForm({
 }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createContact, undefined);
+  useSaveToast(error, isPending);
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 

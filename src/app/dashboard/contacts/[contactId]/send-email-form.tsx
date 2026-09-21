@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type Template = { id: string; name: string; subject: string | null; body: string };
 
@@ -19,6 +20,7 @@ export function SendEmailForm({
   templates?: Template[];
 }) {
   const [error, formAction, isPending] = useActionState(sendEmailToContact, undefined);
+  useSaveToast(error, isPending, "E-Mail gesendet.");
   const [templateId, setTemplateId] = useState("");
   const subjectRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);

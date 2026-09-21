@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useActionState } from "react";
+import { toast } from "sonner";
 import { createWebhookEndpoint } from "@/lib/actions/webhooks";
 import { importContactsCsv } from "@/lib/actions/contacts";
 import {
@@ -60,6 +61,15 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
   const [fileName, setFileName] = useState<string | null>(null);
   const csvFormRef = useRef<HTMLFormElement>(null);
   const csvIsSuccess = csvResult?.includes("importiert");
+  const wasCsvPending = useRef(false);
+
+  useEffect(() => {
+    if (wasCsvPending.current && !isCsvPending && csvResult) {
+      if (csvIsSuccess) toast.success(csvResult);
+      else toast.error(csvResult);
+    }
+    wasCsvPending.current = isCsvPending;
+  }, [isCsvPending, csvResult, csvIsSuccess]);
 
   const availableFormSources = WEBHOOK_FORM_SOURCES.filter((source) => !existingSources.includes(source));
   const availableDirectSources = DIRECT_INTEGRATION_SOURCES.filter((source) => !existingSources.includes(source));
@@ -69,9 +79,11 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
       const result = await createWebhookEndpoint(undefined, formData);
       if (result) {
         setSourceError(result);
+        toast.error(result);
       } else {
         setSourceError(undefined);
         setSelected(null);
+        toast.success("Quelle hinzugefügt.");
       }
     });
   }

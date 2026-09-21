@@ -6,6 +6,7 @@ import { updateLocationRouting } from "@/lib/actions/webhooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type Route = { location: string; pipelineId: string };
 type SiblingPipeline = { id: string; name: string; location: string | null };
@@ -27,6 +28,7 @@ export function LocationRoutingEditor({
   siblings: SiblingPipeline[];
 }) {
   const [error, formAction, isPending] = useActionState(updateLocationRouting, undefined);
+  useSaveToast(error, isPending);
   const [routes, setRoutes] = useState<Route[]>(() => routingToArray(routing, siblings));
   const wasPending = useRef(false);
   const [saved, setSaved] = useState(false);

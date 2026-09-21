@@ -5,10 +5,12 @@ import { PencilIcon } from "lucide-react";
 import { renamePipeline } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function EditPipelineNameForm({ pipelineId, name }: { pipelineId: string; name: string }) {
   const [editing, setEditing] = useState(false);
   const [error, formAction, isPending] = useActionState(renamePipeline, undefined);
+  useSaveToast(error, isPending);
   const wasPending = useRef(false);
 
   useEffect(() => {

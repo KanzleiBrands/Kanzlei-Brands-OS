@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { StageListEditor, type EditableStage } from "./stage-list-editor";
 import { STAGE_COLOR_PALETTE } from "@/lib/stage-colors";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 const BLANK_STAGE: EditableStage[] = [{ name: "Neu", color: STAGE_COLOR_PALETTE[0] }];
 
@@ -25,6 +26,7 @@ export function NewStageTemplateDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createStageTemplate, undefined);
+  useSaveToast(error, isPending, "Vorlage angelegt.");
   const [cloneFromId, setCloneFromId] = useState<string>("blank");
   const [stagesState, setStagesState] = useState<EditableStage[]>(BLANK_STAGE);
   const formRef = useRef<HTMLFormElement>(null);

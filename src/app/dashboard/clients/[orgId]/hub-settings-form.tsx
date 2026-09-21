@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "cn";
 import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS } from "@/lib/growth-levers";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 // A real (visually hidden) checkbox input next to a styled indicator, so the
 // browser's native multi-value form submission (name + value per checked
@@ -109,6 +110,7 @@ export function HubSettingsForm({
   leadsBooked: boolean;
 }) {
   const [error, formAction, isPending] = useActionState(updateHubSettings, undefined);
+  useSaveToast(error, isPending);
   const [checkedTags, setCheckedTags] = useState<Set<string>>(new Set(bookedProductTags));
   const applicantChannelOptions = APPLICANT_GROWTH_LEVERS.filter((l) => l.kind === "channel").map((l) => ({
     tag: l.tag,

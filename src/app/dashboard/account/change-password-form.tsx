@@ -5,9 +5,11 @@ import { changePassword } from "@/lib/actions/account";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function ChangePasswordForm() {
   const [result, formAction, isPending] = useActionState(changePassword, undefined);
+  useSaveToast(result, isPending);
 
   return (
     <form action={formAction} className="flex flex-col gap-4 max-w-sm">

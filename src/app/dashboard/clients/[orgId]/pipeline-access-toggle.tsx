@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { setPipelineAccess } from "@/lib/actions/organizations";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -24,8 +25,13 @@ export function PipelineAccessToggle({
         formData.set("userId", userId);
         formData.set("pipelineId", pipelineId);
         formData.set("grant", String(checked));
-        startTransition(() => {
-          setPipelineAccess(formData);
+        startTransition(async () => {
+          try {
+            await setPipelineAccess(formData);
+            toast.success("Gespeichert.");
+          } catch {
+            toast.error("Konnte nicht gespeichert werden.");
+          }
         });
       }}
     />

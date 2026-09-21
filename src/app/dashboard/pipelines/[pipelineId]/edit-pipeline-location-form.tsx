@@ -5,10 +5,12 @@ import { PencilIcon } from "lucide-react";
 import { updatePipelineLocation } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function EditPipelineLocationForm({ pipelineId, location }: { pipelineId: string; location: string | null }) {
   const [editing, setEditing] = useState(false);
   const [error, formAction, isPending] = useActionState(updatePipelineLocation, undefined);
+  useSaveToast(error, isPending);
   const wasPending = useRef(false);
 
   useEffect(() => {

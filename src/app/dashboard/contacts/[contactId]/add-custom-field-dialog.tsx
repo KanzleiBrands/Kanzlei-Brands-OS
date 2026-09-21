@@ -12,12 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function AddCustomFieldDialog({ contactId, pipelineKind }: { contactId: string; pipelineKind: string }) {
   const examplePlaceholder =
     pipelineKind === "APPLICANTS" ? "Feldname (z.B. Gehaltsvorstellung)" : "Feldname (z.B. Jahresumsatz)";
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(setCustomField, undefined);
+  useSaveToast(error, isPending);
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 

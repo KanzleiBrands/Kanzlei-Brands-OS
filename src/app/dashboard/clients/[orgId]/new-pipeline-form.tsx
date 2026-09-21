@@ -5,6 +5,7 @@ import { createPipeline } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewPipelineForm({
   organizationId,
@@ -18,6 +19,7 @@ export function NewPipelineForm({
   onSuccess?: () => void;
 }) {
   const [error, formAction, isPending] = useActionState(createPipeline, undefined);
+  useSaveToast(error, isPending, "Kampagne angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 

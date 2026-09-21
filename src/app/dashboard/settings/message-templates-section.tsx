@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSaveToast } from "@/hooks/use-save-toast";
+import { toast } from "sonner";
 
 type Template = {
   id: string;
@@ -22,6 +24,7 @@ const KIND_LABELS: Record<Template["kind"], string> = { NOTE: "Notiz", EMAIL: "E
 
 function NewTemplateForm() {
   const [error, formAction, isPending] = useActionState(createTemplate, undefined);
+  useSaveToast(error, isPending, "Vorlage angelegt.");
   const [kind, setKind] = useState<Template["kind"]>("NOTE");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
@@ -76,8 +79,13 @@ function DefaultForKindCheckbox({
           formData.set("templateId", templateId);
           formData.set("defaultForKind", kind);
           formData.set("checked", String(nextChecked));
-          startTransition(() => {
-            setTemplateDefaultForKind(formData);
+          startTransition(async () => {
+            try {
+              await setTemplateDefaultForKind(formData);
+              toast.success("Gespeichert.");
+            } catch {
+              toast.error("Konnte nicht gespeichert werden.");
+            }
           });
         }}
       />

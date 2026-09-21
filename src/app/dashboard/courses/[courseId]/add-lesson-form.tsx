@@ -12,12 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function AddLessonForm({ courseId }: { courseId: string }) {
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [error, formAction, isPending] = useActionState(addLesson, undefined);
+  useSaveToast(error, isPending, "Lektion hinzugefügt.");
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {

@@ -12,10 +12,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewClientForm() {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createClientOrganization, undefined);
+  useSaveToast(error, isPending, "Kunde angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 

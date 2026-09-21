@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateFieldMapping, updateMinCallDuration } from "@/lib/actions/webhooks";
+import { useSaveToast } from "@/hooks/use-save-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,7 @@ type SiblingPipeline = { id: string; name: string; location: string | null };
 
 function MinCallDurationForm({ endpointId, minCallDurationSeconds }: { endpointId: string; minCallDurationSeconds: number | null }) {
   const [error, formAction, isPending] = useActionState(updateMinCallDuration, undefined);
+  useSaveToast(error, isPending);
 
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-2">
@@ -94,6 +96,7 @@ function DeliveryRow({ delivery }: { delivery: Delivery }) {
 
 function EndpointCard({ endpoint, siblings }: { endpoint: Endpoint; siblings: SiblingPipeline[] }) {
   const [error, formAction, isPending] = useActionState(updateFieldMapping, undefined);
+  useSaveToast(error, isPending);
   const [copied, setCopied] = useState(false);
 
   return (

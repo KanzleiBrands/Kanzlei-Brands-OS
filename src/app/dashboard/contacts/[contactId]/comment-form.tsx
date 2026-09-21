@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { postComment } from "@/lib/actions/contacts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 type MentionUser = { id: string; name: string };
 
@@ -15,6 +16,7 @@ export function CommentForm({
   mentionableUsers: MentionUser[];
 }) {
   const [error, formAction, isPending] = useActionState(postComment, undefined);
+  useSaveToast(error, isPending, "Kommentar gesendet.");
   const [content, setContent] = useState("");
   const [mentioned, setMentioned] = useState<Map<string, string>>(new Map());
   const [mentionQuery, setMentionQuery] = useState<{ query: string; start: number } | null>(null);

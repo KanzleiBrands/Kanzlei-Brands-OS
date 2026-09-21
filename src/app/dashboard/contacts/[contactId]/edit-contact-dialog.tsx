@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function EditContactDialog({
   contactId,
@@ -36,6 +37,7 @@ export function EditContactDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(updateContact, undefined);
+  useSaveToast(error, isPending);
   const wasPending = useRef(false);
 
   useEffect(() => {

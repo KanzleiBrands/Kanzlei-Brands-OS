@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { updateNotificationPreference } from "@/lib/actions/account";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,8 +22,13 @@ export function NotificationsSection({ notifyOnNewContact }: { notifyOnNewContac
             onCheckedChange={(checked) => {
               const formData = new FormData();
               formData.set("notifyOnNewContact", String(checked));
-              startTransition(() => {
-                updateNotificationPreference(formData);
+              startTransition(async () => {
+                try {
+                  await updateNotificationPreference(formData);
+                  toast.success("Gespeichert.");
+                } catch {
+                  toast.error("Konnte nicht gespeichert werden.");
+                }
               });
             }}
           />

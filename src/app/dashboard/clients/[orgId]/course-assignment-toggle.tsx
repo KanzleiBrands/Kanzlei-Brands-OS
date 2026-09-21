@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { setCourseAssignment } from "@/lib/actions/courses";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -24,8 +25,13 @@ export function CourseAssignmentToggle({
         formData.set("organizationId", organizationId);
         formData.set("courseId", courseId);
         formData.set("assign", String(checked));
-        startTransition(() => {
-          setCourseAssignment(formData);
+        startTransition(async () => {
+          try {
+            await setCourseAssignment(formData);
+            toast.success("Gespeichert.");
+          } catch {
+            toast.error("Konnte nicht gespeichert werden.");
+          }
         });
       }}
     />

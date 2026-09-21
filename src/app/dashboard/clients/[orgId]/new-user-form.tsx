@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function NewUserForm({ organizationId, canAssignAdmin }: { organizationId: string; canAssignAdmin: boolean }) {
   const [open, setOpen] = useState(false);
@@ -57,6 +58,14 @@ function NewUserFormInner({
   onDone: () => void;
 }) {
   const [result, formAction, isPending] = useActionState(createOrgUser, undefined);
+  useSaveToast(
+    result?.status === "success"
+      ? { status: "success", message: "Mitarbeiter eingeladen." }
+      : result?.status === "error"
+        ? result.message
+        : undefined,
+    isPending,
+  );
   const [copied, setCopied] = useState(false);
 
   return (

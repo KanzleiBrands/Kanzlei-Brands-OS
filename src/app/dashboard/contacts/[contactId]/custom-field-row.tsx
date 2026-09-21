@@ -6,6 +6,7 @@ import { setCustomField } from "@/lib/actions/contacts";
 import { isFileUrl } from "@/lib/format-custom-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSaveToast } from "@/hooks/use-save-toast";
 
 export function CustomFieldRow({
   contactId,
@@ -22,6 +23,7 @@ export function CustomFieldRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [error, formAction, isPending] = useActionState(setCustomField, undefined);
+  useSaveToast(error, isPending);
   const wasPending = useRef(false);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import type { AutomationTrigger, PipelineKind } from "@prisma/client";
 import { toggleAutomationRule, updateAutomationRecipient } from "@/lib/actions/automations";
 import { automationTriggerLabel, AUTOMATION_TRIGGERS } from "@/lib/automation-labels";
@@ -43,8 +44,13 @@ function RuleRow({
             formData.set("pipelineId", pipelineId);
             formData.set("trigger", rule.trigger);
             formData.set("recipientUserId", value ?? "");
-            startTransition(() => {
-              updateAutomationRecipient(formData);
+            startTransition(async () => {
+              try {
+                await updateAutomationRecipient(formData);
+                toast.success("Gespeichert.");
+              } catch {
+                toast.error("Konnte nicht gespeichert werden.");
+              }
             });
           }}
         >
@@ -69,8 +75,13 @@ function RuleRow({
               formData.set("pipelineId", pipelineId);
               formData.set("trigger", rule.trigger);
               formData.set("active", String(checked));
-              startTransition(() => {
-                toggleAutomationRule(formData);
+              startTransition(async () => {
+                try {
+                  await toggleAutomationRule(formData);
+                  toast.success("Gespeichert.");
+                } catch {
+                  toast.error("Konnte nicht gespeichert werden.");
+                }
               });
             }}
           />
