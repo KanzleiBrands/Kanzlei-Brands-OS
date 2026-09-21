@@ -13,6 +13,7 @@ import { EditPipelineLocationForm } from "./edit-pipeline-location-form";
 import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
 import { NotifyNewContactToggle } from "./notify-new-contact-toggle";
 import { AutomationsPanel } from "./automations-panel";
+import { FinalStageSelector } from "./final-stage-selector";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 type Tab = "leads" | "settings" | "sources";
@@ -159,6 +160,12 @@ export default async function PipelineDetailPage({
 
           <DuplicateWarningToggle pipelineId={pipeline.id} enabled={pipeline.showDuplicateWarning} />
           <NotifyNewContactToggle pipelineId={pipeline.id} enabled={pipeline.notifyOnNewContact} />
+
+          <FinalStageSelector
+            pipelineId={pipeline.id}
+            stages={[...pipeline.stages].sort((a, b) => a.order - b.order).map((s) => ({ id: s.id, name: s.name }))}
+            finalStageId={pipeline.stages.find((s) => s.isFinal)?.id}
+          />
 
           <AutomationsPanel
             pipelineId={pipeline.id}

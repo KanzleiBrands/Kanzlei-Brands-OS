@@ -598,6 +598,32 @@ export async function togglePipelineActive(formData: FormData) {
   revalidatePath("/dashboard/pipelines");
 }
 
+export async function setFinalStage(formData: FormData) {
+  const session = await requireSession();
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+  const stageId = String(formData.get("stageId") ?? "");
+
+  const stage = await prisma.stage.findUnique({ where: { id: stageId } });
+  if (!stage || stage.pipelineId !== pipelineId) return;
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) return;
+  try {
+    assertOrganizationAccess(session, pipeline.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return;
+    throw error;
+  }
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  // At most one final stage per pipeline.
+  await prisma.$transaction([
+    prisma.stage.updateMany({ where: { pipelineId, isFinal: true }, data: { isFinal: false } }),
+    prisma.stage.update({ where: { id: stageId }, data: { isFinal: true } }),
+  ]);
+
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+}
+
 export async function renamePipeline(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");
