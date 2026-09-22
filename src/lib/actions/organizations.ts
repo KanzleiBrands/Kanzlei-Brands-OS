@@ -549,6 +549,7 @@ export async function createPipeline(_prevState: string | undefined, formData: F
   });
 
   revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${organizationId}`);
   revalidatePath("/dashboard/pipelines");
 }
 
