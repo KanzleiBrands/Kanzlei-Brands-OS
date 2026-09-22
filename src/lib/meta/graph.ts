@@ -84,6 +84,27 @@ export async function exchangeForLongLivedUserToken(
 
 export type MetaPage = { id: string; name: string; access_token: string };
 
+/**
+ * Fetches one Page directly by id instead of re-listing every Page the user
+ * can reach (listAllMetaPages) - with hundreds of Business-Manager pages that
+ * full re-list is slow enough to time out the Server Action, exactly the
+ * "Anfrage an Facebook hat zu lange gedauert" the connect wizard shows.
+ * Graph only returns access_token if the token holder actually has
+ * sufficient permission on this specific Page, so this preserves the same
+ * access check as re-deriving it from the full list.
+ */
+export async function getMetaPage(pageId: string, userAccessToken: string): Promise<MetaPage | null> {
+  const url = new URL(`${GRAPH_BASE}/${pageId}`);
+  url.searchParams.set("access_token", userAccessToken);
+  url.searchParams.set("fields", "id,name,access_token");
+  try {
+    return await graphFetch<MetaPage>(url.toString());
+  } catch (error) {
+    if (error instanceof MetaGraphError) return null;
+    throw error;
+  }
+}
+
 export async function listMetaPages(userAccessToken: string): Promise<MetaPage[]> {
   const pages: MetaPage[] = [];
   let nextUrl: string | null = (() => {

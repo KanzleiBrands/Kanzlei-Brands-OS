@@ -6,7 +6,7 @@ import { requireSession, assertPipelineAccess } from "@/lib/access";
 import { encryptToken, decryptToken } from "@/lib/auth-encryption";
 import { readPendingConnection, clearPendingConnection } from "@/lib/meta/pending-connection";
 import {
-  listAllMetaPages,
+  getMetaPage,
   listMetaLeadForms,
   subscribePageToLeadgenWebhook,
   unsubscribePageFromLeadgenWebhook,
@@ -19,8 +19,7 @@ async function resolvePendingPage(pipelineId: string, pageId: string): Promise<M
   if (!pending || pending.pipelineId !== pipelineId) {
     throw new Error("Verbindung abgelaufen. Bitte erneut mit Facebook verbinden.");
   }
-  const pages = await listAllMetaPages(pending.userAccessToken);
-  const page = pages.find((p) => p.id === pageId);
+  const page = await getMetaPage(pageId, pending.userAccessToken);
   if (!page) throw new Error("Seite nicht gefunden oder keine Berechtigung mehr dafür.");
   return page;
 }
