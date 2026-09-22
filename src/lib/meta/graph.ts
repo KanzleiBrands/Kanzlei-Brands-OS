@@ -100,7 +100,10 @@ export async function getMetaPage(pageId: string, userAccessToken: string): Prom
   try {
     return await graphFetch<MetaPage>(url.toString());
   } catch (error) {
-    if (error instanceof MetaGraphError) return null;
+    if (error instanceof MetaGraphError) {
+      console.error(`[meta] getMetaPage(${pageId}) failed:`, error.message, "code:", error.graphErrorCode);
+      return null;
+    }
     throw error;
   }
 }
@@ -111,6 +114,7 @@ export async function listMetaPages(userAccessToken: string): Promise<MetaPage[]
     const url = new URL(`${GRAPH_BASE}/me/accounts`);
     url.searchParams.set("access_token", userAccessToken);
     url.searchParams.set("fields", "id,name,access_token");
+    url.searchParams.set("limit", "100");
     return url.toString();
   })();
 
@@ -139,6 +143,7 @@ async function listMetaBusinesses(userAccessToken: string): Promise<MetaBusiness
   const url = new URL(`${GRAPH_BASE}/me/businesses`);
   url.searchParams.set("access_token", userAccessToken);
   url.searchParams.set("fields", "id,name");
+  url.searchParams.set("limit", "100");
   return paginate<MetaBusiness>(url.toString());
 }
 
@@ -150,6 +155,7 @@ async function listPagesForBusiness(businessId: string, userAccessToken: string)
       const url = new URL(`${GRAPH_BASE}/${businessId}/${edge}`);
       url.searchParams.set("access_token", userAccessToken);
       url.searchParams.set("fields", "id,name,access_token");
+      url.searchParams.set("limit", "100");
       try {
         return await paginate<MetaPage>(url.toString());
       } catch (error) {
@@ -198,6 +204,7 @@ export async function listMetaLeadForms(pageId: string, pageAccessToken: string)
     const url = new URL(`${GRAPH_BASE}/${pageId}/leadgen_forms`);
     url.searchParams.set("access_token", pageAccessToken);
     url.searchParams.set("fields", "id,name,status");
+    url.searchParams.set("limit", "100");
     return url.toString();
   })();
 

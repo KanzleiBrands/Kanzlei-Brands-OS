@@ -32,9 +32,18 @@ export async function listMetaLeadFormsForPage(
   if (session.user.role !== "AGENCY_ADMIN") throw new Error("Keine Berechtigung.");
   await assertPipelineAccess(session, pipelineId);
 
-  const page = await resolvePendingPage(pipelineId, pageId);
-  const forms = await listMetaLeadForms(page.id, page.access_token);
-  return forms.map((f) => ({ id: f.id, name: f.name }));
+  const startedAt = Date.now();
+  try {
+    const page = await resolvePendingPage(pipelineId, pageId);
+    console.log(`[meta] resolvePendingPage for ${pageId} took ${Date.now() - startedAt}ms`);
+    const formsStartedAt = Date.now();
+    const forms = await listMetaLeadForms(page.id, page.access_token);
+    console.log(`[meta] listMetaLeadForms for ${pageId} took ${Date.now() - formsStartedAt}ms`);
+    return forms.map((f) => ({ id: f.id, name: f.name }));
+  } catch (error) {
+    console.error(`[meta] listMetaLeadFormsForPage failed for ${pageId} after ${Date.now() - startedAt}ms:`, error);
+    throw error;
+  }
 }
 
 export async function finalizeMetaConnection(
