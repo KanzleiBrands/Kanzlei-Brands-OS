@@ -54,6 +54,62 @@ export async function refreshMicrosoftToken(refreshToken: string) {
   return response.json() as Promise<{ access_token: string; refresh_token?: string; expires_in: number }>;
 }
 
+import type { SyncedEmail } from "./google";
+
+type GraphMessage = {
+  id: string;
+  subject?: string;
+  from?: { emailAddress?: { address?: string } };
+  toRecipients?: { emailAddress?: { address?: string } }[];
+  body?: { contentType?: string; content?: string };
+  receivedDateTime?: string;
+  sentDateTime?: string;
+};
+
+async function listMicrosoftFolder(
+  accessToken: string,
+  folder: string,
+  since: Date,
+  direction: "INBOUND" | "OUTBOUND",
+): Promise<SyncedEmail[]> {
+  const url = new URL(`https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages`);
+  url.searchParams.set("$filter", `receivedDateTime ge ${since.toISOString()}`);
+  url.searchParams.set("$select", "id,subject,from,toRecipients,body,receivedDateTime,sentDateTime");
+  url.searchParams.set("$top", "50");
+  url.searchParams.set("$orderby", "receivedDateTime desc");
+
+  const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) throw new Error(`Microsoft list (${folder}) failed: ${await response.text()}`);
+  const data = (await response.json()) as { value: GraphMessage[] };
+
+  const emails: SyncedEmail[] = [];
+  for (const msg of data.value) {
+    const from = msg.from?.emailAddress?.address?.toLowerCase();
+    const to = msg.toRecipients?.[0]?.emailAddress?.address?.toLowerCase();
+    if (!from || !to) continue;
+    emails.push({
+      providerMessageId: msg.id,
+      direction,
+      subject: msg.subject ?? null,
+      bodyText: msg.body?.contentType === "text" ? (msg.body.content ?? null) : null,
+      bodyHtml: msg.body?.contentType === "html" ? (msg.body.content ?? null) : null,
+      fromAddress: from,
+      toAddress: to,
+      sentAt: new Date(msg.receivedDateTime ?? msg.sentDateTime ?? Date.now()),
+    });
+  }
+  return emails;
+}
+
+/** Graph's /messages only covers Inbox by default - Sent Items needs its own folder query to see outbound correspondence too. */
+export async function listMicrosoftMessages(accessToken: string, since: Date): Promise<SyncedEmail[]> {
+  const [inbox, sent] = await Promise.all([
+    listMicrosoftFolder(accessToken, "inbox", since, "INBOUND"),
+    listMicrosoftFolder(accessToken, "sentitems", since, "OUTBOUND"),
+  ]);
+  return [...inbox, ...sent];
+}
+
 export async function fetchMicrosoftEmail(accessToken: string) {
   const response = await fetch("https://graph.microsoft.com/v1.0/me", {
     headers: { Authorization: `Bearer ${accessToken}` },

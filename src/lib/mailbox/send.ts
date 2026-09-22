@@ -4,7 +4,7 @@ import { encryptToken, decryptToken } from "@/lib/auth-encryption";
 import { refreshGoogleToken, sendGmail } from "@/lib/mailbox/google";
 import { refreshMicrosoftToken, sendMicrosoftMail } from "@/lib/mailbox/microsoft";
 
-async function getValidAccessToken(account: EmailAccount): Promise<string> {
+export async function getValidAccessToken(account: EmailAccount): Promise<string> {
   const bufferMs = 60_000;
   if (account.expiresAt.getTime() > Date.now() + bufferMs) {
     return decryptToken(account.accessTokenEnc);

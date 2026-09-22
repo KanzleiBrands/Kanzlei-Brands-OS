@@ -21,6 +21,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
   if (role === "AGENCY_ADMIN") {
     return [
       { href: "/dashboard/clients", label: "Kunden" },
+      { href: "/dashboard/inbox", label: "Posteingang" },
       { href: "/dashboard/tasks", label: "Wiedervorlagen" },
       ...common,
       { href: "/dashboard/offers", label: "Angebote" },

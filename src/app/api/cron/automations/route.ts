@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
+import { syncAllMailboxes } from "@/lib/mailbox/sync";
 import type { AutomationTrigger } from "@prisma/client";
 
 const THRESHOLD_HOURS: Record<AutomationTrigger, number | null> = {
@@ -94,5 +95,13 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, errors });
+  let mailboxSync: { accounts: number; created: number; errors: string[] } | { failed: string };
+  try {
+    mailboxSync = await syncAllMailboxes();
+  } catch (error) {
+    console.error("[cron/automations] mailbox sync crashed:", error);
+    mailboxSync = { failed: error instanceof Error ? error.message : String(error) };
+  }
+
+  return NextResponse.json({ ok: true, sent, errors, mailboxSync });
 }
