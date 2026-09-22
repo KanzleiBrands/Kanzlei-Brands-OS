@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon, LayoutDashboard } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 
 type Pipeline = { id: string; name: string; active: boolean };
 type ClientOrg = { id: string; name: string; pipelines: Pipeline[] };
-type NavLink = { href: string; label: string };
+type NavLink = { href: string; label: string; icon?: React.ReactNode };
 
 export function SidebarNav({
   role,
@@ -100,10 +100,11 @@ export function SidebarNav({
         {role !== "AGENCY_ADMIN" && (
           <Link
             href="/dashboard"
-            className={`rounded-md px-3 py-2 text-sm transition-colors ${
+            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
               isActive("/dashboard") ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
+            <LayoutDashboard className="size-4 flex-shrink-0" />
             Übersicht
           </Link>
         )}
@@ -111,10 +112,11 @@ export function SidebarNav({
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded-md px-3 py-2 text-sm transition-colors ${
+            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
               isActive(link.href) ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
+            {link.icon}
             {link.label}
           </Link>
         ))}

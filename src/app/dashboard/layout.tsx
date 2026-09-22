@@ -1,6 +1,19 @@
 import Image from "next/image";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
+import {
+  Building2,
+  Inbox,
+  CalendarClock,
+  GraduationCap,
+  Package,
+  ScrollText,
+  LayoutDashboard,
+  Megaphone,
+  Briefcase,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { accessiblePipelineIds } from "@/lib/access";
@@ -15,32 +28,38 @@ import { MobileSidebarShell } from "./mobile-sidebar-shell";
 import { ImpersonationBanner } from "./impersonation-banner";
 import { MainScrollReset } from "./main-scroll-reset";
 
+const navIconClass = "size-4 flex-shrink-0";
+
 function navFor(role: string, campaignKinds: Set<string>) {
-  const common = [{ href: "/dashboard/courses", label: "Schulung" }];
+  const common = [
+    { href: "/dashboard/courses", label: "Schulung", icon: <GraduationCap className={navIconClass} /> },
+  ];
 
   if (role === "AGENCY_ADMIN") {
     return [
-      { href: "/dashboard/clients", label: "Kunden" },
-      { href: "/dashboard/inbox", label: "Posteingang" },
-      { href: "/dashboard/tasks", label: "Wiedervorlagen" },
+      { href: "/dashboard/clients", label: "Kunden", icon: <Building2 className={navIconClass} /> },
+      { href: "/dashboard/inbox", label: "Posteingang", icon: <Inbox className={navIconClass} /> },
+      { href: "/dashboard/tasks", label: "Wiedervorlagen", icon: <CalendarClock className={navIconClass} /> },
       ...common,
-      { href: "/dashboard/offers", label: "Angebote" },
-      { href: "/dashboard/audit-log", label: "Audit-Log" },
+      { href: "/dashboard/offers", label: "Angebote", icon: <Package className={navIconClass} /> },
+      { href: "/dashboard/audit-log", label: "Audit-Log", icon: <ScrollText className={navIconClass} /> },
     ];
   }
 
   return [
-    { href: "/dashboard/hub", label: "Kunden Hub" },
+    { href: "/dashboard/hub", label: "Kunden Hub", icon: <LayoutDashboard className={navIconClass} /> },
     ...common,
-    { href: "/dashboard/pipelines", label: "Kampagnen" },
-    ...(campaignKinds.has("LEADS") ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen" }] : []),
+    { href: "/dashboard/pipelines", label: "Kampagnen", icon: <Megaphone className={navIconClass} /> },
+    ...(campaignKinds.has("LEADS")
+      ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen", icon: <Briefcase className={navIconClass} /> }]
+      : []),
     ...(campaignKinds.has("APPLICANTS")
       ? [
-          { href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen" },
-          { href: "/dashboard/talentpool", label: "Talentpool" },
+          { href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen", icon: <UserPlus className={navIconClass} /> },
+          { href: "/dashboard/talentpool", label: "Talentpool", icon: <Users className={navIconClass} /> },
         ]
       : []),
-    { href: "/dashboard/tasks", label: "Wiedervorlagen" },
+    { href: "/dashboard/tasks", label: "Wiedervorlagen", icon: <CalendarClock className={navIconClass} /> },
   ];
 }
 
