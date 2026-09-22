@@ -98,6 +98,7 @@ export async function GET(request: Request) {
   let mailboxSync: { accounts: number; created: number; errors: string[] } | { failed: string };
   try {
     mailboxSync = await syncAllMailboxes();
+    console.log("[cron/automations] mailbox sync result:", mailboxSync);
   } catch (error) {
     console.error("[cron/automations] mailbox sync crashed:", error);
     mailboxSync = { failed: error instanceof Error ? error.message : String(error) };
