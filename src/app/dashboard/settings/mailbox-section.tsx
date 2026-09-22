@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DisconnectButton } from "../mailbox/disconnect-button";
+import { SignatureForm } from "./signature-form";
 
 type EmailAccount = { id: string; email: string; provider: string };
 
@@ -8,10 +9,12 @@ export function MailboxSection({
   accounts,
   connected,
   error,
+  signature,
 }: {
   accounts: EmailAccount[];
   connected?: string;
   error?: string;
+  signature: string | null;
 }) {
   const googleConfigured = !!process.env.GOOGLE_CLIENT_ID;
   const microsoftConfigured = !!process.env.MICROSOFT_CLIENT_ID;
@@ -71,6 +74,18 @@ export function MailboxSection({
             </p>
           </CardContent>
         )}
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>E-Mail-Signatur</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Wird automatisch an jede E-Mail angehängt, die über dein verbundenes Postfach verschickt wird.
+          </p>
+          <SignatureForm defaultValue={signature ?? ""} />
+        </CardContent>
       </Card>
     </div>
   );

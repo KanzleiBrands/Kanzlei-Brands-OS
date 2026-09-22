@@ -173,6 +173,11 @@ model User {
   calendlyUrl String?
   avatarUrl   String?
 
+  // Plain-text signature, appended to every mail sent via a connected
+  // EmailAccount (see sendEmailViaAccount) - set under Einstellungen ->
+  // Postfach, next to the mailbox connection itself.
+  signature String?
+
   // Set on every successful credentials login (src/auth.ts authorize
   // callback) - powers the "letzter Login" column on the Kunden-Log tab.
   lastLoginAt DateTime?

@@ -39,11 +39,14 @@ export async function sendEmailViaAccount(
   account: EmailAccount,
   params: { to: string; subject: string; text: string },
 ) {
+  const user = await prisma.user.findUnique({ where: { id: account.userId }, select: { signature: true } });
+  const text = user?.signature ? `${params.text}\n\n${user.signature}` : params.text;
+
   const accessToken = await getValidAccessToken(account);
   if (account.provider === "GOOGLE") {
-    const result = await sendGmail(accessToken, { ...params, from: account.email });
+    const result = await sendGmail(accessToken, { ...params, text, from: account.email });
     return result.id;
   }
-  await sendMicrosoftMail(accessToken, params);
+  await sendMicrosoftMail(accessToken, { ...params, text });
   return `msgraph-${Date.now()}`;
 }

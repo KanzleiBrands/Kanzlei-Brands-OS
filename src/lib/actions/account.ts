@@ -152,6 +152,28 @@ export async function updateContactInfo(_prevState: SaveResult, formData: FormDa
 }
 
 /**
+ * Plain-text signature, appended to every mail sent via this user's
+ * connected Postfach (see sendEmailViaAccount in src/lib/mailbox/send.ts).
+ */
+export async function updateEmailSignature(_prevState: SaveResult, formData: FormData): Promise<SaveResult> {
+  const session = await requireSession();
+  const signature = String(formData.get("signature") ?? "").trim() || null;
+
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { signature },
+    });
+  } catch (error) {
+    console.error("[updateEmailSignature] failed:", error);
+    return { status: "error", message: "Konnte nicht gespeichert werden. Bitte erneut versuchen." };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { status: "success", message: "Signatur gespeichert." };
+}
+
+/**
  * Profilbild, das ein Agentur-Mitarbeiter selbst pflegt und das im
  * Kunden-Hub in den Account Manager-/Backoffice-Kontaktkacheln angezeigt
  * wird, sobald er dort als Ansprechpartner hinterlegt ist.

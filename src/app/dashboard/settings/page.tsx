@@ -28,7 +28,9 @@ export default async function SettingsPage({
   const { tab: tabParam, connected, error } = await searchParams;
   const isAgency = session.user.role === "AGENCY_ADMIN";
   const canManageTeam = session.user.role === "CLIENT_ADMIN" || isAgency;
-  const canUseMailbox = !isAgency;
+  // Every user can connect their own mailbox: clients for their own use, and
+  // agency staff so the team-wide /dashboard/inbox has something to sync.
+  const canUseMailbox = true;
 
   const validTabs: Tab[] = [
     "account",
@@ -241,6 +243,9 @@ async function MailboxSectionData({
   connected?: string;
   error?: string;
 }) {
-  const accounts = await prisma.emailAccount.findMany({ where: { userId } });
-  return <MailboxSection accounts={accounts} connected={connected} error={error} />;
+  const [accounts, user] = await Promise.all([
+    prisma.emailAccount.findMany({ where: { userId } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { signature: true } }),
+  ]);
+  return <MailboxSection accounts={accounts} connected={connected} error={error} signature={user?.signature ?? null} />;
 }
