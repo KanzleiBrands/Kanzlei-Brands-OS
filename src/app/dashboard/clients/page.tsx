@@ -20,9 +20,11 @@ function trendCard(label: string, value: number, deltaLast30Days: number, href?:
   const content = (
     <>
       <p className="text-sm text-muted-foreground">{label}</p>
-      <div className="mt-0.5 flex items-baseline gap-1.5">
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
         <span className="text-xl font-semibold">{value}</span>
-        {deltaLast30Days > 0 && <span className="text-sm font-medium text-emerald-500">↗ +{deltaLast30Days}</span>}
+        {deltaLast30Days > 0 && (
+          <span className="text-sm font-medium whitespace-nowrap text-emerald-500">↗ +{deltaLast30Days}</span>
+        )}
       </div>
     </>
   );
@@ -40,9 +42,9 @@ function currencyTrendCard(label: string, valueLabel: string, deltaLabel: string
   return (
     <div className="rounded-lg border bg-card p-3">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <div className="mt-0.5 flex items-baseline gap-1.5">
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
         <span className="text-xl font-semibold">{valueLabel}</span>
-        {deltaLabel && <span className="text-sm font-medium text-emerald-500">↗ +{deltaLabel}</span>}
+        {deltaLabel && <span className="text-sm font-medium whitespace-nowrap text-emerald-500">↗ +{deltaLabel}</span>}
       </div>
     </div>
   );
