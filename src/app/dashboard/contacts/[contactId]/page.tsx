@@ -112,6 +112,7 @@ export default async function ContactDetailPage({
       content: activity.content,
       createdAt: activity.createdAt.toLocaleString("de-DE"),
       userName: activity.user?.name ?? null,
+      userId: activity.userId,
       mentionedNames: metadata?.mentionedNames ?? [],
     };
   });
@@ -379,7 +380,12 @@ export default async function ContactDetailPage({
               <CardTitle>Verlauf</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityTimeline activities={activities} onlyTypes={["COMMENT"]} />
+              <ActivityTimeline
+                activities={activities}
+                onlyTypes={["COMMENT"]}
+                currentUserId={session.user.id}
+                canDeleteAny={session.user.role === "AGENCY_ADMIN"}
+              />
             </CardContent>
           </Card>
         </div>
@@ -400,7 +406,12 @@ export default async function ContactDetailPage({
               <CardTitle>Verlauf</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityTimeline activities={activities} onlyTypes={["NOTE", "CALL"]} />
+              <ActivityTimeline
+                activities={activities}
+                onlyTypes={["NOTE", "CALL"]}
+                currentUserId={session.user.id}
+                canDeleteAny={session.user.role === "AGENCY_ADMIN"}
+              />
             </CardContent>
           </Card>
         </div>
@@ -421,7 +432,12 @@ export default async function ContactDetailPage({
               <CardTitle>Verlauf</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityTimeline activities={activities} onlyTypes={["EMAIL_IN", "EMAIL_OUT"]} />
+              <ActivityTimeline
+                activities={activities}
+                onlyTypes={["EMAIL_IN", "EMAIL_OUT"]}
+                currentUserId={session.user.id}
+                canDeleteAny={session.user.role === "AGENCY_ADMIN"}
+              />
             </CardContent>
           </Card>
         </div>
@@ -433,7 +449,11 @@ export default async function ContactDetailPage({
             <CardTitle>Verlauf</CardTitle>
           </CardHeader>
           <CardContent>
-            <ActivityTimeline activities={activities} />
+            <ActivityTimeline
+              activities={activities}
+              currentUserId={session.user.id}
+              canDeleteAny={session.user.role === "AGENCY_ADMIN"}
+            />
           </CardContent>
         </Card>
       )}

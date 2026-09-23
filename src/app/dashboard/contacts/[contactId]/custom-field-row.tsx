@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { FileTextIcon, PencilIcon } from "lucide-react";
-import { setCustomField } from "@/lib/actions/contacts";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { FileTextIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { setCustomField, deleteCustomField } from "@/lib/actions/contacts";
 import { isFileUrl } from "@/lib/format-custom-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,11 +25,22 @@ export function CustomFieldRow({
   const [error, formAction, isPending] = useActionState(setCustomField, undefined);
   useSaveToast(error, isPending);
   const wasPending = useRef(false);
+  const [isDeleting, startDelete] = useTransition();
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) setEditing(false);
     wasPending.current = isPending;
   }, [isPending, error]);
+
+  function handleDelete() {
+    if (!window.confirm(`"${label}" wirklich löschen?`)) return;
+    const formData = new FormData();
+    formData.set("contactId", contactId);
+    formData.set("key", fieldKey);
+    startDelete(() => {
+      deleteCustomField(formData);
+    });
+  }
 
   if (!editing) {
     return (
@@ -57,6 +68,17 @@ export function CustomFieldRow({
               className="text-muted-foreground hover:text-foreground"
             >
               <PencilIcon className="size-3.5" />
+            </button>
+          )}
+          {editable && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              aria-label={`${label} löschen`}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2Icon className="size-3.5" />
             </button>
           )}
         </dd>

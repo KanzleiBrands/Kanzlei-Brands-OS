@@ -334,6 +334,31 @@ export async function setCustomField(_prevState: string | undefined, formData: F
   revalidatePath(`/dashboard/contacts/${contactId}`);
 }
 
+export async function deleteCustomField(formData: FormData) {
+  const session = await requireSession();
+  const contactId = String(formData.get("contactId") ?? "");
+  const key = String(formData.get("key") ?? "");
+  if (!key) return;
+
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact) return;
+  await assertPipelineAccess(session, contact.pipelineId);
+
+  const existing =
+    contact.customFields && typeof contact.customFields === "object" && !Array.isArray(contact.customFields)
+      ? { ...(contact.customFields as Record<string, unknown>) }
+      : {};
+
+  delete existing[key];
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: { customFields: existing as Prisma.InputJsonValue },
+  });
+
+  revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
 export async function uploadContactCv(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const contactId = String(formData.get("contactId") ?? "");
@@ -480,6 +505,31 @@ export async function addNote(_prevState: string | undefined, formData: FormData
   });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
+}
+
+/**
+ * Only for user-entered Notiz/Anruf entries (type NOTE/CALL) - system-
+ * generated activity (STAGE_CHANGE, EMAIL_IN/OUT) and COMMENT (which
+ * notifies the other side) stay immutable. Restricted to the author or
+ * agency staff, so a client can't erase what an agency employee wrote and
+ * vice versa.
+ */
+export async function deleteActivity(formData: FormData) {
+  const session = await requireSession();
+  const id = String(formData.get("id") ?? "");
+
+  const activity = await prisma.activity.findUnique({ where: { id }, include: { contact: true } });
+  if (!activity) return;
+  if (activity.type !== "NOTE" && activity.type !== "CALL") return;
+  await assertPipelineAccess(session, activity.contact.pipelineId);
+
+  if (activity.userId !== session.user.id && session.user.role !== "AGENCY_ADMIN") {
+    throw new AccessDeniedError("Du kannst nur eigene Notizen löschen.");
+  }
+
+  await prisma.activity.delete({ where: { id } });
+
+  revalidatePath(`/dashboard/contacts/${activity.contactId}`);
 }
 
 /**

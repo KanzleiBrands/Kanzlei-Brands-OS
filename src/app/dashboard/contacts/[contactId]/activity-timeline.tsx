@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Trash2Icon } from "lucide-react";
+import { deleteActivity } from "@/lib/actions/contacts";
 import { Badge } from "@/components/ui/badge";
 
 type Activity = {
@@ -9,6 +11,7 @@ type Activity = {
   content: string | null;
   createdAt: string;
   userName: string | null;
+  userId: string | null;
   mentionedNames?: string[];
 };
 
@@ -35,14 +38,38 @@ const TYPE_META: Record<string, { label: string; variant: "default" | "secondary
  * the internal tab bar - used to embed a focused history (e.g. just notes,
  * or just emails) inside a page-level tab that already has its own nav.
  */
-export function ActivityTimeline({ activities, onlyTypes }: { activities: Activity[]; onlyTypes?: string[] }) {
+export function ActivityTimeline({
+  activities,
+  onlyTypes,
+  currentUserId,
+  canDeleteAny,
+}: {
+  activities: Activity[];
+  onlyTypes?: string[];
+  /** Session user id - lets a NOTE/CALL entry's own author delete it. */
+  currentUserId?: string;
+  /** AGENCY_ADMIN can delete any NOTE/CALL entry, not just their own. */
+  canDeleteAny?: boolean;
+}) {
   const [tab, setTab] = useState("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, startDelete] = useTransition();
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
   const filtered = onlyTypes
     ? activities.filter((a) => onlyTypes.includes(a.type))
     : activeTab.types
       ? activities.filter((a) => activeTab.types!.includes(a.type))
       : activities;
+
+  function handleDelete(activity: Activity) {
+    if (!window.confirm("Diesen Eintrag wirklich löschen?")) return;
+    const formData = new FormData();
+    formData.set("id", activity.id);
+    setDeletingId(activity.id);
+    startDelete(() => {
+      deleteActivity(formData);
+    });
+  }
 
   return (
     <div>
@@ -67,11 +94,27 @@ export function ActivityTimeline({ activities, onlyTypes }: { activities: Activi
       <div className="flex flex-col gap-3">
         {filtered.map((activity) => {
           const meta = TYPE_META[activity.type] ?? { label: activity.type, variant: "outline" as const };
+          const canDelete =
+            (activity.type === "NOTE" || activity.type === "CALL") &&
+            (canDeleteAny || (!!currentUserId && activity.userId === currentUserId));
           return (
             <div key={activity.id} className="border-b pb-2 text-sm last:border-0">
               <div className="flex items-center justify-between">
                 <Badge variant={meta.variant}>{meta.label}</Badge>
-                <span className="text-sm text-muted-foreground">{activity.createdAt}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{activity.createdAt}</span>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(activity)}
+                      disabled={isDeleting && deletingId === activity.id}
+                      aria-label="Eintrag löschen"
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2Icon className="size-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               {activity.content && <p className="mt-1 text-muted-foreground">{activity.content}</p>}
               {activity.userName && <p className="text-sm text-muted-foreground">von {activity.userName}</p>}
