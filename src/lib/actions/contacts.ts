@@ -7,6 +7,7 @@ import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/a
 import { logAudit } from "@/lib/audit";
 import { csvToObjects } from "@/lib/csv";
 import { extractContactFields, normalizeFieldKey, stripTrackingFields } from "@/lib/webhook-ingest";
+import { setValueAtPath, deleteValueAtPath } from "@/lib/format-custom-fields";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { deriveWebsiteFromEmail } from "@/lib/company";
@@ -328,7 +329,10 @@ export async function setCustomField(_prevState: string | undefined, formData: F
 
   await prisma.contact.update({
     where: { id: contactId },
-    data: { customFields: { ...existing, [key]: value } as Prisma.InputJsonValue },
+    // `key` is a dot-path (e.g. "input.branche" for a nested webhook
+    // answer, or just "Branche" for a flat one) - setValueAtPath resolves
+    // either the same way, so add/edit doesn't need to know which it is.
+    data: { customFields: setValueAtPath(existing, key, value) as Prisma.InputJsonValue },
   });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
@@ -346,14 +350,12 @@ export async function deleteCustomField(formData: FormData) {
 
   const existing =
     contact.customFields && typeof contact.customFields === "object" && !Array.isArray(contact.customFields)
-      ? { ...(contact.customFields as Record<string, unknown>) }
+      ? (contact.customFields as Record<string, unknown>)
       : {};
-
-  delete existing[key];
 
   await prisma.contact.update({
     where: { id: contactId },
-    data: { customFields: existing as Prisma.InputJsonValue },
+    data: { customFields: deleteValueAtPath(existing, key) as Prisma.InputJsonValue },
   });
 
   revalidatePath(`/dashboard/contacts/${contactId}`);
