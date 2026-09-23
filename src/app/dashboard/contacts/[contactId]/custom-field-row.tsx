@@ -46,7 +46,7 @@ export function CustomFieldRow({
     return (
       <div className="contents">
         <dt className="text-muted-foreground">{label}</dt>
-        <dd className="flex items-center gap-2 break-words">
+        <dd className="flex min-w-0 items-center gap-2">
           {isFileUrl(value) ? (
             <a
               href={value}
@@ -58,7 +58,7 @@ export function CustomFieldRow({
               Datei öffnen
             </a>
           ) : (
-            value
+            <span className="min-w-0 break-words">{value}</span>
           )}
           {editable && (
             <button
