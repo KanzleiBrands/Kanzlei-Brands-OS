@@ -2,6 +2,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ActivationStatus } from "@/components/activation-status";
 import { DeleteUserButton } from "../clients/[orgId]/delete-user-button";
+import { EditableUserName } from "../clients/[orgId]/editable-user-name";
 import { NewAgencyUserForm } from "./new-agency-user-form";
 
 type AgencyUser = {
@@ -50,7 +51,9 @@ export function AgencyTeamSection({
                   : null;
               return (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <EditableUserName userId={user.id} name={user.name} />
+                  </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <ActivationStatus userId={user.id} isActive={!!user.passwordHash} activationLink={activationLink} />

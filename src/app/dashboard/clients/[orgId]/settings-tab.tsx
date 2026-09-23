@@ -6,6 +6,7 @@ import { PipelineAccessToggle } from "./pipeline-access-toggle";
 import { CourseAssignmentToggle } from "./course-assignment-toggle";
 import { ActivationStatus } from "@/components/activation-status";
 import { DeleteUserButton } from "./delete-user-button";
+import { EditableUserName } from "./editable-user-name";
 import { ImpersonateUserButton } from "./impersonate-user-button";
 import { ArchiveOrganizationButton } from "./archive-organization-button";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
@@ -208,7 +209,9 @@ export function SettingsTab({
                     : null;
                 return (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <EditableUserName userId={user.id} name={user.name} />
+                    </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <Badge variant={user.role === "CLIENT_ADMIN" ? "default" : "secondary"}>

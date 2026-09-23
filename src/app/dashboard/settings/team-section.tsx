@@ -5,6 +5,7 @@ import { NewUserForm } from "../clients/[orgId]/new-user-form";
 import { PipelineAccessToggle } from "../clients/[orgId]/pipeline-access-toggle";
 import { ActivationStatus } from "@/components/activation-status";
 import { DeleteUserButton } from "../clients/[orgId]/delete-user-button";
+import { EditableUserName } from "../clients/[orgId]/editable-user-name";
 
 type Pipeline = { id: string; name: string };
 type PipelineAccess = { pipelineId: string };
@@ -62,7 +63,9 @@ export function TeamSection({
                   : null;
               return (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <EditableUserName userId={user.id} name={user.name} />
+                  </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Badge variant={user.role === "CLIENT_ADMIN" ? "default" : "secondary"}>

@@ -402,6 +402,37 @@ export async function regenerateActivationLink(userId: string): Promise<CreateUs
   return { status: "success", link };
 }
 
+export async function updateUserName(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  const userId = String(formData.get("userId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return "Name ist erforderlich.";
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return "Nutzer nicht gefunden.";
+  try {
+    assertOrganizationAccess(session, target.organizationId);
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return error.message;
+    throw error;
+  }
+  if (session.user.role === "CLIENT_STAFF") return "Keine Berechtigung.";
+
+  await prisma.user.update({ where: { id: userId }, data: { name } });
+
+  await logAudit({
+    action: "user.renamed",
+    entityType: "User",
+    entityId: userId,
+    organizationId: target.organizationId,
+    userId: session.user.id,
+    metadata: { from: target.name, to: name },
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/settings");
+}
+
 export async function deleteUser(formData: FormData) {
   const session = await requireSession();
   const userId = String(formData.get("userId") ?? "");
