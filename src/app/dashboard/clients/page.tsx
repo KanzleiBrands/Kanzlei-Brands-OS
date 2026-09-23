@@ -19,7 +19,7 @@ function countWithin30Days(dates: Date[]) {
 function trendCard(label: string, value: number, deltaLast30Days: number, href?: string) {
   const content = (
     <>
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-sm text-muted-foreground break-words">{label}</p>
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
         <span className="text-xl font-semibold">{value}</span>
         {deltaLast30Days > 0 && (
@@ -30,18 +30,18 @@ function trendCard(label: string, value: number, deltaLast30Days: number, href?:
   );
   if (href) {
     return (
-      <Link href={href} className="rounded-lg border bg-card p-3 transition-colors hover:border-primary">
+      <Link href={href} className="min-w-0 rounded-lg border bg-card p-3 transition-colors hover:border-primary">
         {content}
       </Link>
     );
   }
-  return <div className="rounded-lg border bg-card p-3">{content}</div>;
+  return <div className="min-w-0 rounded-lg border bg-card p-3">{content}</div>;
 }
 
 function currencyTrendCard(label: string, valueLabel: string, deltaLabel: string | null) {
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <p className="text-sm text-muted-foreground">{label}</p>
+    <div className="min-w-0 rounded-lg border bg-card p-3">
+      <p className="text-sm text-muted-foreground break-words">{label}</p>
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
         <span className="text-xl font-semibold">{valueLabel}</span>
         {deltaLabel && <span className="text-sm font-medium whitespace-nowrap text-emerald-500">↗ +{deltaLabel}</span>}
