@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
-import { parseLessonBlocks, type LessonBlock } from "@/lib/lesson-blocks";
+import { parseLessonBlocks, firstVideoBlockUrl, type LessonBlock } from "@/lib/lesson-blocks";
 
 // ---------------------------------------------------------------------------
 // Course
@@ -297,19 +297,6 @@ export async function updateLesson(_prevState: string | undefined, formData: For
   const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { module: true } });
   if (!lesson) return "Lektion nicht gefunden.";
 
-  let videoUrl: string | null | undefined;
-  const directVideoUrl = String(formData.get("videoUrl") ?? "").trim();
-  if (directVideoUrl) {
-    videoUrl = directVideoUrl;
-  } else {
-    const video = formData.get("video");
-    if (video instanceof File && video.size > 0) {
-      videoUrl = await storeFile(video, "lessons");
-    } else if (formData.get("removeVideo") === "1") {
-      videoUrl = null;
-    }
-  }
-
   let thumbnailUrl: string | null | undefined;
   try {
     thumbnailUrl = await uploadImageField(formData, "thumbnail");
@@ -317,13 +304,51 @@ export async function updateLesson(_prevState: string | undefined, formData: For
     return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
   }
 
+  // The block editor always submits a `content` field (its blocks, possibly
+  // an empty array) - video is now one of those blocks rather than a
+  // separate field, so videoUrl is derived from it and kept in sync purely
+  // for the badges/icons elsewhere that check lesson.videoUrl directly
+  // without parsing blocks. A caller that omits `content` entirely (none
+  // currently exist) falls back to the old direct video/removeVideo fields.
   let content: LessonBlock[] | undefined;
   const contentRaw = formData.get("content");
-  if (typeof contentRaw === "string" && contentRaw.length > 0) {
+  if (typeof contentRaw === "string") {
     try {
-      content = parseLessonBlocks(JSON.parse(contentRaw));
+      content = parseLessonBlocks(contentRaw.trim() ? JSON.parse(contentRaw) : []);
     } catch {
       return "Inhalt konnte nicht gespeichert werden.";
+    }
+  }
+
+  // A video block whose direct-to-blob upload failed client-side (e.g. no
+  // Blob token configured) falls back to submitting its raw file through
+  // this form under a per-block field name - upload it here and slot the
+  // resulting URL into that exact block.
+  if (content) {
+    for (let i = 0; i < content.length; i++) {
+      const block = content[i];
+      if (block.type !== "video" || block.url) continue;
+      const fallbackFile = formData.get(`videoBlockFile_${block.id}`);
+      if (fallbackFile instanceof File && fallbackFile.size > 0) {
+        content[i] = { ...block, url: await storeFile(fallbackFile, "lessons") };
+      }
+    }
+  }
+
+  let videoUrl: string | null | undefined;
+  if (content !== undefined) {
+    videoUrl = firstVideoBlockUrl(content);
+  } else {
+    const directVideoUrl = String(formData.get("videoUrl") ?? "").trim();
+    if (directVideoUrl) {
+      videoUrl = directVideoUrl;
+    } else {
+      const video = formData.get("video");
+      if (video instanceof File && video.size > 0) {
+        videoUrl = await storeFile(video, "lessons");
+      } else if (formData.get("removeVideo") === "1") {
+        videoUrl = null;
+      }
     }
   }
 

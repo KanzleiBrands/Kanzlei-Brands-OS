@@ -41,6 +41,10 @@ export default async function LessonPlayerPage({
   const lesson = currentModule?.lessons.find((l) => l.id === lessonId);
   if (!currentModule || !lesson) notFound();
   const contentBlocks = parseLessonBlocks(lesson.content);
+  // Video used to be a fixed field rendered above everything else; a lesson
+  // that was never re-saved through the block editor still only has it
+  // there, not as a block, so fall back to showing it in that old spot.
+  const hasVideoBlock = contentBlocks.some((b) => b.type === "video" && b.url);
 
   const enrollment = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.user.id, courseId } },
@@ -94,16 +98,17 @@ export default async function LessonPlayerPage({
         <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h1 className="mb-3 text-xl font-semibold">{lesson.title}</h1>
 
-          {lesson.videoUrl ? (
-            <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
-              <video src={lesson.videoUrl} controls className="size-full object-contain" />
-            </div>
-          ) : lesson.thumbnailUrl ? (
-            <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={lesson.thumbnailUrl} alt={lesson.title} className="size-full object-contain" />
-            </div>
-          ) : null}
+          {!hasVideoBlock &&
+            (lesson.videoUrl ? (
+              <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
+                <video src={lesson.videoUrl} controls className="size-full object-contain" />
+              </div>
+            ) : lesson.thumbnailUrl ? (
+              <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={lesson.thumbnailUrl} alt={lesson.title} className="size-full object-contain" />
+              </div>
+            ) : null)}
 
           {lesson.description && <p className="mt-4 text-sm text-muted-foreground">{lesson.description}</p>}
 
@@ -125,7 +130,16 @@ export default async function LessonPlayerPage({
                     </p>
                   );
                 }
-                if (block.url) {
+                if (block.type === "video") {
+                  if (!block.url) return null;
+                  return (
+                    <div key={block.id} className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
+                      <video src={block.url} controls className="size-full object-contain" />
+                    </div>
+                  );
+                }
+                if (block.type === "image") {
+                  if (!block.url) return null;
                   return (
                     <figure key={block.id}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { upload } from "@vercel/blob/client";
 import {
   ArrowLeftIcon,
   GripVerticalIcon,
@@ -9,7 +10,10 @@ import {
   ImageIcon,
   Loader2Icon,
   PilcrowIcon,
+  PlayCircleIcon,
   TrashIcon,
+  UploadCloudIcon,
+  VideoIcon,
 } from "lucide-react";
 import {
   DndContext,
@@ -27,7 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSaveToast } from "@/hooks/use-save-toast";
-import { LessonVideoUpload } from "../../../../../lesson-video-upload";
+import { VideoRecorder } from "../../../../../video-recorder";
+import { VideoTrimmer } from "../../../../../video-trimmer";
 import { ThumbnailGenerator } from "../../../../../../thumbnail-generator";
 
 function newBlockId() {
@@ -46,6 +51,18 @@ function SortableBlock({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoFallbackFile, setVideoFallbackFile] = useState<File | null>(null);
+  const videoFallbackInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (videoFallbackFile && videoFallbackInputRef.current) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(videoFallbackFile);
+      videoFallbackInputRef.current.files = dataTransfer.files;
+    }
+  }, [videoFallbackFile]);
 
   async function handleImageFile(file: File | undefined) {
     if (!file || block.type !== "image") return;
@@ -60,6 +77,29 @@ function SortableBlock({
       return;
     }
     onChange({ ...block, url: result.url });
+  }
+
+  async function handleVideoFile(file: File | undefined) {
+    if (!file || block.type !== "video") return;
+    setVideoUploading(true);
+    setVideoProgress(0);
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/uploads/video",
+        onUploadProgress: (event) => setVideoProgress(Math.round(event.percentage)),
+      });
+      onChange({ ...block, url: blob.url });
+      setVideoFallbackFile(null);
+    } catch {
+      // No Blob token configured (e.g. local dev) or the direct upload
+      // otherwise failed - fall back to submitting the raw file through the
+      // form itself; updateLesson uploads it server-side and slots the
+      // resulting URL into this exact block by id (see videoBlockFile_*).
+      setVideoFallbackFile(file);
+    } finally {
+      setVideoUploading(false);
+    }
   }
 
   return (
@@ -149,6 +189,66 @@ function SortableBlock({
             />
           </div>
         )}
+
+        {block.type === "video" && (
+          <div className="flex flex-col gap-2">
+            {videoUploading ? (
+              <div className="rounded-md border p-3">
+                <div className="mb-1.5 flex items-center gap-2 text-sm">
+                  <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" />
+                  <span>Wird hochgeladen...</span>
+                  <span className="ml-auto font-medium">{videoProgress}%</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-150"
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : block.url ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
+                <PlayCircleIcon className="size-5 shrink-0 text-primary" />
+                <span className="flex-1 font-medium">Video vorhanden</span>
+                <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted">
+                  <UploadCloudIcon className="size-3.5" />
+                  Ersetzen
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => handleVideoFile(e.target.files?.[0])}
+                  />
+                </label>
+                <VideoRecorder onCaptured={handleVideoFile} />
+                <VideoTrimmer videoUrl={block.url} fileName="zugeschnitten.mp4" onTrimmed={handleVideoFile} />
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                  <UploadCloudIcon className="size-4 shrink-0" />
+                  Video auswählen - jede Dateigröße, lädt direkt hoch
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => handleVideoFile(e.target.files?.[0])}
+                  />
+                </label>
+                <VideoRecorder onCaptured={handleVideoFile} />
+              </div>
+            )}
+            {videoFallbackFile && (
+              <>
+                <input ref={videoFallbackInputRef} type="file" name={`videoBlockFile_${block.id}`} className="hidden" />
+                <p className="text-xs text-muted-foreground">
+                  Direkter Upload nicht verfügbar - &bdquo;{videoFallbackFile.name}&ldquo; wird beim Speichern
+                  hochgeladen.
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <button
@@ -171,7 +271,6 @@ export function LessonEditor({
   title,
   description,
   thumbnailUrl,
-  videoUrl,
   pdfUrl,
   notionUrl,
   initialBlocks,
@@ -183,7 +282,6 @@ export function LessonEditor({
   title: string;
   description: string | null;
   thumbnailUrl: string | null;
-  videoUrl: string | null;
   pdfUrl: string | null;
   notionUrl: string | null;
   initialBlocks: LessonBlock[];
@@ -201,7 +299,8 @@ export function LessonEditor({
     const id = newBlockId();
     if (type === "heading") setBlocks((b) => [...b, { id, type: "heading", level: 2, text: "" }]);
     else if (type === "paragraph") setBlocks((b) => [...b, { id, type: "paragraph", text: "" }]);
-    else setBlocks((b) => [...b, { id, type: "image", url: "", caption: "" }]);
+    else if (type === "image") setBlocks((b) => [...b, { id, type: "image", url: "", caption: "" }]);
+    else setBlocks((b) => [...b, { id, type: "video", url: "" }]);
   }
 
   function updateBlock(id: string, next: LessonBlock) {
@@ -253,11 +352,6 @@ export function LessonEditor({
         </section>
 
         <section className="flex flex-col gap-2 rounded-xl border bg-card p-4">
-          <label className="text-sm font-medium">Video</label>
-          <LessonVideoUpload existingVideoUrl={videoUrl} />
-        </section>
-
-        <section className="flex flex-col gap-2 rounded-xl border bg-card p-4">
           <label className="text-sm font-medium">
             Vorschaubild {thumbnailUrl ? "(ersetzen)" : "(optional)"}
           </label>
@@ -288,7 +382,11 @@ export function LessonEditor({
         <section className="flex flex-col gap-3 rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Inhalt</label>
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
+              <Button type="button" variant="outline" size="sm" onClick={() => addBlock("video")}>
+                <VideoIcon className="size-4" />
+                Video
+              </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => addBlock("heading")}>
                 <HeadingIcon className="size-4" />
                 Überschrift
@@ -306,7 +404,7 @@ export function LessonEditor({
 
           {blocks.length === 0 ? (
             <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Noch keine Inhalte. Füge Überschriften, Text oder Bilder hinzu - per Drag-Handle frei sortierbar.
+              Noch keine Inhalte. Füge Video, Überschriften, Text oder Bilder hinzu - per Drag-Handle frei sortierbar.
             </p>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

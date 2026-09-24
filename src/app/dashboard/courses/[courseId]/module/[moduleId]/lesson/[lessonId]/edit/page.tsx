@@ -20,6 +20,16 @@ export default async function LessonEditorPage({
   });
   if (!lesson || lesson.moduleId !== moduleId || lesson.module.courseId !== courseId) notFound();
 
+  // Video used to be a fixed field outside the block system - for a lesson
+  // that was never opened in the block editor since that change, seed one
+  // video block from it so the existing video isn't invisible/lost here.
+  // Once saved, Lesson.videoUrl is derived back from the blocks themselves
+  // (see updateLesson), so this only ever fires for not-yet-migrated content.
+  const initialBlocks = parseLessonBlocks(lesson.content);
+  if (lesson.videoUrl && !initialBlocks.some((b) => b.type === "video")) {
+    initialBlocks.unshift({ id: `blk_${lesson.id}_video`, type: "video", url: lesson.videoUrl });
+  }
+
   return (
     <LessonEditor
       courseId={courseId}
@@ -29,10 +39,9 @@ export default async function LessonEditorPage({
       title={lesson.title}
       description={lesson.description}
       thumbnailUrl={lesson.thumbnailUrl}
-      videoUrl={lesson.videoUrl}
       pdfUrl={lesson.pdfUrl}
       notionUrl={lesson.notionUrl}
-      initialBlocks={parseLessonBlocks(lesson.content)}
+      initialBlocks={initialBlocks}
     />
   );
 }
