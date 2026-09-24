@@ -4,6 +4,7 @@ import { slugify } from "@/lib/slugify";
 import { generateActivationToken } from "@/lib/invite";
 import { logAudit } from "@/lib/audit";
 import { sendSystemEmail } from "@/lib/email/resend";
+import { renderBrandedEmail } from "@/lib/email/template";
 import { getBaseUrl } from "@/lib/base-url";
 
 /** Empty/whitespace-only strings from Airtable formula fields become null instead of "". */
@@ -113,10 +114,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (!skipEmail) {
         const baseUrl = await getBaseUrl();
+        const { html, text } = renderBrandedEmail({
+          baseUrl,
+          preheader: "Dein Zugang zum Kanzlei Brands Kundenportal ist bereit.",
+          heading: "Willkommen bei Kanzlei Brands",
+          greetingName: contactFirstName,
+          paragraphs: ["dein Zugang zum Kanzlei Brands Kundenportal ist bereit. Lege dort dein Passwort fest und leg direkt los."],
+          ctaLabel: "Zugang aktivieren",
+          ctaUrl: `${baseUrl}/activate/${activationToken}`,
+        });
         await sendSystemEmail({
           to: contactEmail,
           subject: "Zugang zu deinem Kanzlei Brands Kundenportal",
-          text: `Hallo ${contactFirstName},\n\ndein Zugang zum Kanzlei Brands Kundenportal ist bereit. Aktiviere ihn hier:\n${baseUrl}/activate/${activationToken}\n\nViele Grüße\nKanzlei Brands`,
+          text,
+          html,
         });
       }
     }

@@ -12,10 +12,13 @@ export async function sendSystemEmail({
   to,
   subject,
   text,
+  html,
 }: {
   to: string;
   subject: string;
   text: string;
+  /** Optional branded HTML part - see renderBrandedEmail(). `text` still ships as the fallback part. */
+  html?: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
@@ -26,7 +29,7 @@ export async function sendSystemEmail({
   }
 
   const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({ from, to, subject, text });
+  const { error } = await resend.emails.send(html ? { from, to, subject, text, html } : { from, to, subject, text });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

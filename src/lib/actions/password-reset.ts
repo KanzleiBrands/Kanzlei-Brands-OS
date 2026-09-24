@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
+import { renderBrandedEmail } from "@/lib/email/template";
 import { getBaseUrl } from "@/lib/base-url";
 import { generateActivationToken } from "@/lib/invite";
 import { logAudit } from "@/lib/audit";
@@ -47,10 +48,21 @@ export async function requestPasswordReset(
 
   const baseUrl = await getBaseUrl();
   const link = `${baseUrl}/activate/${token}`;
+  const { html, text } = renderBrandedEmail({
+    baseUrl,
+    preheader: "Setze dein Passwort für die Kanzlei Brands Plattform zurück.",
+    heading: "Passwort zurücksetzen",
+    greetingName: user.name,
+    paragraphs: ["du hast eine Passwort-Zurücksetzung angefordert. Klicke auf den Button, um ein neues Passwort festzulegen."],
+    ctaLabel: "Passwort zurücksetzen",
+    ctaUrl: link,
+    footerNote: "Der Link ist 7 Tage gültig. Falls du das nicht warst, kannst du diese E-Mail einfach ignorieren - dein Passwort bleibt dann unverändert.",
+  });
   const result = await sendSystemEmail({
     to: user.email,
     subject: "Passwort zurücksetzen - Kanzlei Brands",
-    text: `Hallo ${user.name},\n\ndu hast eine Passwort-Zurücksetzung angefordert. Klicke auf den folgenden Link, um ein neues Passwort festzulegen:\n\n${link}\n\nDer Link ist 7 Tage gültig. Falls du das nicht warst, kannst du diese E-Mail einfach ignorieren - dein Passwort bleibt dann unverändert.`,
+    text,
+    html,
   });
 
   if (!result.ok) {

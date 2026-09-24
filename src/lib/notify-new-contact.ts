@@ -1,6 +1,7 @@
 import type { PipelineKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
+import { renderBrandedEmail } from "@/lib/email/template";
 import { getBaseUrl } from "@/lib/base-url";
 
 type NewContactPipeline = {
@@ -46,15 +47,24 @@ export async function handleNewContactCreated(pipeline: NewContactPipeline, cont
       const baseUrl = await getBaseUrl();
       const isApplicant = pipeline.kind === "APPLICANTS";
       const subject = `${isApplicant ? "Neue Bewerbung" : "Neuer Lead"} für ${pipeline.name}`;
-      const text = [
-        `Du hast ${isApplicant ? "eine neue Bewerbung" : "einen neuen Lead"} für die Kampagne "${pipeline.name}" erhalten.`,
-        "",
-        `Bitte logge dich in dein Kundenportal ein, um ${isApplicant ? "die Bewerbung" : "die Anfrage"} zu bearbeiten:`,
-        `${baseUrl}/dashboard/pipelines/${pipeline.id}`,
-      ].join("\n");
+      const contactLine = contact.firstName
+        ? `von ${contact.firstName}${isApplicant ? " (Bewerbung)" : " (Lead)"}`
+        : "";
+      const pipelineUrl = `${baseUrl}/dashboard/pipelines/${pipeline.id}`;
 
       for (const recipient of recipients) {
-        await sendSystemEmail({ to: recipient.email, subject, text: `Hallo ${recipient.name},\n\n${text}` });
+        const { html, text } = renderBrandedEmail({
+          baseUrl,
+          preheader: subject,
+          heading: subject,
+          greetingName: recipient.name,
+          paragraphs: [
+            `du hast ${isApplicant ? "eine neue Bewerbung" : "einen neuen Lead"} für die Kampagne "${pipeline.name}" erhalten${contactLine ? " " + contactLine : ""}.`,
+          ],
+          ctaLabel: isApplicant ? "Bewerbung öffnen" : "Lead öffnen",
+          ctaUrl: pipelineUrl,
+        });
+        await sendSystemEmail({ to: recipient.email, subject, text, html });
       }
     }
   }
