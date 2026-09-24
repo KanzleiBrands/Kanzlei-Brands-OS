@@ -43,9 +43,13 @@ export function NewCourseForm() {
           <DialogTitle>Kurs anlegen</DialogTitle>
         </DialogHeader>
 
-        <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+        <form ref={formRef} action={formAction} className="flex flex-col gap-3" encType="multipart/form-data">
           <Input name="title" placeholder="Kurstitel" required />
           <Input name="description" placeholder="Beschreibung (optional)" />
+          <div>
+            <label className="mb-1 block text-sm text-muted-foreground">Vorschaubild (optional)</label>
+            <Input name="thumbnail" type="file" accept="image/*" />
+          </div>
           <Select name="category" defaultValue="TRAINING">
             <SelectTrigger>
               <SelectValue>{(value: string) => LABELS[value] ?? value}</SelectValue>

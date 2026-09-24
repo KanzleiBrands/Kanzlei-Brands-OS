@@ -4,6 +4,102 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { storeFile } from "@/lib/file-storage";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
+
+// ---------------------------------------------------------------------------
+// Course
+// ---------------------------------------------------------------------------
+
+async function uploadImageField(formData: FormData, field: string): Promise<string | null | undefined> {
+  const file = formData.get(field);
+  if (!(file instanceof File) || file.size === 0) return undefined;
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error(`Bild ist zu groß. Maximal ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`);
+  return storeFile(file, "course-images");
+}
+
+export async function createCourse(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Kurse anlegen.";
+
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const category = String(formData.get("category") ?? "TRAINING");
+  if (!title) return "Titel ist erforderlich.";
+  if (category !== "ONBOARDING" && category !== "TRAINING") return "Ungültige Kategorie.";
+
+  let thumbnailUrl: string | null = null;
+  try {
+    thumbnailUrl = (await uploadImageField(formData, "thumbnail")) ?? null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  await prisma.course.create({
+    data: { title, description: description || null, category, thumbnailUrl },
+  });
+
+  revalidatePath("/dashboard/courses");
+  return undefined;
+}
+
+export async function updateCourse(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Kurse bearbeiten.";
+
+  const courseId = String(formData.get("courseId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const category = String(formData.get("category") ?? "TRAINING");
+  if (!title) return "Titel ist erforderlich.";
+  if (category !== "ONBOARDING" && category !== "TRAINING") return "Ungültige Kategorie.";
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return "Kurs nicht gefunden.";
+
+  let thumbnailUrl: string | null | undefined;
+  try {
+    thumbnailUrl = await uploadImageField(formData, "thumbnail");
+  } catch (error) {
+    return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  await prisma.course.update({
+    where: { id: courseId },
+    data: {
+      title,
+      description: description || null,
+      category,
+      ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
+    },
+  });
+
+  revalidatePath("/dashboard/courses");
+  revalidatePath(`/dashboard/courses/${courseId}`);
+  return undefined;
+}
+
+export async function deleteCourse(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const courseId = String(formData.get("courseId") ?? "");
+  await prisma.course.delete({ where: { id: courseId } }).catch(() => null);
+
+  revalidatePath("/dashboard/courses");
+}
+
+export async function togglePublish(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const courseId = String(formData.get("courseId") ?? "");
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return;
+
+  await prisma.course.update({ where: { id: courseId }, data: { published: !course.published } });
+  revalidatePath("/dashboard/courses");
+  revalidatePath(`/dashboard/courses/${courseId}`);
+}
 
 export async function setCourseAssignment(formData: FormData) {
   const session = await requireSession();
@@ -27,64 +123,250 @@ export async function setCourseAssignment(formData: FormData) {
   revalidatePath("/dashboard/courses");
 }
 
-export async function createCourse(_prevState: string | undefined, formData: FormData) {
-  const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Kurse anlegen.";
+// ---------------------------------------------------------------------------
+// Module
+// ---------------------------------------------------------------------------
 
+export async function createModule(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Module anlegen.";
+
+  const courseId = String(formData.get("courseId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const category = String(formData.get("category") ?? "TRAINING");
   if (!title) return "Titel ist erforderlich.";
-  if (category !== "ONBOARDING" && category !== "TRAINING") return "Ungültige Kategorie.";
 
-  await prisma.course.create({
-    data: { title, description: description || null, category },
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return "Kurs nicht gefunden.";
+
+  let thumbnailUrl: string | null = null;
+  try {
+    thumbnailUrl = (await uploadImageField(formData, "thumbnail")) ?? null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  const moduleCount = await prisma.module.count({ where: { courseId } });
+  await prisma.module.create({
+    data: { courseId, title, description: description || null, order: moduleCount, thumbnailUrl },
   });
 
-  revalidatePath("/dashboard/courses");
+  revalidatePath(`/dashboard/courses/${courseId}`);
+  return undefined;
 }
 
-export async function togglePublish(formData: FormData) {
+export async function updateModule(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Module bearbeiten.";
+
+  const moduleId = String(formData.get("moduleId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (!title) return "Titel ist erforderlich.";
+
+  const courseModule = await prisma.module.findUnique({ where: { id: moduleId } });
+  if (!courseModule) return "Modul nicht gefunden.";
+
+  let thumbnailUrl: string | null | undefined;
+  try {
+    thumbnailUrl = await uploadImageField(formData, "thumbnail");
+  } catch (error) {
+    return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  await prisma.module.update({
+    where: { id: moduleId },
+    data: {
+      title,
+      description: description || null,
+      ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
+    },
+  });
+
+  revalidatePath(`/dashboard/courses/${courseModule.courseId}`);
+  return undefined;
+}
+
+export async function deleteModule(formData: FormData) {
   const session = await requireSession();
   if (session.user.role !== "AGENCY_ADMIN") return;
 
-  const courseId = String(formData.get("courseId") ?? "");
-  const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course) return;
+  const moduleId = String(formData.get("moduleId") ?? "");
+  const courseModule = await prisma.module.findUnique({ where: { id: moduleId } });
+  if (!courseModule) return;
 
-  await prisma.course.update({ where: { id: courseId }, data: { published: !course.published } });
-  revalidatePath("/dashboard/courses");
-  revalidatePath(`/dashboard/courses/${courseId}`);
+  await prisma.module.delete({ where: { id: moduleId } });
+  revalidatePath(`/dashboard/courses/${courseModule.courseId}`);
 }
 
-export async function addLesson(_prevState: string | undefined, formData: FormData) {
+export async function moveModule(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const moduleId = String(formData.get("moduleId") ?? "");
+  const direction = String(formData.get("direction") ?? "");
+  const courseModule = await prisma.module.findUnique({ where: { id: moduleId } });
+  if (!courseModule) return;
+
+  const siblings = await prisma.module.findMany({
+    where: { courseId: courseModule.courseId },
+    orderBy: { order: "asc" },
+  });
+  const index = siblings.findIndex((m) => m.id === moduleId);
+  const swapWithIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapWithIndex < 0 || swapWithIndex >= siblings.length) return;
+
+  const swapWith = siblings[swapWithIndex];
+  await prisma.$transaction([
+    prisma.module.update({ where: { id: courseModule.id }, data: { order: swapWith.order } }),
+    prisma.module.update({ where: { id: swapWith.id }, data: { order: courseModule.order } }),
+  ]);
+
+  revalidatePath(`/dashboard/courses/${courseModule.courseId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Lesson
+// ---------------------------------------------------------------------------
+
+export async function createLesson(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Lektionen hinzufügen.";
 
-  const courseId = String(formData.get("courseId") ?? "");
+  const moduleId = String(formData.get("moduleId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
-  const video = formData.get("video");
-
+  const description = String(formData.get("description") ?? "").trim();
+  const pdfUrl = String(formData.get("pdfUrl") ?? "").trim();
+  const notionUrl = String(formData.get("notionUrl") ?? "").trim();
   if (!title) return "Titel ist erforderlich.";
 
+  const courseModule = await prisma.module.findUnique({ where: { id: moduleId } });
+  if (!courseModule) return "Modul nicht gefunden.";
+
   let videoUrl: string | null = null;
+  const video = formData.get("video");
   if (video instanceof File && video.size > 0) {
     videoUrl = await storeFile(video, "lessons");
   }
 
-  const lessonCount = await prisma.lesson.count({ where: { courseId } });
+  let thumbnailUrl: string | null = null;
+  try {
+    thumbnailUrl = (await uploadImageField(formData, "thumbnail")) ?? null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  const lessonCount = await prisma.lesson.count({ where: { moduleId } });
   await prisma.lesson.create({
-    data: { courseId, title, order: lessonCount, videoUrl },
+    data: {
+      moduleId,
+      title,
+      description: description || null,
+      order: lessonCount,
+      videoUrl,
+      thumbnailUrl,
+      pdfUrl: pdfUrl || null,
+      notionUrl: notionUrl || null,
+    },
   });
 
-  revalidatePath(`/dashboard/courses/${courseId}`);
+  revalidatePath(`/dashboard/courses/${courseModule.courseId}`);
+  return undefined;
 }
+
+export async function updateLesson(_prevState: string | undefined, formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Lektionen bearbeiten.";
+
+  const lessonId = String(formData.get("lessonId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const pdfUrl = String(formData.get("pdfUrl") ?? "").trim();
+  const notionUrl = String(formData.get("notionUrl") ?? "").trim();
+  if (!title) return "Titel ist erforderlich.";
+
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { module: true } });
+  if (!lesson) return "Lektion nicht gefunden.";
+
+  let videoUrl: string | null | undefined;
+  const video = formData.get("video");
+  if (video instanceof File && video.size > 0) {
+    videoUrl = await storeFile(video, "lessons");
+  }
+
+  let thumbnailUrl: string | null | undefined;
+  try {
+    thumbnailUrl = await uploadImageField(formData, "thumbnail");
+  } catch (error) {
+    return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: {
+      title,
+      description: description || null,
+      pdfUrl: pdfUrl || null,
+      notionUrl: notionUrl || null,
+      ...(videoUrl !== undefined ? { videoUrl } : {}),
+      ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
+    },
+  });
+
+  revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
+  return undefined;
+}
+
+export async function deleteLesson(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const lessonId = String(formData.get("lessonId") ?? "");
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { module: true } });
+  if (!lesson) return;
+
+  await prisma.lesson.delete({ where: { id: lessonId } });
+  revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
+}
+
+export async function moveLesson(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const lessonId = String(formData.get("lessonId") ?? "");
+  const direction = String(formData.get("direction") ?? "");
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { module: true } });
+  if (!lesson) return;
+
+  const siblings = await prisma.lesson.findMany({
+    where: { moduleId: lesson.moduleId },
+    orderBy: { order: "asc" },
+  });
+  const index = siblings.findIndex((l) => l.id === lessonId);
+  const swapWithIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapWithIndex < 0 || swapWithIndex >= siblings.length) return;
+
+  const swapWith = siblings[swapWithIndex];
+  await prisma.$transaction([
+    prisma.lesson.update({ where: { id: lesson.id }, data: { order: swapWith.order } }),
+    prisma.lesson.update({ where: { id: swapWith.id }, data: { order: lesson.order } }),
+  ]);
+
+  revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Learner progress
+// ---------------------------------------------------------------------------
 
 export async function toggleLessonComplete(formData: FormData) {
   const session = await requireSession();
-  const courseId = String(formData.get("courseId") ?? "");
   const lessonId = String(formData.get("lessonId") ?? "");
   const complete = formData.get("complete") === "true";
+
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { module: true } });
+  if (!lesson) return;
+  const courseId = lesson.module.courseId;
 
   const enrollment = await prisma.enrollment.upsert({
     where: { userId_courseId: { userId: session.user.id, courseId } },

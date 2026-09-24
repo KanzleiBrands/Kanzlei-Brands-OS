@@ -2,25 +2,19 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { createLesson } from "@/lib/actions/courses";
+import { createModule } from "@/lib/actions/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
 
-export function AddLessonForm({ moduleId }: { moduleId: string }) {
+export function AddModuleForm({ courseId }: { courseId: string }) {
   const [open, setOpen] = useState(false);
+  const [error, formAction, isPending] = useActionState(createModule, undefined);
+  useSaveToast(error, isPending, "Modul angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
-  const [error, formAction, isPending] = useActionState(createLesson, undefined);
-  useSaveToast(error, isPending, "Lektion hinzugefügt.");
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {
@@ -32,32 +26,26 @@ export function AddLessonForm({ moduleId }: { moduleId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button type="button" size="sm" variant="outline" />}>
+      <DialogTrigger render={<Button type="button" />}>
         <PlusIcon className="size-4" />
-        Lektion hinzufügen
+        Modul hinzufügen
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Lektion hinzufügen</DialogTitle>
+          <DialogTitle>Modul hinzufügen</DialogTitle>
         </DialogHeader>
 
         <form ref={formRef} action={formAction} className="flex flex-col gap-3" encType="multipart/form-data">
-          <input type="hidden" name="moduleId" value={moduleId} />
-          <Input name="title" placeholder="Lektionstitel" required />
-          <Textarea name="description" placeholder="Videobeschreibung (optional)" rows={3} />
+          <input type="hidden" name="courseId" value={courseId} />
+          <Input name="title" placeholder="Modultitel (z.B. Theoretische Grundlagen)" required />
+          <Textarea name="description" placeholder="Beschreibung (optional)" rows={2} />
           <div>
             <label className="mb-1 block text-sm text-muted-foreground">Vorschaubild (optional)</label>
             <Input name="thumbnail" type="file" accept="image/*" />
           </div>
-          <div>
-            <label className="mb-1 block text-sm text-muted-foreground">Video (optional)</label>
-            <Input name="video" type="file" accept="video/*" />
-          </div>
-          <Input name="pdfUrl" placeholder="PDF-Link (optional)" type="url" />
-          <Input name="notionUrl" placeholder="Notion-Doc-Link (optional)" type="url" />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Wird hochgeladen..." : "Lektion hinzufügen"}
+            {isPending ? "Wird angelegt..." : "Modul hinzufügen"}
           </Button>
         </form>
       </DialogContent>

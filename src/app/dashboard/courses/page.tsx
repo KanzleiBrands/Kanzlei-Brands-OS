@@ -4,6 +4,7 @@ import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CourseThumbnail } from "./course-thumbnail";
 import { NewCourseForm } from "./new-course-form";
 import { PublishToggle } from "./publish-toggle";
 
@@ -17,7 +18,7 @@ export default async function CoursesPage() {
 
   if (isAgency) {
     const courses = await prisma.course.findMany({
-      include: { _count: { select: { lessons: true, assignments: true } } },
+      include: { _count: { select: { assignments: true, modules: true } }, modules: { select: { _count: { select: { lessons: true } } } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -29,27 +30,34 @@ export default async function CoursesPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <Card key={course.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{course.title}</CardTitle>
-                  <Badge variant="secondary">{CATEGORY_LABELS[course.category]}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">
-                  {course._count.lessons} Lektionen · {course._count.assignments} Kunden zugewiesen
-                </p>
-                <div className="flex items-center justify-between">
-                  <Link href={`/dashboard/courses/${course.id}`} className="text-sm underline">
-                    Lektionen verwalten
-                  </Link>
-                  <PublishToggle courseId={course.id} published={course.published} />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {courses.map((course) => {
+            const lessonCount = course.modules.reduce((sum, m) => sum + m._count.lessons, 0);
+            return (
+              <Card key={course.id} className="overflow-hidden py-0">
+                <Link href={`/dashboard/courses/${course.id}`}>
+                  <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-32 w-full" />
+                </Link>
+                <CardHeader className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{course.title}</CardTitle>
+                    <Badge variant="secondary">{CATEGORY_LABELS[course.category]}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    {course._count.modules} Module · {lessonCount} Lektionen · {course._count.assignments} Kunden zugewiesen
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <Link href={`/dashboard/courses/${course.id}`} className="text-sm underline">
+                      Kurs verwalten
+                    </Link>
+                    <PublishToggle courseId={course.id} published={course.published} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {courses.length === 0 && <p className="text-muted-foreground">Noch keine Kurse angelegt.</p>}
         </div>
       </div>
     );
@@ -61,7 +69,7 @@ export default async function CoursesPage() {
       assignments: { some: { organizationId: session.user.organizationId } },
     },
     include: {
-      lessons: true,
+      modules: { select: { lessons: { select: { id: true } } } },
       enrollments: {
         where: { userId: session.user.id },
         include: { progress: true },
@@ -72,26 +80,19 @@ export default async function CoursesPage() {
 
   return (
     <div className="p-4 sm:p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Schulung - {session.user.name}</h1>
+      <h1 className="mb-6 text-2xl font-semibold">Meine Kurse</h1>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => {
-          const totalLessons = course.lessons.length;
+          const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
           const completed = course.enrollments[0]?.progress.filter((p) => p.completedAt).length ?? 0;
+          const percent = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
           return (
             <Link key={course.id} href={`/dashboard/courses/${course.id}`}>
-              <Card className="transition-colors hover:bg-muted/50">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{course.title}</CardTitle>
-                    <Badge variant={course.category === "ONBOARDING" ? "default" : "secondary"}>
-                      {CATEGORY_LABELS[course.category]}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    {completed} / {totalLessons} Lektionen abgeschlossen
-                  </p>
+              <Card className="overflow-hidden py-0 transition-colors hover:border-primary">
+                <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-36 w-full" />
+                <CardContent className="flex flex-col gap-1 py-4">
+                  <p className="font-medium">{course.title}</p>
+                  <p className="text-sm font-medium text-emerald-600">{percent}% FORTSCHRITT</p>
                 </CardContent>
               </Card>
             </Link>

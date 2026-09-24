@@ -126,10 +126,18 @@ async function main() {
       description: "Erste Schritte auf der Kanzlei Brands Plattform.",
       category: "ONBOARDING",
       published: true,
-      lessons: {
+      modules: {
         create: [
-          { title: "Willkommen & Rundgang", order: 0 },
-          { title: "Leads verwalten", order: 1 },
+          {
+            title: "Modul 1 - Erste Schritte",
+            order: 0,
+            lessons: {
+              create: [
+                { title: "Willkommen & Rundgang", order: 0 },
+                { title: "Leads verwalten", order: 1 },
+              ],
+            },
+          },
         ],
       },
     },

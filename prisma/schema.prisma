@@ -765,13 +765,14 @@ enum CourseCategory {
 // Courses are authored by the agency and only visible to clients they've been
 // explicitly assigned to via CourseAssignment (opt-in, no default visibility).
 model Course {
-  id          String         @id @default(cuid())
-  title       String
-  description String?
-  category    CourseCategory
-  published   Boolean        @default(false)
+  id           String         @id @default(cuid())
+  title        String
+  description  String?
+  category     CourseCategory
+  thumbnailUrl String?
+  published    Boolean        @default(false)
 
-  lessons     Lesson[]
+  modules     Module[]
   enrollments Enrollment[]
   assignments CourseAssignment[]
 
@@ -794,19 +795,40 @@ model CourseAssignment {
   @@index([organizationId])
 }
 
-model Lesson {
-  id              String  @id @default(cuid())
-  title           String
-  order           Int
-  videoUrl        String? // Vercel Blob URL (or external provider URL later)
-  durationSeconds Int?
+// Grouping level between Course and Lesson (e.g. "Modul 1 - Theoretische
+// Grundlagen"), mirroring the LearningSuite platform this was modeled after.
+model Module {
+  id           String  @id @default(cuid())
+  title        String
+  description  String?
+  order        Int
+  thumbnailUrl String?
 
   courseId String
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  progress LessonProgress[]
+  lessons Lesson[]
 
   @@index([courseId])
+}
+
+model Lesson {
+  id              String  @id @default(cuid())
+  title           String
+  description     String?
+  order           Int
+  videoUrl        String? // Vercel Blob URL (uploaded video)
+  thumbnailUrl    String?
+  pdfUrl          String? // Link to an external PDF
+  notionUrl       String? // Link to an external Notion doc
+  durationSeconds Int?
+
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  progress LessonProgress[]
+
+  @@index([moduleId])
 }
 
 model Enrollment {
