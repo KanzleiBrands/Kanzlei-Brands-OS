@@ -822,6 +822,7 @@ model Lesson {
   pdfUrl          String? // Link to an external PDF
   notionUrl       String? // Link to an external Notion doc
   durationSeconds Int?
+  content         Json? // Ordered array of LessonBlock (see src/lib/lesson-blocks.ts) - the page-builder content below the video
 
   moduleId String
   module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)

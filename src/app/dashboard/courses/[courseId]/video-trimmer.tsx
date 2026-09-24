@@ -309,10 +309,10 @@ export function VideoTrimmer({
     // fixed` descendants, so without the portal this would be pinned to
     // that small dialog box instead of the actual viewport.
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-950/70 p-4 backdrop-blur-md sm:p-8">
-      <div className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 text-white shadow-2xl shadow-black/60">
-        <div className="flex items-start justify-between px-6 pt-6 pb-4 sm:px-8 sm:pt-8">
+      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 text-white shadow-2xl shadow-black/60">
+        <div className="flex items-start justify-between px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Video zuschneiden</h2>
+            <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Video zuschneiden</h2>
             <p className="mt-1 text-sm text-white/50">Wähle den Bereich, den du behalten möchtest.</p>
           </div>
           <button
@@ -325,7 +325,7 @@ export function VideoTrimmer({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6 sm:px-8 sm:pb-8">
+        <div className="flex-1 overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
           <div className="relative overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: "16 / 9" }}>
             <video
               src={activeUrl}
@@ -359,7 +359,7 @@ export function VideoTrimmer({
             </button>
           </div>
 
-          <div className="mt-4 flex items-center justify-center gap-1.5 rounded-full bg-white/[0.04] p-1.5 ring-1 ring-white/10">
+          <div className="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-white/[0.04] p-1.5 ring-1 ring-white/10">
             <button
               type="button"
               aria-label={`${SKIP_SECONDS}s zurück`}
@@ -391,7 +391,7 @@ export function VideoTrimmer({
 
           <div
             ref={timelineRef}
-            className="relative mt-5 h-24 w-full overflow-hidden rounded-xl bg-neutral-800 ring-1 ring-white/10 select-none sm:h-28"
+            className="relative mt-3 h-20 w-full overflow-hidden rounded-xl bg-neutral-800 ring-1 ring-white/10 select-none"
           >
             {thumbnailsLoading ? (
               <div className="flex h-full items-center justify-center">
@@ -477,7 +477,7 @@ export function VideoTrimmer({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-white/[0.02] px-6 py-4 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-white/[0.02] px-5 py-3 sm:px-6">
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleDownload} disabled={processing}>
               <DownloadIcon className="size-4" />

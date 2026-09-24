@@ -7,6 +7,7 @@ import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "../../../../../course-thumbnail";
 import { CourseBanner } from "../../../../../course-banner";
 import { formatLessonMeta } from "../../../../../course-format";
+import { parseLessonBlocks } from "@/lib/lesson-blocks";
 import { LessonCompleteButton } from "./lesson-complete-button";
 
 export default async function LessonPlayerPage({
@@ -39,6 +40,7 @@ export default async function LessonPlayerPage({
   const currentModule = course.modules.find((m) => m.id === moduleId);
   const lesson = currentModule?.lessons.find((l) => l.id === lessonId);
   if (!currentModule || !lesson) notFound();
+  const contentBlocks = parseLessonBlocks(lesson.content);
 
   const enrollment = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.user.id, courseId } },
@@ -100,6 +102,40 @@ export default async function LessonPlayerPage({
           ) : null}
 
           {lesson.description && <p className="mt-4 text-sm text-muted-foreground">{lesson.description}</p>}
+
+          {contentBlocks.length > 0 && (
+            <div className="mt-6 flex flex-col gap-4">
+              {contentBlocks.map((block) => {
+                if (block.type === "heading") {
+                  const Tag = block.level === 2 ? "h2" : "h3";
+                  return (
+                    <Tag key={block.id} className={block.level === 2 ? "text-lg font-semibold" : "font-medium"}>
+                      {block.text}
+                    </Tag>
+                  );
+                }
+                if (block.type === "paragraph") {
+                  return (
+                    <p key={block.id} className="text-sm whitespace-pre-line text-muted-foreground">
+                      {block.text}
+                    </p>
+                  );
+                }
+                if (block.url) {
+                  return (
+                    <figure key={block.id}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={block.url} alt={block.caption} className="w-full rounded-lg" />
+                      {block.caption && (
+                        <figcaption className="mt-1.5 text-xs text-muted-foreground">{block.caption}</figcaption>
+                      )}
+                    </figure>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          )}
 
           {(lesson.pdfUrl || lesson.notionUrl) && (
             <div className="mt-4 flex flex-wrap gap-2">

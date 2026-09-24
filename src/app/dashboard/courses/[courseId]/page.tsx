@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3Icon, ChevronRightIcon, EyeIcon } from "lucide-react";
+import { BarChart3Icon, ChevronRightIcon, EyeIcon, PencilIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
@@ -15,7 +15,6 @@ import { AddModuleForm } from "./add-module-form";
 import { EditModuleDialog } from "./edit-module-dialog";
 import { ModuleRowActions } from "./module-row-actions";
 import { AddLessonForm } from "./add-lesson-form";
-import { EditLessonDialog } from "./edit-lesson-dialog";
 import { LessonRowActions } from "./lesson-row-actions";
 import { EditCourseDialog } from "./edit-course-dialog";
 import { DeleteCourseButton } from "./delete-course-button";
@@ -164,17 +163,20 @@ export default async function CourseDetailPage({
                           Notion
                         </Badge>
                       )}
+                      {Array.isArray(lesson.content) && lesson.content.length > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          Inhalt
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
-                      <EditLessonDialog
-                        lessonId={lesson.id}
-                        title={lesson.title}
-                        description={lesson.description}
-                        thumbnailUrl={lesson.thumbnailUrl}
-                        videoUrl={lesson.videoUrl}
-                        pdfUrl={lesson.pdfUrl}
-                        notionUrl={lesson.notionUrl}
-                      />
+                      <Link
+                        href={`/dashboard/courses/${course.id}/module/${courseModule.id}/lesson/${lesson.id}/edit`}
+                        aria-label="Lektion bearbeiten"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <PencilIcon className="size-4" />
+                      </Link>
                       <LessonRowActions
                         lessonId={lesson.id}
                         lessonTitle={lesson.title}

@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
+import { parseLessonBlocks, type LessonBlock } from "@/lib/lesson-blocks";
 
 // ---------------------------------------------------------------------------
 // Course
@@ -303,6 +305,8 @@ export async function updateLesson(_prevState: string | undefined, formData: For
     const video = formData.get("video");
     if (video instanceof File && video.size > 0) {
       videoUrl = await storeFile(video, "lessons");
+    } else if (formData.get("removeVideo") === "1") {
+      videoUrl = null;
     }
   }
 
@@ -311,6 +315,16 @@ export async function updateLesson(_prevState: string | undefined, formData: For
     thumbnailUrl = await uploadImageField(formData, "thumbnail");
   } catch (error) {
     return error instanceof Error ? error.message : "Vorschaubild konnte nicht hochgeladen werden.";
+  }
+
+  let content: LessonBlock[] | undefined;
+  const contentRaw = formData.get("content");
+  if (typeof contentRaw === "string" && contentRaw.length > 0) {
+    try {
+      content = parseLessonBlocks(JSON.parse(contentRaw));
+    } catch {
+      return "Inhalt konnte nicht gespeichert werden.";
+    }
   }
 
   await prisma.lesson.update({
@@ -322,11 +336,25 @@ export async function updateLesson(_prevState: string | undefined, formData: For
       notionUrl: notionUrl || null,
       ...(videoUrl !== undefined ? { videoUrl } : {}),
       ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
+      ...(content !== undefined ? { content: content as unknown as Prisma.InputJsonValue } : {}),
     },
   });
 
   revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
   return undefined;
+}
+
+/** Uploads a single image picked for a lesson content block, returning its URL for the block editor's client-side state. */
+export async function uploadLessonBlockImage(formData: FormData): Promise<{ url: string } | { error: string }> {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return { error: "Nur Agentur-Admins können Bilder hochladen." };
+
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { error: "Keine Datei ausgewählt." };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `Bild ist zu groß. Maximal ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` };
+
+  const url = await storeFile(file, "lesson-content");
+  return { url };
 }
 
 export async function deleteLesson(formData: FormData) {

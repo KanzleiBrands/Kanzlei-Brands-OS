@@ -390,106 +390,114 @@ export function VideoRecorder({ onCaptured }: { onCaptured: (file: File) => void
     // shadcn Dialog, whose content box is CSS-transformed for centering -
     // any transformed ancestor becomes the containing block for `position:
     // fixed` descendants, so without the portal this would be pinned to
-    // that small dialog box instead of the actual viewport.
-    <div className="fixed inset-0 z-[100] flex flex-col bg-neutral-950 text-white">
-      <button
-        type="button"
-        aria-label="Rekorder schließen"
-        onClick={closeRecorder}
-        className="absolute top-5 right-5 z-10 flex size-10 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
-      >
-        <XIcon className="size-5" />
-      </button>
+    // that small dialog box instead of the actual viewport. It renders as a
+    // centered modal over a dimmed backdrop - like the trimmer - not a
+    // fullscreen takeover.
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-950/70 p-4 backdrop-blur-md sm:p-8">
+      <div className="relative flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-white shadow-2xl shadow-black/60">
+        <button
+          type="button"
+          aria-label="Rekorder schließen"
+          onClick={closeRecorder}
+          className="absolute top-4 right-4 z-10 flex size-9 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
+        >
+          <XIcon className="size-5" />
+        </button>
 
-      {stage === "source" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-10 px-4">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold tracking-tight">Wähle die Aufnahmequelle</h2>
-            <p className="mt-1.5 text-sm text-white/50">Du kannst die Quelle jederzeit wechseln.</p>
-          </div>
-          {errorMsg && (
-            <p className="rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400 ring-1 ring-red-500/30">{errorMsg}</p>
-          )}
-          <div className="flex flex-wrap justify-center gap-5">
-            {SOURCE_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => chooseSource(opt.key)}
-                className="group flex w-44 flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-7 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-black/30"
-              >
-                <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors group-hover:bg-primary/25">
-                  <opt.icon className="size-7" />
-                </span>
-                <span className="text-sm font-medium">{opt.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(stage === "live" || stage === "countdown" || stage === "recording") && (
-        <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-black">
-          {source === "camera" && (
-            <video
-              ref={camVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className={`h-full w-full object-cover ${mirrorCamera ? "scale-x-[-1]" : ""}`}
-            />
-          )}
-          {source === "screen" && (
-            <video ref={screenVideoRef} autoPlay muted playsInline className="h-full w-full object-contain" />
-          )}
-          {source === "both" && (
-            <>
-              <canvas ref={canvasRef} className="h-full w-full object-contain" />
-              <video ref={screenVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] h-px w-px" />
-              <video ref={camVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] h-px w-px" />
-            </>
-          )}
-
-          {stage === "countdown" && countdownValue !== null && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-              <div className="flex size-32 items-center justify-center rounded-full bg-primary text-4xl font-bold text-primary-foreground shadow-2xl">
-                {countdownValue}
-              </div>
+        {stage === "source" && (
+          <div className="flex flex-col items-center gap-8 px-6 py-14 sm:px-10">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Wähle die Aufnahmequelle</h2>
+              <p className="mt-1.5 text-sm text-white/50">Du kannst die Quelle jederzeit wechseln.</p>
             </div>
-          )}
-        </div>
-      )}
-
-      {stage === "preview" && recordedUrl && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6 sm:p-10">
-          <div className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: "16 / 9" }}>
-            <video
-              src={recordedUrl}
-              aria-hidden
-              muted
-              loop
-              autoPlay
-              playsInline
-              className="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl"
-            />
-            <video src={recordedUrl} controls autoPlay playsInline className="relative h-full w-full object-contain" />
+            {errorMsg && (
+              <p className="rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400 ring-1 ring-red-500/30">
+                {errorMsg}
+              </p>
+            )}
+            <div className="flex flex-wrap justify-center gap-5">
+              {SOURCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => chooseSource(opt.key)}
+                  className="group flex w-36 flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-black/30"
+                >
+                  <span className="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors group-hover:bg-primary/25">
+                    <opt.icon className="size-6" />
+                  </span>
+                  <span className="text-sm font-medium">{opt.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button type="button" variant="destructive" onClick={retry}>
-              <RotateCcwIcon className="size-4" />
-              Nochmal versuchen
-            </Button>
-            <VideoTrimmer videoUrl={recordedUrl} fileName="aufnahme.webm" onTrimmed={handleTrimmed} />
-            <Button type="button" onClick={accept}>
-              <CheckIcon className="size-4" />
-              Übernehmen
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {(stage === "live" || stage === "countdown" || stage === "recording") && (
-        <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/10 bg-neutral-900/95 px-4 py-4 backdrop-blur sm:justify-between sm:px-6">
+        {(stage === "live" || stage === "countdown" || stage === "recording") && (
+          <div className="relative overflow-hidden bg-black" style={{ aspectRatio: "16 / 9" }}>
+            {source === "camera" && (
+              <video
+                ref={camVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className={`h-full w-full object-cover ${mirrorCamera ? "scale-x-[-1]" : ""}`}
+              />
+            )}
+            {source === "screen" && (
+              <video ref={screenVideoRef} autoPlay muted playsInline className="h-full w-full object-contain" />
+            )}
+            {source === "both" && (
+              <>
+                <canvas ref={canvasRef} className="h-full w-full object-contain" />
+                <video ref={screenVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] h-px w-px" />
+                <video ref={camVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] h-px w-px" />
+              </>
+            )}
+
+            {stage === "countdown" && countdownValue !== null && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                <div className="flex size-24 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground shadow-2xl">
+                  {countdownValue}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {stage === "preview" && recordedUrl && (
+          <div className="flex flex-col items-center gap-6 p-6 sm:p-8">
+            <div
+              className="relative w-full max-w-xl overflow-hidden rounded-2xl bg-black"
+              style={{ aspectRatio: "16 / 9" }}
+            >
+              <video
+                src={recordedUrl}
+                aria-hidden
+                muted
+                loop
+                autoPlay
+                playsInline
+                className="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl"
+              />
+              <video src={recordedUrl} controls autoPlay playsInline className="relative h-full w-full object-contain" />
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button type="button" variant="destructive" onClick={retry}>
+                <RotateCcwIcon className="size-4" />
+                Nochmal versuchen
+              </Button>
+              <VideoTrimmer videoUrl={recordedUrl} fileName="aufnahme.webm" onTrimmed={handleTrimmed} />
+              <Button type="button" onClick={accept}>
+                <CheckIcon className="size-4" />
+                Übernehmen
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {(stage === "live" || stage === "countdown" || stage === "recording") && (
+          <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/10 bg-neutral-900/95 px-4 py-4 backdrop-blur sm:justify-between sm:px-6">
           <button
             type="button"
             disabled={!canSwitchSource}
@@ -622,6 +630,7 @@ export function VideoRecorder({ onCaptured }: { onCaptured: (file: File) => void
           </div>
         </div>
       )}
+      </div>
     </div>,
     document.body,
   );

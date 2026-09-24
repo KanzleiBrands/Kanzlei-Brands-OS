@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
-import { UploadCloudIcon, CheckCircle2Icon, Loader2Icon, XIcon } from "lucide-react";
+import { UploadCloudIcon, CheckCircle2Icon, Loader2Icon, PlayCircleIcon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { VideoRecorder } from "./video-recorder";
 import { VideoTrimmer } from "./video-trimmer";
@@ -28,6 +28,7 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
   const [error, setError] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
   const [fallbackFile, setFallbackFile] = useState<File | null>(null);
+  const [removed, setRemoved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File | undefined) {
@@ -36,6 +37,7 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
     setProgress(0);
     setFileName(file.name);
     setError(null);
+    setRemoved(false);
 
     try {
       const blob = await upload(file.name, file, {
@@ -84,15 +86,20 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
     );
   }
 
+  const hasExisting = !!existingVideoUrl && !removed;
+
   return (
     <div className="flex flex-col gap-2">
       <input type="hidden" name="videoUrl" value={videoUrl ?? ""} />
+      <input type="hidden" name="removeVideo" value={removed ? "1" : ""} />
 
-      {status === "idle" && (
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-            <UploadCloudIcon className="size-4 shrink-0" />
-            {existingVideoUrl ? "Video ersetzen" : "Video auswählen"} - jede Dateigröße, lädt direkt hoch
+      {status === "idle" && hasExisting && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm">
+          <PlayCircleIcon className="size-5 shrink-0 text-primary" />
+          <span className="flex-1 font-medium">Video vorhanden</span>
+          <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted">
+            <UploadCloudIcon className="size-3.5" />
+            Ersetzen
             <input
               type="file"
               accept="video/*"
@@ -101,10 +108,44 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
             />
           </label>
           <VideoRecorder onCaptured={handleFile} />
-          {existingVideoUrl && (
-            <VideoTrimmer videoUrl={existingVideoUrl} fileName="zugeschnitten.mp4" onTrimmed={handleFile} />
+          <VideoTrimmer videoUrl={existingVideoUrl!} fileName="zugeschnitten.mp4" onTrimmed={handleFile} />
+          <button
+            type="button"
+            onClick={() => setRemoved(true)}
+            aria-label="Video entfernen"
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <XIcon className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {status === "idle" && !hasExisting && (
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+            <UploadCloudIcon className="size-4 shrink-0" />
+            Video auswählen - jede Dateigröße, lädt direkt hoch
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+          </label>
+          <VideoRecorder onCaptured={handleFile} />
+          {removed && (
+            <button
+              type="button"
+              onClick={() => setRemoved(false)}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Rückgängig
+            </button>
           )}
         </div>
+      )}
+      {removed && (
+        <p className="text-xs text-muted-foreground">Video wird beim Speichern entfernt.</p>
       )}
 
       {status === "uploading" && (
