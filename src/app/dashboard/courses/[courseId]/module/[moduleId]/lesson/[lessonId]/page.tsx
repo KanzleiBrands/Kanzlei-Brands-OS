@@ -1,30 +1,36 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2Icon, CircleIcon, FileTextIcon, ChevronRightIcon } from "lucide-react";
+import { CheckCircle2Icon, CircleIcon, EyeIcon, FileTextIcon, ChevronRightIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { LessonCompleteButton } from "./lesson-complete-button";
 
 export default async function LessonPlayerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ courseId: string; moduleId: string; lessonId: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { courseId, moduleId, lessonId } = await params;
+  const { preview } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
-  if (session.user.role === "AGENCY_ADMIN") redirect(`/dashboard/courses/${courseId}`);
+  const isPreview = session.user.role === "AGENCY_ADMIN" && preview === "1";
+  if (session.user.role === "AGENCY_ADMIN" && !isPreview) redirect(`/dashboard/courses/${courseId}`);
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     include: { modules: { orderBy: { order: "asc" }, include: { lessons: { orderBy: { order: "asc" } } } } },
   });
-  if (!course || !course.published) notFound();
+  if (!course || (!course.published && !isPreview)) notFound();
 
-  const assigned = await prisma.courseAssignment.findFirst({
-    where: { courseId, organizationId: session.user.organizationId },
-  });
-  if (!assigned) notFound();
+  if (!isPreview) {
+    const assigned = await prisma.courseAssignment.findFirst({
+      where: { courseId, organizationId: session.user.organizationId },
+    });
+    if (!assigned) notFound();
+  }
 
   const currentModule = course.modules.find((m) => m.id === moduleId);
   const lesson = currentModule?.lessons.find((l) => l.id === lessonId);
@@ -42,15 +48,23 @@ export default async function LessonPlayerPage({
   const currentIndex = allLessons.findIndex((l) => l.id === lessonId);
   const nextLesson = allLessons[currentIndex + 1];
 
+  const previewQuery = isPreview ? "?preview=1" : "";
+
   return (
     <div className="grid grid-cols-1 gap-4 p-4 sm:p-8 lg:grid-cols-[1fr_320px]">
       <div>
+        {isPreview && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
+            <EyeIcon className="size-4 shrink-0" />
+            Vorschaumodus - so sieht der Kurs für Kunden aus.
+          </div>
+        )}
         <div className="mb-3 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-          <Link href={`/dashboard/courses/${course.id}`} className="hover:underline">
+          <Link href={`/dashboard/courses/${course.id}${previewQuery}`} className="hover:underline">
             {course.title}
           </Link>
           <ChevronRightIcon className="size-3.5" />
-          <Link href={`/dashboard/courses/${course.id}/module/${currentModule.id}`} className="hover:underline">
+          <Link href={`/dashboard/courses/${course.id}/module/${currentModule.id}${previewQuery}`} className="hover:underline">
             {currentModule.title}
           </Link>
           <ChevronRightIcon className="size-3.5" />
@@ -97,10 +111,14 @@ export default async function LessonPlayerPage({
           )}
 
           <div className="mt-6 flex items-center justify-between border-t pt-4">
-            <LessonCompleteButton lessonId={lesson.id} completed={completedLessonIds.has(lesson.id)} />
+            {isPreview ? (
+              <span className="text-sm text-muted-foreground">Fortschritt wird in der Vorschau nicht gespeichert.</span>
+            ) : (
+              <LessonCompleteButton lessonId={lesson.id} completed={completedLessonIds.has(lesson.id)} />
+            )}
             {nextLesson && (
               <Link
-                href={`/dashboard/courses/${course.id}/module/${nextLesson.moduleId}/lesson/${nextLesson.id}`}
+                href={`/dashboard/courses/${course.id}/module/${nextLesson.moduleId}/lesson/${nextLesson.id}${previewQuery}`}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
               >
                 Nächste Lektion
@@ -120,7 +138,7 @@ export default async function LessonPlayerPage({
             return (
               <Link
                 key={l.id}
-                href={`/dashboard/courses/${course.id}/module/${currentModule.id}/lesson/${l.id}`}
+                href={`/dashboard/courses/${course.id}/module/${currentModule.id}/lesson/${l.id}${previewQuery}`}
                 className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
                   active ? "border border-primary bg-primary/5" : "hover:bg-muted"
                 }`}

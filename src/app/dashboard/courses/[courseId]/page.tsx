@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3Icon } from "lucide-react";
+import { BarChart3Icon, EyeIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
@@ -19,12 +19,20 @@ import { EditCourseDialog } from "./edit-course-dialog";
 import { DeleteCourseButton } from "./delete-course-button";
 import { PublishToggle } from "../publish-toggle";
 
-export default async function CourseDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
+export default async function CourseDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ courseId: string }>;
+  searchParams: Promise<{ preview?: string }>;
+}) {
   const { courseId } = await params;
+  const { preview } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
   const isAgency = session.user.role === "AGENCY_ADMIN";
+  const isPreview = isAgency && preview === "1";
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
@@ -40,7 +48,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
   if (!course) notFound();
   if (!isAgency && !course.published) notFound();
 
-  if (isAgency) {
+  if (isAgency && !isPreview) {
     const assignmentCount = course._count.assignments;
     return (
       <div className="p-4 sm:p-8">
@@ -59,6 +67,16 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/dashboard/courses/${course.id}?preview=1`} />}
+            >
+              <EyeIcon className="size-4" />
+              Vorschau
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -194,9 +212,22 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
   const nextLesson = allLessons.find((l) => !completedLessonIds.has(l.id));
   const nextLessonModule = nextLesson ? course.modules.find((m) => m.id === nextLesson.moduleId) : null;
 
+  const previewQuery = isPreview ? "?preview=1" : "";
+
   return (
     <div className="p-4 sm:p-8">
-      <BackLink href="/dashboard/courses">Zurück zu meinen Kursen</BackLink>
+      {isPreview ? (
+        <BackLink href={`/dashboard/courses/${course.id}`}>Zurück zum Builder</BackLink>
+      ) : (
+        <BackLink href="/dashboard/courses">Zurück zu meinen Kursen</BackLink>
+      )}
+
+      {isPreview && (
+        <div className="mt-2 mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
+          <EyeIcon className="size-4 shrink-0" />
+          Vorschaumodus - so sieht der Kurs für Kunden aus.
+        </div>
+      )}
 
       <div className="mt-2 mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-1 items-center gap-4 p-4">
@@ -213,7 +244,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
 
       {nextLesson && nextLessonModule && (
         <Link
-          href={`/dashboard/courses/${course.id}/module/${nextLessonModule.id}/lesson/${nextLesson.id}`}
+          href={`/dashboard/courses/${course.id}/module/${nextLessonModule.id}/lesson/${nextLesson.id}${previewQuery}`}
           className="mb-6 flex items-center justify-between gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary"
         >
           <div>
@@ -233,7 +264,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
           return (
             <Link
               key={courseModule.id}
-              href={`/dashboard/courses/${course.id}/module/${courseModule.id}`}
+              href={`/dashboard/courses/${course.id}/module/${courseModule.id}${previewQuery}`}
               className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary"
             >
               <div className="flex items-center gap-3">
