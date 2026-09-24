@@ -55,7 +55,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           {threads.length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">
               Noch keine E-Mails. Verbinde ein Postfach unter Einstellungen → Postfach &ndash; passende
-              Korrespondenz wird stündlich automatisch synchronisiert.
+              Korrespondenz wird alle 15 Minuten automatisch synchronisiert.
             </p>
           )}
           {threads.map((thread) => {
