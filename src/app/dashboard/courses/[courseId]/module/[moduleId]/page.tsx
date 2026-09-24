@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2Icon, CircleIcon, EyeIcon, PlayCircleIcon } from "lucide-react";
+import { CheckCircle2Icon, ChevronRightIcon, EyeIcon, FileTextIcon, PlayCircleIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "../../../course-thumbnail";
+import { CourseBanner } from "../../../course-banner";
+import { formatLessonMeta } from "../../../course-format";
 
 export default async function ModuleDetailPage({
   params,
@@ -64,35 +66,64 @@ export default async function ModuleDetailPage({
         </div>
       )}
 
-      <div className="mt-2 mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-xl border bg-card p-4">
-        <div className="flex items-center gap-4">
-          <CourseThumbnail src={courseModule.thumbnailUrl} alt={courseModule.title} className="h-20 w-32 shrink-0 rounded-lg" />
-          <div>
-            <p className="text-sm text-muted-foreground uppercase">{courseModule.course.title}</p>
-            <h1 className="text-xl font-semibold">{courseModule.title}</h1>
-            {courseModule.description && <p className="mt-1 text-sm text-muted-foreground">{courseModule.description}</p>}
-          </div>
-        </div>
-        <CircularProgress percent={percent} size="lg" />
+      <div className="mt-2 mb-6">
+        <CourseBanner
+          thumbnailUrl={courseModule.thumbnailUrl}
+          eyebrow={courseModule.course.title}
+          title={courseModule.title}
+          meta={
+            courseModule.description ??
+            formatLessonMeta(
+              courseModule.lessons.length,
+              courseModule.lessons.reduce((sum, l) => sum + (l.durationSeconds ?? 0), 0),
+            )
+          }
+          right={<CircularProgress percent={percent} size="lg" tone="onDark" />}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
         {courseModule.lessons.map((lesson, index) => {
           const completed = completedLessonIds.has(lesson.id);
+          const isNext = !completed && !courseModule.lessons.slice(0, index).some((l) => !completedLessonIds.has(l.id));
           return (
             <Link
               key={lesson.id}
               href={`/dashboard/courses/${courseId}/module/${moduleId}/lesson/${lesson.id}${previewQuery}`}
-              className="flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary"
+              className="flex items-center gap-3 rounded-xl border bg-card p-2.5 transition-colors hover:border-primary"
             >
-              {completed ? (
+              <CourseThumbnail
+                src={lesson.thumbnailUrl ?? courseModule.thumbnailUrl}
+                alt=""
+                className="w-20 shrink-0 rounded-md sm:w-24"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">
+                  {index + 1}. {lesson.title}
+                </p>
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {lesson.videoUrl ? (
+                    <PlayCircleIcon className="size-3.5 shrink-0" />
+                  ) : (
+                    <FileTextIcon className="size-3.5 shrink-0" />
+                  )}
+                  {lesson.durationSeconds
+                    ? `${Math.max(1, Math.round(lesson.durationSeconds / 60))} Min.`
+                    : lesson.videoUrl
+                      ? "Video"
+                      : "Material"}
+                </div>
+              </div>
+              {isNext ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">
+                  Fortsetzen
+                  <ChevronRightIcon className="size-4" />
+                </span>
+              ) : completed ? (
                 <CheckCircle2Icon className="size-5 shrink-0 text-emerald-500" />
               ) : (
-                <CircleIcon className="size-5 shrink-0 text-muted-foreground" />
+                <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
               )}
-              <PlayCircleIcon className="size-5 shrink-0 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{index + 1}.</span>
-              <span className="font-medium">{lesson.title}</span>
             </Link>
           );
         })}

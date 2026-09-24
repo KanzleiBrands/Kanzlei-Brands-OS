@@ -4,6 +4,7 @@ import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "./course-thumbnail";
 import { NewCourseForm } from "./new-course-form";
 import { PublishToggle } from "./publish-toggle";
@@ -36,7 +37,7 @@ export default async function CoursesPage() {
               <Card key={course.id} className="overflow-hidden">
                 <div className="px-(--card-spacing)">
                   <Link href={`/dashboard/courses/${course.id}`} className="block">
-                    <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-32 w-full rounded-lg" />
+                    <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-full rounded-lg" />
                   </Link>
                 </div>
                 <CardHeader>
@@ -96,11 +97,13 @@ export default async function CoursesPage() {
             <Link key={course.id} href={`/dashboard/courses/${course.id}`} className="block">
               <Card className="overflow-hidden transition-colors hover:border-primary">
                 <div className="px-(--card-spacing)">
-                  <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-36 w-full rounded-lg" />
+                  <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-full rounded-lg" />
                 </div>
-                <CardContent className="flex flex-col gap-1">
-                  <p className="font-medium">{course.title}</p>
-                  <p className="text-sm font-medium text-emerald-600">{percent}% FORTSCHRITT</p>
+                <CardContent className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 flex-1 truncate font-medium" title={course.title}>
+                    {course.title}
+                  </p>
+                  <CircularProgress percent={percent} size="sm" />
                 </CardContent>
               </Card>
             </Link>

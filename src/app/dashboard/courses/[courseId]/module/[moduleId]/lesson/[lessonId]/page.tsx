@@ -3,6 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { CheckCircle2Icon, CircleIcon, EyeIcon, FileTextIcon, ChevronRightIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
+import { CircularProgress } from "@/components/ui/circular-progress";
+import { CourseThumbnail } from "../../../../../course-thumbnail";
+import { CourseBanner } from "../../../../../course-banner";
+import { formatLessonMeta } from "../../../../../course-format";
 import { LessonCompleteButton } from "./lesson-complete-button";
 
 export default async function LessonPlayerPage({
@@ -48,6 +52,10 @@ export default async function LessonPlayerPage({
   const currentIndex = allLessons.findIndex((l) => l.id === lessonId);
   const nextLesson = allLessons[currentIndex + 1];
 
+  const moduleCompletedCount = currentModule.lessons.filter((l) => completedLessonIds.has(l.id)).length;
+  const modulePercent =
+    currentModule.lessons.length > 0 ? (moduleCompletedCount / currentModule.lessons.length) * 100 : 0;
+
   const previewQuery = isPreview ? "?preview=1" : "";
 
   return (
@@ -71,7 +79,17 @@ export default async function LessonPlayerPage({
           <span>{lesson.title}</span>
         </div>
 
-        <div className="rounded-xl border bg-card p-4">
+        <div className="mb-4">
+          <CourseBanner
+            thumbnailUrl={currentModule.thumbnailUrl}
+            eyebrow={course.title}
+            title={currentModule.title}
+            size="md"
+            right={<CircularProgress percent={modulePercent} tone="onDark" />}
+          />
+        </div>
+
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h1 className="mb-3 text-xl font-semibold">{lesson.title}</h1>
 
           {lesson.videoUrl ? (
@@ -130,8 +148,13 @@ export default async function LessonPlayerPage({
       </div>
 
       <div className="rounded-xl border bg-card p-3">
-        <p className="mb-2 px-1 text-sm font-semibold">{currentModule.title}</p>
-        <div className="flex flex-col gap-1">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <p className="text-sm font-semibold">{currentModule.title}</p>
+          <span className="text-xs font-medium text-muted-foreground uppercase">
+            {formatLessonMeta(currentModule.lessons.length, 0)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1.5">
           {currentModule.lessons.map((l, index) => {
             const completed = completedLessonIds.has(l.id);
             const active = l.id === lessonId;
@@ -139,17 +162,19 @@ export default async function LessonPlayerPage({
               <Link
                 key={l.id}
                 href={`/dashboard/courses/${course.id}/module/${currentModule.id}/lesson/${l.id}${previewQuery}`}
-                className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
-                  active ? "border border-primary bg-primary/5" : "hover:bg-muted"
+                className={`flex items-center gap-2 rounded-lg p-1.5 text-sm transition-colors ${
+                  active ? "bg-primary/10 ring-1 ring-primary" : "hover:bg-muted"
                 }`}
               >
+                <CourseThumbnail src={l.thumbnailUrl ?? currentModule.thumbnailUrl} alt="" className="w-16 shrink-0 rounded-md" />
+                <span className="line-clamp-2 min-w-0 flex-1">
+                  {index + 1}. {l.title}
+                </span>
                 {completed ? (
                   <CheckCircle2Icon className="size-4 shrink-0 text-emerald-500" />
                 ) : (
                   <CircleIcon className="size-4 shrink-0 text-muted-foreground" />
                 )}
-                <span className="text-muted-foreground">{index + 1}.</span>
-                <span className="line-clamp-2">{l.title}</span>
               </Link>
             );
           })}

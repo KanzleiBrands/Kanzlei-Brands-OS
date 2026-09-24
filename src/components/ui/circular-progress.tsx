@@ -8,10 +8,13 @@ const SIZE_CONFIG = {
 export function CircularProgress({
   percent,
   size = "md",
+  tone = "default",
   className,
 }: {
   percent: number;
   size?: keyof typeof SIZE_CONFIG;
+  /** "onDark" swaps the track/label colors for use inside a dark banner (see CourseBanner). */
+  tone?: "default" | "onDark";
   className?: string;
 }) {
   const { box, stroke, text } = SIZE_CONFIG[size];
@@ -23,7 +26,15 @@ export function CircularProgress({
   return (
     <div className={`relative inline-flex items-center justify-center ${className ?? ""}`} style={{ width: box, height: box }}>
       <svg width={box} height={box} viewBox={`0 0 ${box} ${box}`} className="-rotate-90">
-        <circle cx={box / 2} cy={box / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-muted" />
+        <circle
+          cx={box / 2}
+          cy={box / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          className={tone === "onDark" ? "text-white/15" : "text-muted"}
+        />
         <circle
           cx={box / 2}
           cy={box / 2}
@@ -37,7 +48,11 @@ export function CircularProgress({
           className="text-emerald-500 transition-[stroke-dashoffset] duration-300"
         />
       </svg>
-      <span className={`absolute font-bold text-foreground tabular-nums ${text}`}>{Math.round(clamped)}%</span>
+      <span
+        className={`absolute font-bold tabular-nums ${text} ${tone === "onDark" ? "text-white" : "text-foreground"}`}
+      >
+        {Math.round(clamped)}%
+      </span>
     </div>
   );
 }

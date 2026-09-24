@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3Icon, EyeIcon } from "lucide-react";
+import { BarChart3Icon, ChevronRightIcon, EyeIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "../course-thumbnail";
+import { CourseBanner } from "../course-banner";
+import { formatLessonMeta } from "../course-format";
 import { AddModuleForm } from "./add-module-form";
 import { EditModuleDialog } from "./edit-module-dialog";
 import { ModuleRowActions } from "./module-row-actions";
@@ -56,7 +58,7 @@ export default async function CourseDetailPage({
 
         <div className="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="flex gap-4">
-            <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-24 w-40 shrink-0 rounded-lg" />
+            <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-40 shrink-0 rounded-lg" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold">{course.title}</h1>
@@ -113,7 +115,7 @@ export default async function CourseDetailPage({
                     <CourseThumbnail
                       src={courseModule.thumbnailUrl}
                       alt={courseModule.title}
-                      className="h-14 w-24 shrink-0 rounded-md"
+                      className="w-24 shrink-0 rounded-md"
                     />
                     <div>
                       <CardTitle className="text-base">
@@ -229,58 +231,70 @@ export default async function CourseDetailPage({
         </div>
       )}
 
-      <div className="mt-2 mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-xl border bg-card">
-        <div className="flex flex-1 items-center gap-4 p-4">
-          <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-20 w-32 shrink-0 rounded-lg" />
-          <div>
-            <p className="text-sm text-muted-foreground uppercase">Kurs</p>
-            <h1 className="text-xl font-semibold">{course.title}</h1>
-          </div>
-        </div>
-        <div className="p-4">
-          <CircularProgress percent={overallPercent} size="lg" />
-        </div>
+      <div className="mt-2 mb-6">
+        <CourseBanner
+          thumbnailUrl={course.thumbnailUrl}
+          eyebrow="Kurs"
+          title={course.title}
+          right={<CircularProgress percent={overallPercent} size="lg" tone="onDark" />}
+        />
       </div>
 
       {nextLesson && nextLessonModule && (
         <Link
           href={`/dashboard/courses/${course.id}/module/${nextLessonModule.id}/lesson/${nextLesson.id}${previewQuery}`}
-          className="mb-6 flex items-center justify-between gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary"
+          className="mb-6 flex items-center justify-between gap-3 rounded-xl bg-neutral-900 p-3 pr-4 transition-colors hover:bg-neutral-800"
         >
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase">Mache direkt weiter!</p>
-            <p className="font-medium">{nextLesson.title}</p>
+          <div className="flex min-w-0 items-center gap-3">
+            <CourseThumbnail
+              src={nextLessonModule.thumbnailUrl}
+              alt=""
+              className="w-16 shrink-0 rounded-md sm:w-20"
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-white/50 uppercase">Mache direkt weiter!</p>
+              <p className="truncate font-medium text-white">{nextLesson.title}</p>
+            </div>
           </div>
-          <Badge>Fortsetzen »</Badge>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-neutral-900">
+            Fortsetzen
+            <ChevronRightIcon className="size-4" />
+          </span>
         </Link>
       )}
 
-      <h2 className="mb-3 text-lg font-semibold">Module</h2>
+      <div className="mb-3 flex items-center gap-2">
+        <span className="h-5 w-1 rounded-full bg-primary" />
+        <h2 className="text-lg font-semibold">Module</h2>
+      </div>
       <div className="flex flex-col gap-3">
         {course.modules.map((courseModule, moduleIndex) => {
           const moduleLessons = courseModule.lessons;
           const moduleCompleted = moduleLessons.filter((l) => completedLessonIds.has(l.id)).length;
           const modulePercent = moduleLessons.length > 0 ? (moduleCompleted / moduleLessons.length) * 100 : 0;
+          const totalDuration = moduleLessons.reduce((sum, l) => sum + (l.durationSeconds ?? 0), 0);
           return (
             <Link
               key={courseModule.id}
               href={`/dashboard/courses/${course.id}/module/${courseModule.id}${previewQuery}`}
-              className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary"
+              className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3 transition-colors hover:border-primary"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <CourseThumbnail
                   src={courseModule.thumbnailUrl}
                   alt={courseModule.title}
-                  className="h-14 w-24 shrink-0 rounded-md"
+                  className="w-28 shrink-0 rounded-lg sm:w-32"
                 />
-                <div>
-                  <p className="font-medium">
-                    Modul {moduleIndex + 1} - {courseModule.title}
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    Modul {moduleIndex + 1} – {courseModule.title}
                   </p>
-                  <p className="text-sm text-muted-foreground">{moduleLessons.length} Lektionen</p>
+                  <p className="mt-0.5 text-xs font-medium text-muted-foreground uppercase">
+                    {formatLessonMeta(moduleLessons.length, totalDuration)}
+                  </p>
                 </div>
               </div>
-              <CircularProgress percent={modulePercent} size="sm" />
+              <CircularProgress percent={modulePercent} size="sm" className="shrink-0" />
             </Link>
           );
         })}
