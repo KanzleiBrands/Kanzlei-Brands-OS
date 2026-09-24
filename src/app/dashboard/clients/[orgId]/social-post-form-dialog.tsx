@@ -38,6 +38,7 @@ export type SocialPostData = {
   responsibleUserId: string | null;
   scheduledAt: string | null; // ISO
   publishedAt: string | null; // ISO
+  publishedUrl: string | null;
 };
 
 const PLATFORM_LABELS: Record<Channel["platform"], string> = {

@@ -174,3 +174,39 @@ export async function publishLinkedInPost(params: {
   const postUrn = response.headers.get("x-restli-id") ?? response.headers.get("X-RestLi-Id") ?? "";
   return { id: postUrn };
 }
+
+// ---------------------------------------------------------------------------
+// Social Media Content: Community Center (comments)
+// ---------------------------------------------------------------------------
+// LinkedIn exposes comment reading/replying/moderation via the Social Actions
+// API (GET/POST /rest/socialActions/{shareUrn}/comments), but that's part of
+// the separate Community Management API product - gated behind its own
+// LinkedIn partner approval on top of what publishLinkedInPost above already
+// needs, and historically harder to get granted than organic posting.
+// These functions are built to that documented shape so wiring them in later
+// is a drop-in swap, but they throw until access is granted - same pattern as
+// the video-upload branch of publishLinkedInPost above.
+
+export type LinkedInComment = { id: string; message: string; authorName?: string; createdAt: string };
+
+function communityManagementApiUnavailable(): never {
+  throw new LinkedInApiError(
+    "Kommentar-Funktionen für LinkedIn sind noch nicht freigeschaltet - dafür ist zusätzlich zur Marketing Developer Platform die separate Community Management API nötig, deren Freigabe LinkedIn noch nicht erteilt hat.",
+  );
+}
+
+export async function listLinkedInComments(_shareUrn: string, _accessToken: string): Promise<LinkedInComment[]> {
+  communityManagementApiUnavailable();
+}
+
+export async function replyToLinkedInComment(
+  _shareUrn: string,
+  _accessToken: string,
+  _message: string,
+): Promise<{ id: string }> {
+  communityManagementApiUnavailable();
+}
+
+export async function deleteLinkedInComment(_commentUrn: string, _accessToken: string): Promise<void> {
+  communityManagementApiUnavailable();
+}

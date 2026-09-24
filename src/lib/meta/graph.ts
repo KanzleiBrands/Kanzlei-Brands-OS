@@ -27,8 +27,10 @@ const SOCIAL_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_posts",
+  "pages_manage_engagement",
   "instagram_basic",
   "instagram_content_publish",
+  "instagram_manage_comments",
   "business_management",
 ].join(",");
 
@@ -410,4 +412,80 @@ export async function publishInstagramPost(params: {
   );
 
   return { id: published.id, permalink: withPermalink.permalink };
+}
+
+// ---------------------------------------------------------------------------
+// Social Media Content: Community Center (comments)
+// ---------------------------------------------------------------------------
+
+export type MetaComment = {
+  id: string;
+  message: string;
+  from?: { id: string; name?: string; username?: string };
+  created_time: string;
+  parent?: { id: string };
+};
+
+/** Every top-level + nested comment on a Facebook Page post. */
+export async function listFacebookComments(postId: string, pageAccessToken: string): Promise<MetaComment[]> {
+  const url = new URL(`${GRAPH_BASE}/${postId}/comments`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("fields", "id,message,from,created_time,parent");
+  url.searchParams.set("filter", "stream"); // includes replies, not just top-level
+  url.searchParams.set("limit", "100");
+  return paginate<MetaComment>(url.toString());
+}
+
+/** Every comment on an Instagram media object. */
+export async function listInstagramComments(mediaId: string, pageAccessToken: string): Promise<MetaComment[]> {
+  const url = new URL(`${GRAPH_BASE}/${mediaId}/comments`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("fields", "id,text,username,timestamp");
+  url.searchParams.set("limit", "100");
+  const raw = await paginate<{ id: string; text: string; username?: string; timestamp: string }>(url.toString());
+  // Normalize Instagram's slightly different field names (text/username/timestamp) onto the same shape as Facebook.
+  return raw.map((c) => ({ id: c.id, message: c.text, from: { id: c.id, username: c.username }, created_time: c.timestamp }));
+}
+
+/** Replies to a comment - a plain top-level comment reply for Facebook, or a Page/IG reply either way ends up as a new comment/reply object. */
+export async function replyToFacebookComment(commentId: string, pageAccessToken: string, message: string): Promise<{ id: string }> {
+  const url = new URL(`${GRAPH_BASE}/${commentId}/comments`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("message", message);
+  return graphFetch(url.toString(), { method: "POST" });
+}
+
+export async function replyToInstagramComment(commentId: string, pageAccessToken: string, message: string): Promise<{ id: string }> {
+  const url = new URL(`${GRAPH_BASE}/${commentId}/replies`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("message", message);
+  return graphFetch(url.toString(), { method: "POST" });
+}
+
+export async function setFacebookCommentHidden(commentId: string, pageAccessToken: string, hidden: boolean): Promise<void> {
+  const url = new URL(`${GRAPH_BASE}/${commentId}`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("is_hidden", String(hidden));
+  await graphFetch(url.toString(), { method: "POST" });
+}
+
+export async function setInstagramCommentHidden(commentId: string, pageAccessToken: string, hidden: boolean): Promise<void> {
+  const url = new URL(`${GRAPH_BASE}/${commentId}`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("hide", String(hidden));
+  await graphFetch(url.toString(), { method: "POST" });
+}
+
+export async function deleteMetaComment(commentId: string, pageAccessToken: string): Promise<void> {
+  const url = new URL(`${GRAPH_BASE}/${commentId}`);
+  url.searchParams.set("access_token", pageAccessToken);
+  await graphFetch(url.toString(), { method: "DELETE" });
+}
+
+/** Subscribes a Page to feed (comment) events, alongside its existing leadgen subscription if any. */
+export async function subscribePageToFeedWebhook(pageId: string, pageAccessToken: string): Promise<void> {
+  const url = new URL(`${GRAPH_BASE}/${pageId}/subscribed_apps`);
+  url.searchParams.set("subscribed_fields", "feed");
+  url.searchParams.set("access_token", pageAccessToken);
+  await graphFetch(url.toString(), { method: "POST" });
 }

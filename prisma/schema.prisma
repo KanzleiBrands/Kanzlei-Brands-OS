@@ -678,8 +678,41 @@ model SocialPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  comments SocialComment[]
+
   @@index([organizationId])
   @@index([status, scheduledAt])
+}
+
+// A comment on a published SocialPost, synced from the platform (webhook
+// push for Meta, periodic poll as a fallback/for LinkedIn) - powers the
+// Community Center inbox. One level of reply nesting via parentCommentId,
+// matching what the platforms themselves support (Instagram in particular
+// never nests deeper than one level).
+model SocialComment {
+  id         String     @id @default(cuid())
+  externalId String // the platform's own comment id
+  postId     String
+  post       SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorName      String
+  authorAvatarUrl String?
+  message         String
+  isHidden        Boolean @default(false)
+  // True for a reply we posted through this tool (vs. an end-user's comment) -
+  // lets the inbox visually distinguish "us" from "them" in a thread.
+  isOwnReply      Boolean @default(false)
+
+  parentCommentId String?
+  parent          SocialComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         SocialComment[] @relation("CommentReplies")
+
+  postedAt  DateTime // the platform's own comment timestamp
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([postId, externalId])
+  @@index([postId])
 }
 
 // ---------------------------------------------------------------------------

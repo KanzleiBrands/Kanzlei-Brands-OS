@@ -95,6 +95,13 @@ export default async function ClientDetailPage({
           orderBy: { createdAt: "desc" },
         })
       : [];
+  const socialComments =
+    tab === "content"
+      ? await prisma.socialComment.findMany({
+          where: { post: { organizationId: orgId } },
+          orderBy: { postedAt: "asc" },
+        })
+      : [];
   const inviteReadiness = tab === "settings" ? await getClientReadiness(organization.id) : { ready: true, missing: [] };
   const auditEntries =
     tab === "log"
@@ -301,8 +308,20 @@ export default async function ClientDetailPage({
             responsibleName: post.responsible?.name ?? null,
             scheduledAt: post.scheduledAt?.toISOString() ?? null,
             publishedAt: post.publishedAt?.toISOString() ?? null,
+            publishedUrl: post.publishedUrl,
             clientFeedback: post.clientFeedback,
             publishError: post.publishError,
+          }))}
+          comments={socialComments.map((comment) => ({
+            id: comment.id,
+            postId: comment.postId,
+            authorName: comment.authorName,
+            authorAvatarUrl: comment.authorAvatarUrl,
+            message: comment.message,
+            isHidden: comment.isHidden,
+            isOwnReply: comment.isOwnReply,
+            parentCommentId: comment.parentCommentId,
+            postedAt: comment.postedAt.toISOString(),
           }))}
         />
       )}

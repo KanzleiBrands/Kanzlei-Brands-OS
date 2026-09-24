@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { encryptToken } from "@/lib/auth-encryption";
 import { readSocialPendingConnection, clearSocialPendingConnection } from "@/lib/meta/social-pending-connection";
-import { getMetaPage, getInstagramBusinessAccount, type MetaPage } from "@/lib/meta/graph";
+import { getMetaPage, getInstagramBusinessAccount, subscribePageToFeedWebhook, type MetaPage } from "@/lib/meta/graph";
 
 function requireAgencyAdmin(role: string) {
   if (role !== "AGENCY_ADMIN") throw new Error("Keine Berechtigung.");
@@ -61,6 +61,7 @@ export async function finalizeMetaSocialConnection(
       },
       update: { displayName: page.name, accessTokenEnc, active: true, lastError: null },
     });
+    await subscribePageToFeedWebhook(page.id, page.access_token);
   }
 
   if (options.connectInstagram) {
