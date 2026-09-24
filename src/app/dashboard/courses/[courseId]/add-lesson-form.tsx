@@ -15,11 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { LessonVideoUpload } from "./lesson-video-upload";
+import { ThumbnailGenerator } from "../thumbnail-generator";
 
 export function AddLessonForm({ moduleId }: { moduleId: string }) {
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [titleValue, setTitleValue] = useState("");
+  const [generatedPreview, setGeneratedPreview] = useState<string | null>(null);
   const wasPending = useRef(false);
   const [error, formAction, isPending] = useActionState(createLesson, undefined);
   useSaveToast(error, isPending, "Lektion hinzugefügt.");
@@ -28,6 +32,8 @@ export function AddLessonForm({ moduleId }: { moduleId: string }) {
     if (wasPending.current && !isPending && !error) {
       formRef.current?.reset();
       setFormKey((k) => k + 1);
+      setTitleValue("");
+      setGeneratedPreview(null);
       setOpen(false);
     }
     wasPending.current = isPending;
@@ -46,11 +52,28 @@ export function AddLessonForm({ moduleId }: { moduleId: string }) {
 
         <form key={formKey} ref={formRef} action={formAction} className="flex flex-col gap-3" encType="multipart/form-data">
           <input type="hidden" name="moduleId" value={moduleId} />
-          <Input name="title" placeholder="Lektionstitel" required />
+          <Input
+            name="title"
+            placeholder="Lektionstitel"
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            required
+          />
           <Textarea name="description" placeholder="Videobeschreibung (optional)" rows={3} />
-          <div>
-            <label className="mb-1 block text-sm text-muted-foreground">Vorschaubild (optional)</label>
-            <Input name="thumbnail" type="file" accept="image/*" />
+          <div className="flex flex-col gap-2">
+            <label className="block text-sm text-muted-foreground">Vorschaubild (optional)</label>
+            {generatedPreview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={generatedPreview} alt="Generiertes Vorschaubild" className="h-16 w-28 rounded-md object-cover" />
+            )}
+            <Input
+              ref={thumbnailInputRef}
+              name="thumbnail"
+              type="file"
+              accept="image/*"
+              onChange={() => setGeneratedPreview(null)}
+            />
+            <ThumbnailGenerator seedTitle={titleValue} fileInputRef={thumbnailInputRef} onGenerate={setGeneratedPreview} />
           </div>
           <div>
             <label className="mb-1 block text-sm text-muted-foreground">Video (optional)</label>

@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { ThumbnailGenerator } from "./thumbnail-generator";
 
 const LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
 
@@ -22,11 +23,16 @@ export function NewCourseForm() {
   const [error, formAction, isPending] = useActionState(createCourse, undefined);
   useSaveToast(error, isPending, "Kurs angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [titleValue, setTitleValue] = useState("");
+  const [generatedPreview, setGeneratedPreview] = useState<string | null>(null);
   const wasPending = useRef(false);
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {
       formRef.current?.reset();
+      setTitleValue("");
+      setGeneratedPreview(null);
       setOpen(false);
     }
     wasPending.current = isPending;
@@ -44,11 +50,28 @@ export function NewCourseForm() {
         </DialogHeader>
 
         <form ref={formRef} action={formAction} className="flex flex-col gap-3" encType="multipart/form-data">
-          <Input name="title" placeholder="Kurstitel" required />
+          <Input
+            name="title"
+            placeholder="Kurstitel"
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            required
+          />
           <Input name="description" placeholder="Beschreibung (optional)" />
-          <div>
-            <label className="mb-1 block text-sm text-muted-foreground">Vorschaubild (optional)</label>
-            <Input name="thumbnail" type="file" accept="image/*" />
+          <div className="flex flex-col gap-2">
+            <label className="block text-sm text-muted-foreground">Vorschaubild (optional)</label>
+            {generatedPreview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={generatedPreview} alt="Generiertes Vorschaubild" className="h-20 w-36 rounded-md object-cover" />
+            )}
+            <Input
+              ref={thumbnailInputRef}
+              name="thumbnail"
+              type="file"
+              accept="image/*"
+              onChange={() => setGeneratedPreview(null)}
+            />
+            <ThumbnailGenerator seedTitle={titleValue} fileInputRef={thumbnailInputRef} onGenerate={setGeneratedPreview} />
           </div>
           <Select name="category" defaultValue="TRAINING">
             <SelectTrigger>

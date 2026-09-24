@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { LessonVideoUpload } from "./lesson-video-upload";
+import { ThumbnailGenerator } from "../thumbnail-generator";
 
 export function EditLessonDialog({
   lessonId,
@@ -31,14 +32,22 @@ export function EditLessonDialog({
   const [error, formAction, isPending] = useActionState(updateLesson, undefined);
   useSaveToast(error, isPending, "Lektion gespeichert.");
   const wasPending = useRef(false);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [titleValue, setTitleValue] = useState(title);
+  const [generatedPreview, setGeneratedPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) setOpen(false);
     wasPending.current = isPending;
   }, [isPending, error]);
 
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) setTitleValue(title);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
           <button
@@ -57,22 +66,39 @@ export function EditLessonDialog({
 
         <form action={formAction} className="flex flex-col gap-3" encType="multipart/form-data">
           <input type="hidden" name="lessonId" value={lessonId} />
-          <Input name="title" placeholder="Lektionstitel" defaultValue={title} required />
+          <Input
+            name="title"
+            placeholder="Lektionstitel"
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            required
+          />
           <Textarea
             name="description"
             placeholder="Videobeschreibung (optional)"
             rows={3}
             defaultValue={description ?? ""}
           />
-          <div>
-            <label className="mb-1 block text-sm text-muted-foreground">
+          <div className="flex flex-col gap-2">
+            <label className="block text-sm text-muted-foreground">
               Vorschaubild {thumbnailUrl ? "(ersetzen)" : "(optional)"}
             </label>
-            {thumbnailUrl && (
+            {(generatedPreview || thumbnailUrl) && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumbnailUrl} alt={title} className="mb-2 h-16 w-28 rounded-md object-cover" />
+              <img
+                src={generatedPreview ?? thumbnailUrl ?? ""}
+                alt={title}
+                className="h-16 w-28 rounded-md object-cover"
+              />
             )}
-            <Input name="thumbnail" type="file" accept="image/*" />
+            <Input
+              ref={thumbnailInputRef}
+              name="thumbnail"
+              type="file"
+              accept="image/*"
+              onChange={() => setGeneratedPreview(null)}
+            />
+            <ThumbnailGenerator seedTitle={titleValue} fileInputRef={thumbnailInputRef} onGenerate={setGeneratedPreview} />
           </div>
           <div>
             <label className="mb-1 block text-sm text-muted-foreground">

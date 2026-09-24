@@ -1,7 +1,7 @@
 const SIZE_CONFIG = {
-  sm: { box: 40, stroke: 4, text: "text-[10px]" },
-  md: { box: 56, stroke: 5, text: "text-xs" },
-  lg: { box: 80, stroke: 6, text: "text-base" },
+  sm: { box: 56, stroke: 5, text: "text-sm" },
+  md: { box: 68, stroke: 5, text: "text-base" },
+  lg: { box: 96, stroke: 7, text: "text-xl" },
 } as const;
 
 /** A small SVG ring showing a 0-100 percentage, used for course/module progress. */
@@ -37,7 +37,7 @@ export function CircularProgress({
           className="text-emerald-500 transition-[stroke-dashoffset] duration-300"
         />
       </svg>
-      <span className={`absolute font-semibold ${text}`}>{Math.round(clamped)}%</span>
+      <span className={`absolute font-bold text-foreground tabular-nums ${text}`}>{Math.round(clamped)}%</span>
     </div>
   );
 }
