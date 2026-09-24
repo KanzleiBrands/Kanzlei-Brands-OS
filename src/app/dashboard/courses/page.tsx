@@ -40,20 +40,24 @@ export default async function CoursesPage() {
                   </Link>
                 </div>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{course.title}</CardTitle>
-                    <Badge variant="secondary">{CATEGORY_LABELS[course.category]}</Badge>
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <CardTitle className="min-w-0 flex-1 truncate" title={course.title}>
+                      {course.title}
+                    </CardTitle>
+                    <Badge variant="secondary" className="shrink-0">
+                      {CATEGORY_LABELS[course.category]}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">
                     {course._count.modules} Module · {lessonCount} Lektionen · {course._count.assignments} Kunden zugewiesen
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col items-start gap-2">
                     <Link href={`/dashboard/courses/${course.id}`} className="text-sm underline">
                       Kurs verwalten
                     </Link>
-                    <PublishToggle courseId={course.id} published={course.published} />
+                    <PublishToggle courseId={course.id} published={course.published} className="w-full" />
                   </div>
                 </CardContent>
               </Card>

@@ -16,12 +16,29 @@ const ACCENT_COLORS = [
   { name: "Himmelblau", value: "#0284c7" },
 ];
 
+const FONT_OPTIONS = [
+  { key: "brand", label: "Marke (Switzer)", css: "" },
+  { key: "serif", label: "Serif (Georgia)", css: "Georgia, 'Times New Roman', serif" },
+  { key: "rounded", label: "Rund (Verdana)", css: "Verdana, Tahoma, sans-serif" },
+  { key: "mono", label: "Mono (Courier)", css: "'Courier New', monospace" },
+] as const;
+
+const MIN_FONT_SIZE = 40;
+const MAX_FONT_SIZE = 110;
+
 const CANVAS_W = 1600;
 const CANVAS_H = 900;
+
+function resolveFontFamily(fontKey: string): string {
+  const option = FONT_OPTIONS.find((f) => f.key === fontKey);
+  if (option && option.css) return option.css;
+  return getComputedStyle(document.documentElement).getPropertyValue("--font-switzer").trim() || "sans-serif";
+}
 
 type StockPhoto = {
   id: number;
   previewURL: string;
+  webformatURL: string;
   largeImageURL: string;
   tags: string;
 };
@@ -63,6 +80,9 @@ export function ThumbnailGenerator({
   const [accent, setAccent] = useState(ACCENT_COLORS[0].value);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [highlighted, setHighlighted] = useState<Record<string, boolean>>({});
+  const [fontKey, setFontKey] = useState<string>(FONT_OPTIONS[0].key);
+  const [fontSize, setFontSize] = useState(72);
+  const [logoText, setLogoText] = useState("KB");
   const [stockOpen, setStockOpen] = useState(false);
   const [stockQuery, setStockQuery] = useState("");
   const [stockResults, setStockResults] = useState<StockPhoto[]>([]);
@@ -109,19 +129,19 @@ export function ThumbnailGenerator({
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     }
 
-    const fontFamily =
-      getComputedStyle(document.documentElement).getPropertyValue("--font-switzer").trim() || "sans-serif";
+    const fontFamily = resolveFontFamily(fontKey);
 
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `700 52px ${fontFamily}`;
-    ctx.fillText("KB", 56, 100);
-    const monoWidth = ctx.measureText("KB").width;
-    ctx.fillStyle = accent;
-    ctx.fillRect(56 + monoWidth + 10, 68, 34, 8);
+    if (logoText.trim()) {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `700 52px ${fontFamily}`;
+      ctx.fillText(logoText, 56, 100);
+      const monoWidth = ctx.measureText(logoText).width;
+      ctx.fillStyle = accent;
+      ctx.fillRect(56 + monoWidth + 10, 68, 34, 8);
+    }
 
     const maxWidth = CANVAS_W - 112;
-    const fontSize = 72;
     ctx.font = `800 ${fontSize}px ${fontFamily}`;
     const manualLines = title.length > 0 ? title.split("\n").filter((l) => l.trim().length > 0) : [];
     const renderLines: string[][] = [];
@@ -153,7 +173,7 @@ export function ThumbnailGenerator({
     if (!open) return;
     document.fonts.ready.then(draw);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, title, accent, bgImage, highlighted]);
+  }, [open, title, accent, bgImage, highlighted, fontKey, fontSize, logoText]);
 
   function loadImageFile(file: File) {
     setBgLoading(true);
@@ -264,6 +284,48 @@ export function ThumbnailGenerator({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase">Schriftart</label>
+                <select
+                  value={fontKey}
+                  onChange={(e) => setFontKey(e.target.value)}
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                >
+                  {FONT_OPTIONS.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase">
+                  Schriftgröße - {fontSize}px
+                </label>
+                <input
+                  type="range"
+                  min={MIN_FONT_SIZE}
+                  max={MAX_FONT_SIZE}
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="h-8 w-full accent-primary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase">
+                Logo-Kürzel (oben links, leer lassen zum Ausblenden)
+              </label>
+              <Input
+                value={logoText}
+                onChange={(e) => setLogoText(e.target.value.slice(0, 4))}
+                placeholder="KB"
+                className="max-w-32"
+              />
+            </div>
+
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase">Hintergrundbild</label>
               <div className="flex flex-wrap items-center gap-2">
@@ -369,7 +431,7 @@ export function ThumbnailGenerator({
               <Input
                 value={stockQuery}
                 onChange={(e) => setStockQuery(e.target.value)}
-                placeholder='Suchbegriff, z.B. "Fitness"'
+                placeholder='Suchbegriff, z.B. "Büro"'
               />
               <Button type="submit" size="sm" disabled={stockLoading}>
                 <SearchIcon className="size-4" />
@@ -392,10 +454,10 @@ export function ThumbnailGenerator({
                     key={photo.id}
                     type="button"
                     onClick={() => selectStockPhoto(photo)}
-                    className="aspect-video overflow-hidden rounded-md border hover:border-primary"
+                    className="flex aspect-square items-center justify-center overflow-hidden rounded-md border bg-muted hover:border-primary"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.previewURL} alt={photo.tags} className="h-full w-full object-cover" />
+                    <img src={photo.webformatURL} alt={photo.tags} className="max-h-full max-w-full object-contain" />
                   </button>
                 ))
               )}
