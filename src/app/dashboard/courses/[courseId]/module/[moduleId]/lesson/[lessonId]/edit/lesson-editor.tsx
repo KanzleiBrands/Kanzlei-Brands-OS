@@ -373,12 +373,6 @@ export function LessonEditor({
           <ThumbnailGenerator seedTitle={titleValue} fileInputRef={thumbnailInputRef} onGenerate={setGeneratedPreview} />
         </section>
 
-        <section className="flex flex-col gap-2 rounded-xl border bg-card p-4">
-          <label className="text-sm font-medium">Materialien</label>
-          <Input name="pdfUrl" placeholder="PDF-Link (optional)" type="url" defaultValue={pdfUrl ?? ""} />
-          <Input name="notionUrl" placeholder="Notion-Doc-Link (optional)" type="url" defaultValue={notionUrl ?? ""} />
-        </section>
-
         <section className="flex flex-col gap-3 rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Inhalt</label>
@@ -422,6 +416,12 @@ export function LessonEditor({
               </SortableContext>
             </DndContext>
           )}
+        </section>
+
+        <section className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <label className="text-sm font-medium">Materialien</label>
+          <Input name="pdfUrl" placeholder="PDF-Link (optional)" type="url" defaultValue={pdfUrl ?? ""} />
+          <Input name="notionUrl" placeholder="Notion-Doc-Link (optional)" type="url" defaultValue={notionUrl ?? ""} />
         </section>
 
         {error && <p className="text-sm text-destructive">{error}</p>}

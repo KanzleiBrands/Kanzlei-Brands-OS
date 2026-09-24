@@ -377,7 +377,7 @@ model Contact {
 // like (e.g. by role, by seniority). Org-scoped, not campaign-scoped, since
 // a good candidate found via one campaign may fit a future one.
 model TalentPool {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name           String
@@ -870,6 +870,15 @@ model Offer {
   ctaLabel    String  @default("Interesse")
   active      Boolean @default(true)
 
+  // Kleines Schlagwort über dem Titel, z.B. "Neu" oder "Beliebt".
+  badge String?
+
+  // Stichpunktartige Vorteile, in der angegebenen Reihenfolge angezeigt.
+  highlights String[] @default([])
+
+  // Weitere Bilder/Mockups zusätzlich zum imageUrl-Titelbild.
+  galleryUrls String[] @default([])
+
   // Freier Tag (z.B. "webseite", "social_media") - matched gegen
   // Organization.bookedProductTags, um das Angebot für Kunden auszublenden,
   // die es bereits gebucht haben. Leer = wird allen Kunden gezeigt.
@@ -878,6 +887,16 @@ model Offer {
   interests OfferInterest[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Singleton row (id = "default") for platform-wide toggles the agency admin
+// controls themselves, independent of deploys - e.g. whether the Angebote
+// section is already live for clients.
+model PlatformSettings {
+  id                   String  @id @default("default")
+  offersSectionEnabled Boolean @default(false)
+
   updatedAt DateTime @updatedAt
 }
 
