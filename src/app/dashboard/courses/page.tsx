@@ -33,11 +33,13 @@ export default async function CoursesPage() {
           {courses.map((course) => {
             const lessonCount = course.modules.reduce((sum, m) => sum + m._count.lessons, 0);
             return (
-              <Card key={course.id} className="overflow-hidden py-0">
-                <Link href={`/dashboard/courses/${course.id}`} className="block">
-                  <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-32 w-full" />
-                </Link>
-                <CardHeader className="pt-4">
+              <Card key={course.id} className="overflow-hidden">
+                <div className="px-(--card-spacing)">
+                  <Link href={`/dashboard/courses/${course.id}`} className="block">
+                    <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-32 w-full rounded-lg" />
+                  </Link>
+                </div>
+                <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>{course.title}</CardTitle>
                     <Badge variant="secondary">{CATEGORY_LABELS[course.category]}</Badge>
@@ -88,9 +90,11 @@ export default async function CoursesPage() {
           const percent = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
           return (
             <Link key={course.id} href={`/dashboard/courses/${course.id}`} className="block">
-              <Card className="overflow-hidden py-0 transition-colors hover:border-primary">
-                <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-36 w-full" />
-                <CardContent className="flex flex-col gap-1 py-4">
+              <Card className="overflow-hidden transition-colors hover:border-primary">
+                <div className="px-(--card-spacing)">
+                  <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-36 w-full rounded-lg" />
+                </div>
+                <CardContent className="flex flex-col gap-1">
                   <p className="font-medium">{course.title}</p>
                   <p className="text-sm font-medium text-emerald-600">{percent}% FORTSCHRITT</p>
                 </CardContent>
