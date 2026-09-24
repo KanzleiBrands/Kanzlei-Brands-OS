@@ -2,6 +2,7 @@ import type { PipelineKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { renderBrandedEmail } from "@/lib/email/template";
+import { getSystemEmailContent, logSystemEmailSent, substitutePlaceholders } from "@/lib/email/system-email";
 import { getBaseUrl } from "@/lib/base-url";
 
 type NewContactPipeline = {
@@ -40,31 +41,38 @@ export async function handleNewContactCreated(pipeline: NewContactPipeline, cont
         notifyOnNewContact: true,
         OR: [{ role: "CLIENT_ADMIN" }, { role: "CLIENT_STAFF", pipelineAccess: { some: { pipelineId: pipeline.id } } }],
       },
-      select: { email: true, name: true },
+      select: { id: true, email: true, name: true },
     });
 
     if (recipients.length > 0) {
       const baseUrl = await getBaseUrl();
       const isApplicant = pipeline.kind === "APPLICANTS";
-      const subject = `${isApplicant ? "Neue Bewerbung" : "Neuer Lead"} für ${pipeline.name}`;
-      const contactLine = contact.firstName
-        ? `von ${contact.firstName}${isApplicant ? " (Bewerbung)" : " (Lead)"}`
-        : "";
+      const type = isApplicant ? "NEW_APPLICANT_NOTIFICATION" : "NEW_LEAD_NOTIFICATION";
+      const content = await getSystemEmailContent(type);
       const pipelineUrl = `${baseUrl}/dashboard/pipelines/${pipeline.id}`;
 
       for (const recipient of recipients) {
+        const vars = { name: recipient.name, kampagne: pipeline.name };
+        const subject = substitutePlaceholders(content.subject, vars);
         const { html, text } = renderBrandedEmail({
           baseUrl,
           preheader: subject,
-          heading: subject,
-          greetingName: recipient.name,
-          paragraphs: [
-            `du hast ${isApplicant ? "eine neue Bewerbung" : "einen neuen Lead"} für die Kampagne "${pipeline.name}" erhalten${contactLine ? " " + contactLine : ""}.`,
-          ],
-          ctaLabel: isApplicant ? "Bewerbung öffnen" : "Lead öffnen",
+          heading: substitutePlaceholders(content.heading, vars),
+          paragraphs: [substitutePlaceholders(content.body, vars)],
+          ctaLabel: content.ctaLabel,
           ctaUrl: pipelineUrl,
+          footerNote: content.footerNote ? substitutePlaceholders(content.footerNote, vars) : undefined,
         });
-        await sendSystemEmail({ to: recipient.email, subject, text, html });
+        const result = await sendSystemEmail({ to: recipient.email, subject, text, html });
+        if (result.ok) {
+          await logSystemEmailSent({
+            type,
+            to: recipient.email,
+            subject,
+            organizationId: pipeline.organizationId,
+            userId: recipient.id,
+          });
+        }
       }
     }
   }

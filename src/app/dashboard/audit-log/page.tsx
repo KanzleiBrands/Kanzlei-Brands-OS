@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { BackLink } from "@/components/back-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ACTION_LABELS } from "@/lib/audit-log-labels";
+import { ACTION_LABELS, emailLogSubtitle } from "@/lib/audit-log-labels";
 
 export default async function AuditLogPage({
   searchParams,
@@ -58,7 +58,12 @@ export default async function AuditLogPage({
                   <TableCell className="whitespace-nowrap text-sm">
                     {entry.createdAt.toLocaleString("de-DE")}
                   </TableCell>
-                  <TableCell>{ACTION_LABELS[entry.action] ?? entry.action}</TableCell>
+                  <TableCell>
+                    {ACTION_LABELS[entry.action] ?? entry.action}
+                    {emailLogSubtitle(entry) && (
+                      <p className="text-xs text-muted-foreground">{emailLogSubtitle(entry)}</p>
+                    )}
+                  </TableCell>
                   <TableCell>{entry.user?.name ?? "System"}</TableCell>
                   {!scopedOrg && <TableCell>{entry.organization.name}</TableCell>}
                 </TableRow>

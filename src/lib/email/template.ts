@@ -23,7 +23,6 @@ export function renderBrandedEmail({
   baseUrl,
   preheader,
   heading,
-  greetingName,
   paragraphs,
   ctaLabel,
   ctaUrl,
@@ -32,8 +31,8 @@ export function renderBrandedEmail({
   baseUrl: string;
   /** Short hidden preview text shown next to the subject in inbox lists. */
   preheader: string;
+  /** The email's headline, e.g. "Moin Lukas," - already placeholder-substituted by the caller. */
   heading: string;
-  greetingName?: string;
   paragraphs: string[];
   ctaLabel?: string;
   ctaUrl?: string;
@@ -82,7 +81,7 @@ export function renderBrandedEmail({
             <tr>
               <td style="padding:36px 32px 32px;">
                 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${NAVY};">
-                  ${greetingName ? `Moin ${escapeHtml(greetingName)},` : escapeHtml(heading)}
+                  ${escapeHtml(heading)}
                 </h1>
                 ${paragraphsHtml}
                 ${ctaHtml}
@@ -104,7 +103,7 @@ export function renderBrandedEmail({
 </html>`;
 
   const text = [
-    greetingName ? `Moin ${greetingName},` : heading,
+    heading,
     "",
     ...paragraphs,
     ...(ctaLabel && ctaUrl ? ["", `${ctaLabel}: ${ctaUrl}`] : []),

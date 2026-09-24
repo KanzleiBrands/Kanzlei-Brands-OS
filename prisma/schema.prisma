@@ -900,6 +900,33 @@ model PlatformSettings {
   updatedAt DateTime @updatedAt
 }
 
+// ---------------------------------------------------------------------------
+// E-Mail-Center: agency-editable content for automated system emails
+// ---------------------------------------------------------------------------
+
+enum SystemEmailType {
+  PASSWORD_RESET
+  PORTAL_INVITE
+  NEW_LEAD_NOTIFICATION
+  NEW_APPLICANT_NOTIFICATION
+}
+
+// Editable subject/heading/body/button text for an automated email (see
+// src/lib/email/system-email-defaults.ts for the shipped defaults, used
+// whenever no row exists yet for a type). The visual design (logo, colors,
+// button) itself stays fixed in src/lib/email/template.ts.
+model SystemEmailTemplate {
+  id         String          @id @default(cuid())
+  type       SystemEmailType @unique
+  subject    String
+  heading    String
+  body       String
+  ctaLabel   String
+  footerNote String?
+
+  updatedAt DateTime @updatedAt
+}
+
 // Recorded whenever a client user clicks the CTA on an offer, so the agency
 // gets notified instead of a payment flow running automatically.
 model OfferInterest {

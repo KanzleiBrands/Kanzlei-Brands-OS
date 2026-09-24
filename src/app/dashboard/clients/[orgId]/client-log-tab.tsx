@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ACTION_LABELS } from "@/lib/audit-log-labels";
+import { ACTION_LABELS, emailLogSubtitle } from "@/lib/audit-log-labels";
 
 type OrgUser = { id: string; name: string; email: string; role: string; lastLoginAt: Date | null };
 type LogEntry = {
@@ -8,6 +8,7 @@ type LogEntry = {
   createdAt: Date;
   action: string;
   user: { name: string } | null;
+  metadata: unknown;
 };
 
 export function ClientLogTab({ users, entries }: { users: OrgUser[]; entries: LogEntry[] }) {
@@ -67,7 +68,12 @@ export function ClientLogTab({ users, entries }: { users: OrgUser[]; entries: Lo
                   <TableCell className="whitespace-nowrap text-sm">
                     {entry.createdAt.toLocaleString("de-DE")}
                   </TableCell>
-                  <TableCell>{ACTION_LABELS[entry.action] ?? entry.action}</TableCell>
+                  <TableCell>
+                    {ACTION_LABELS[entry.action] ?? entry.action}
+                    {emailLogSubtitle(entry) && (
+                      <p className="text-xs text-muted-foreground">{emailLogSubtitle(entry)}</p>
+                    )}
+                  </TableCell>
                   <TableCell>{entry.user?.name ?? "System"}</TableCell>
                 </TableRow>
               ))}

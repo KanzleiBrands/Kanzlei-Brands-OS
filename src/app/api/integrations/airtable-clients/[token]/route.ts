@@ -5,6 +5,7 @@ import { generateActivationToken } from "@/lib/invite";
 import { logAudit } from "@/lib/audit";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { renderBrandedEmail } from "@/lib/email/template";
+import { getSystemEmailContent, logSystemEmailSent, substitutePlaceholders } from "@/lib/email/system-email";
 import { getBaseUrl } from "@/lib/base-url";
 
 /** Empty/whitespace-only strings from Airtable formula fields become null instead of "". */
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const existingUser = await prisma.user.findUnique({ where: { email: contactEmail } });
     if (!existingUser) {
       const { token: activationToken, expiresAt } = generateActivationToken();
-      await prisma.user.create({
+      const createdUser = await prisma.user.create({
         data: {
           name: [contactFirstName, contactLastName].filter(Boolean).join(" "),
           email: contactEmail,
@@ -114,21 +115,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (!skipEmail) {
         const baseUrl = await getBaseUrl();
+        const content = await getSystemEmailContent("PORTAL_INVITE");
+        const vars = { name: contactFirstName };
+        const subject = substitutePlaceholders(content.subject, vars);
         const { html, text } = renderBrandedEmail({
           baseUrl,
-          preheader: "Dein Zugang zum Kanzlei Brands Kundenportal ist bereit.",
-          heading: "Willkommen bei Kanzlei Brands",
-          greetingName: contactFirstName,
-          paragraphs: ["dein Zugang zum Kanzlei Brands Kundenportal ist bereit. Lege dort dein Passwort fest und leg direkt los."],
-          ctaLabel: "Zugang aktivieren",
+          preheader: subject,
+          heading: substitutePlaceholders(content.heading, vars),
+          paragraphs: [substitutePlaceholders(content.body, vars)],
+          ctaLabel: content.ctaLabel,
           ctaUrl: `${baseUrl}/activate/${activationToken}`,
+          footerNote: content.footerNote ? substitutePlaceholders(content.footerNote, vars) : undefined,
         });
-        await sendSystemEmail({
-          to: contactEmail,
-          subject: "Zugang zu deinem Kanzlei Brands Kundenportal",
-          text,
-          html,
-        });
+        const result = await sendSystemEmail({ to: contactEmail, subject, text, html });
+        if (result.ok) {
+          await logSystemEmailSent({
+            type: "PORTAL_INVITE",
+            to: contactEmail,
+            subject,
+            organizationId: organization.id,
+            userId: createdUser.id,
+          });
+        }
       }
     }
   }

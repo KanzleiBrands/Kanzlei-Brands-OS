@@ -13,9 +13,20 @@ import { StageTemplatesSection } from "./stage-templates-section";
 import { MessageTemplatesSection } from "./message-templates-section";
 import { PrivacySection } from "./privacy-section";
 import { NotificationsSection } from "./notifications-section";
+import { EmailCenterSection, type SystemEmailTemplateData } from "./email-center-section";
+import { SYSTEM_EMAIL_DEFAULTS, SYSTEM_EMAIL_TYPES } from "@/lib/email/system-email-defaults";
 import type { EditableStage } from "./stage-list-editor";
 
-type Tab = "account" | "notifications" | "team" | "mailbox" | "snippets" | "templates" | "hubsettings" | "privacy";
+type Tab =
+  | "account"
+  | "notifications"
+  | "team"
+  | "mailbox"
+  | "snippets"
+  | "templates"
+  | "hubsettings"
+  | "emailcenter"
+  | "privacy";
 
 export default async function SettingsPage({
   searchParams,
@@ -38,7 +49,7 @@ export default async function SettingsPage({
     ...(canManageTeam ? (["team"] as const) : []),
     ...(canUseMailbox ? (["mailbox"] as const) : []),
     "snippets",
-    ...(isAgency ? (["templates", "hubsettings"] as const) : []),
+    ...(isAgency ? (["templates", "hubsettings", "emailcenter"] as const) : []),
     ...(!isAgency ? (["privacy"] as const) : []),
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
@@ -112,6 +123,14 @@ export default async function SettingsPage({
             Einstellung Kundenhub
           </Link>
         )}
+        {isAgency && (
+          <Link
+            href="/dashboard/settings?tab=emailcenter"
+            className={`border-b-2 px-3 py-2 text-sm ${tab === "emailcenter" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            E-Mail-Center
+          </Link>
+        )}
         {!isAgency && (
           <Link
             href="/dashboard/settings?tab=privacy"
@@ -160,6 +179,8 @@ export default async function SettingsPage({
           agencyUsers={agencyUsers}
         />
       )}
+
+      {tab === "emailcenter" && isAgency && <EmailCenterSectionData baseUrl={await getBaseUrl()} />}
 
       {tab === "privacy" && !isAgency && (
         <PrivacySection
@@ -232,6 +253,29 @@ async function TeamSectionData({
       inviteReadiness={inviteReadiness}
     />
   );
+}
+
+async function EmailCenterSectionData({ baseUrl }: { baseUrl: string }) {
+  const rows = await prisma.systemEmailTemplate.findMany();
+  const rowByType = new Map(rows.map((r) => [r.type, r]));
+
+  const templates: SystemEmailTemplateData[] = SYSTEM_EMAIL_TYPES.map((type) => {
+    const fallback = SYSTEM_EMAIL_DEFAULTS[type];
+    const row = rowByType.get(type);
+    return {
+      type,
+      label: fallback.label,
+      description: fallback.description,
+      placeholders: fallback.placeholders,
+      subject: row?.subject ?? fallback.subject,
+      heading: row?.heading ?? fallback.heading,
+      body: row?.body ?? fallback.body,
+      ctaLabel: row?.ctaLabel ?? fallback.ctaLabel,
+      footerNote: row?.footerNote ?? fallback.footerNote,
+    };
+  });
+
+  return <EmailCenterSection templates={templates} baseUrl={baseUrl} />;
 }
 
 async function MailboxSectionData({

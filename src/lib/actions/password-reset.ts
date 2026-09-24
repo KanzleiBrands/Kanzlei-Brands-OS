@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
 import { renderBrandedEmail } from "@/lib/email/template";
+import { getSystemEmailContent, logSystemEmailSent, substitutePlaceholders } from "@/lib/email/system-email";
 import { getBaseUrl } from "@/lib/base-url";
 import { generateActivationToken } from "@/lib/invite";
 import { logAudit } from "@/lib/audit";
@@ -48,26 +49,31 @@ export async function requestPasswordReset(
 
   const baseUrl = await getBaseUrl();
   const link = `${baseUrl}/activate/${token}`;
+  const content = await getSystemEmailContent("PASSWORD_RESET");
+  const vars = { name: user.name };
+  const subject = substitutePlaceholders(content.subject, vars);
   const { html, text } = renderBrandedEmail({
     baseUrl,
-    preheader: "Setze dein Passwort für die Kanzlei Brands Plattform zurück.",
-    heading: "Passwort zurücksetzen",
-    greetingName: user.name,
-    paragraphs: ["du hast eine Passwort-Zurücksetzung angefordert. Klicke auf den Button, um ein neues Passwort festzulegen."],
-    ctaLabel: "Passwort zurücksetzen",
+    preheader: subject,
+    heading: substitutePlaceholders(content.heading, vars),
+    paragraphs: [substitutePlaceholders(content.body, vars)],
+    ctaLabel: content.ctaLabel,
     ctaUrl: link,
-    footerNote: "Der Link ist 7 Tage gültig. Falls du das nicht warst, kannst du diese E-Mail einfach ignorieren - dein Passwort bleibt dann unverändert.",
+    footerNote: content.footerNote ? substitutePlaceholders(content.footerNote, vars) : undefined,
   });
-  const result = await sendSystemEmail({
-    to: user.email,
-    subject: "Passwort zurücksetzen - Kanzlei Brands",
-    text,
-    html,
-  });
+  const result = await sendSystemEmail({ to: user.email, subject, text, html });
 
   if (!result.ok) {
     return { status: "error", message: `E-Mail konnte nicht gesendet werden: ${result.error}` };
   }
+
+  await logSystemEmailSent({
+    type: "PASSWORD_RESET",
+    to: user.email,
+    subject,
+    organizationId: user.organizationId,
+    userId: user.id,
+  });
 
   return {
     status: "success",
