@@ -9,14 +9,16 @@ import { getClientReadiness } from "@/lib/client-readiness";
 import { CampaignsTab } from "./campaigns-tab";
 import { SettingsTab } from "./settings-tab";
 import { ClientLogTab } from "./client-log-tab";
+import { ContentTab } from "./content-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 
-type Tab = "overview" | "jobs" | "leads" | "settings" | "log";
+type Tab = "overview" | "jobs" | "leads" | "content" | "settings" | "log";
 
 const TAB_ORDER: { value: Tab; label: string }[] = [
   { value: "overview", label: "Übersicht" },
   { value: "jobs", label: "Stellenanzeigen" },
   { value: "leads", label: "Mandatsakquise" },
+  { value: "content", label: "Social Media Content" },
   { value: "settings", label: "Kundeneinstellungen" },
   { value: "log", label: "Kunden-Log" },
 ];
@@ -35,7 +37,7 @@ export default async function ClientDetailPage({
 
   const { tab: tabParam } = await searchParams;
   const tab: Tab =
-    tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" || tabParam === "log"
+    tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" || tabParam === "log" || tabParam === "content"
       ? tabParam
       : "overview";
 
@@ -74,11 +76,23 @@ export default async function ClientDetailPage({
   });
   const assignedCourseIds = new Set(organization.courseAssignments.map((a) => a.courseId));
   const agencyUsers =
-    tab === "settings"
+    tab === "settings" || tab === "content"
       ? await prisma.user.findMany({
           where: { role: "AGENCY_ADMIN", organizationId: session.user.organizationId },
           select: { id: true, name: true },
           orderBy: { name: "asc" },
+        })
+      : [];
+  const socialChannels =
+    tab === "content"
+      ? await prisma.socialChannel.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } })
+      : [];
+  const socialPosts =
+    tab === "content"
+      ? await prisma.socialPost.findMany({
+          where: { organizationId: orgId },
+          include: { responsible: { select: { name: true } } },
+          orderBy: { createdAt: "desc" },
         })
       : [];
   const inviteReadiness = tab === "settings" ? await getClientReadiness(organization.id) : { ready: true, missing: [] };
@@ -265,6 +279,31 @@ export default async function ClientDetailPage({
           jobsBooked={jobsBooked}
           leadsBooked={leadsBooked}
           inviteReadiness={inviteReadiness}
+        />
+      )}
+
+      {tab === "content" && (
+        <ContentTab
+          organizationId={organization.id}
+          channels={socialChannels}
+          pipelines={organization.pipelines.map((p) => ({ id: p.id, name: p.name }))}
+          agencyUsers={agencyUsers}
+          posts={socialPosts.map((post) => ({
+            id: post.id,
+            platform: post.platform,
+            status: post.status,
+            caption: post.caption,
+            mediaUrl: post.mediaUrl,
+            mediaType: post.mediaType,
+            channelId: post.channelId,
+            pipelineId: post.pipelineId,
+            responsibleUserId: post.responsibleUserId,
+            responsibleName: post.responsible?.name ?? null,
+            scheduledAt: post.scheduledAt?.toISOString() ?? null,
+            publishedAt: post.publishedAt?.toISOString() ?? null,
+            clientFeedback: post.clientFeedback,
+            publishError: post.publishError,
+          }))}
         />
       )}
 

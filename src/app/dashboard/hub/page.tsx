@@ -9,6 +9,7 @@ import { CampaignRequestCard } from "../pipelines/campaign-request-card";
 import { ContactCard } from "./contact-card";
 import { ResourceLinksCard } from "./resource-links-card";
 import { InterestButton } from "./interest-button";
+import { SocialContentSection, type ClientSocialPost } from "./social-content-section";
 
 const ACCOUNT_MANAGER_EMAIL = "support@kanzlei-brands.de";
 const BACKOFFICE_EMAIL = "buchhaltung@kanzlei-brands.de";
@@ -55,6 +56,33 @@ export default async function KundenHubPage() {
         orderBy: { createdAt: "desc" },
       })
     : [];
+
+  const socialPosts = await prisma.socialPost.findMany({
+    where: { organizationId: session.user.organizationId, status: { in: ["CLIENT_REVIEW", "SCHEDULED", "PUBLISHED"] } },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+  const toClientPost = (post: (typeof socialPosts)[number]): ClientSocialPost => ({
+    id: post.id,
+    platform: post.platform,
+    caption: post.caption,
+    mediaUrl: post.mediaUrl,
+    mediaType: post.mediaType,
+    status: post.status as "CLIENT_REVIEW" | "SCHEDULED" | "PUBLISHED",
+    scheduledAt: post.scheduledAt?.toISOString() ?? null,
+    publishedAt: post.publishedAt?.toISOString() ?? null,
+    publishedUrl: post.publishedUrl,
+  });
+  const pendingApproval = socialPosts.filter((p) => p.status === "CLIENT_REVIEW").map(toClientPost);
+  const socialTimeline = socialPosts
+    .filter((p) => p.status === "SCHEDULED" || p.status === "PUBLISHED")
+    .map(toClientPost)
+    .sort((a, b) => {
+      const aDate = a.publishedAt ?? a.scheduledAt ?? "";
+      const bDate = b.publishedAt ?? b.scheduledAt ?? "";
+      return bDate.localeCompare(aDate);
+    })
+    .slice(0, 8);
 
   return (
     <div className="p-4 sm:p-8">
@@ -108,6 +136,8 @@ export default async function KundenHubPage() {
           canRequest={canRequest}
         />
       </div>
+
+      <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />
 
       {offersSectionEnabled && (
         <>

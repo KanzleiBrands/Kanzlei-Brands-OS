@@ -18,8 +18,26 @@ const META_SCOPES = [
   "business_management",
 ].join(",");
 
+// Additional permissions for Social Media Content's own publisher (Facebook
+// Page posts + Instagram Content Publishing API) - separate from
+// META_SCOPES/buildMetaAuthUrl above so the existing Lead-Ads connect flow
+// keeps requesting only what it has always requested. Requires Meta App
+// Review, same process already used to get META_SCOPES approved.
+const SOCIAL_SCOPES = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "pages_manage_posts",
+  "instagram_basic",
+  "instagram_content_publish",
+  "business_management",
+].join(",");
+
 function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/meta/callback`;
+}
+
+function socialRedirectUri(baseUrl: string) {
+  return `${baseUrl}/api/meta/social/callback`;
 }
 
 export function buildMetaAuthUrl(baseUrl: string, state: string): string {
@@ -28,6 +46,16 @@ export function buildMetaAuthUrl(baseUrl: string, state: string): string {
   url.searchParams.set("redirect_uri", redirectUri(baseUrl));
   url.searchParams.set("state", state);
   url.searchParams.set("scope", META_SCOPES);
+  url.searchParams.set("response_type", "code");
+  return url.toString();
+}
+
+export function buildMetaSocialAuthUrl(baseUrl: string, state: string): string {
+  const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
+  url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
+  url.searchParams.set("redirect_uri", socialRedirectUri(baseUrl));
+  url.searchParams.set("state", state);
+  url.searchParams.set("scope", SOCIAL_SCOPES);
   url.searchParams.set("response_type", "code");
   return url.toString();
 }
@@ -66,6 +94,18 @@ export async function exchangeMetaCode(
   url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
   url.searchParams.set("client_secret", process.env.META_APP_SECRET ?? "");
   url.searchParams.set("redirect_uri", redirectUri(baseUrl));
+  url.searchParams.set("code", code);
+  return graphFetch(url.toString());
+}
+
+export async function exchangeMetaSocialCode(
+  baseUrl: string,
+  code: string,
+): Promise<{ access_token: string; token_type: string; expires_in?: number }> {
+  const url = new URL(`${GRAPH_BASE}/oauth/access_token`);
+  url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
+  url.searchParams.set("client_secret", process.env.META_APP_SECRET ?? "");
+  url.searchParams.set("redirect_uri", socialRedirectUri(baseUrl));
   url.searchParams.set("code", code);
   return graphFetch(url.toString());
 }
@@ -243,4 +283,131 @@ export async function fetchMetaLead(leadgenId: string, pageAccessToken: string):
   url.searchParams.set("access_token", pageAccessToken);
   url.searchParams.set("fields", "id,created_time,field_data,form_id,ad_id");
   return graphFetch(url.toString());
+}
+
+// ---------------------------------------------------------------------------
+// Social Media Content: publishing (Facebook Pages + Instagram)
+// ---------------------------------------------------------------------------
+
+/** The Instagram professional account linked to a Facebook Page, if any - required for Instagram Content Publishing. */
+export async function getInstagramBusinessAccount(
+  pageId: string,
+  pageAccessToken: string,
+): Promise<{ id: string; username?: string } | null> {
+  const url = new URL(`${GRAPH_BASE}/${pageId}`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("fields", "instagram_business_account{id,username}");
+  const data = await graphFetch<{ instagram_business_account?: { id: string; username?: string } }>(url.toString());
+  return data.instagram_business_account ?? null;
+}
+
+export type PublishedPost = { id: string; permalink?: string };
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Polls a video media container until Instagram finishes transcoding it (or times out after ~2 minutes). */
+async function waitForInstagramContainerReady(containerId: string, pageAccessToken: string): Promise<void> {
+  const POLL_INTERVAL_MS = 5000;
+  const MAX_ATTEMPTS = 24;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const url = new URL(`${GRAPH_BASE}/${containerId}`);
+    url.searchParams.set("access_token", pageAccessToken);
+    url.searchParams.set("fields", "status_code");
+    const { status_code } = await graphFetch<{ status_code?: string }>(url.toString());
+    if (status_code === "FINISHED") return;
+    if (status_code === "ERROR") throw new MetaGraphError("Instagram-Video konnte nicht verarbeitet werden.");
+    await sleep(POLL_INTERVAL_MS);
+  }
+  throw new MetaGraphError("Instagram-Video-Verarbeitung hat zu lange gedauert.");
+}
+
+/**
+ * Publishes a post to a Facebook Page - a plain text post via /feed when
+ * there's no media, a photo post via /photos, or a video post via /videos
+ * (Graph fetches the media itself from mediaUrl rather than us uploading
+ * bytes, since our media already lives at a public URL).
+ */
+export async function publishFacebookPost(params: {
+  pageId: string;
+  pageAccessToken: string;
+  message: string;
+  mediaUrl?: string;
+  mediaType?: "IMAGE" | "VIDEO";
+}): Promise<PublishedPost> {
+  const { pageId, pageAccessToken, message, mediaUrl, mediaType } = params;
+
+  if (mediaUrl && mediaType === "IMAGE") {
+    const url = new URL(`${GRAPH_BASE}/${pageId}/photos`);
+    url.searchParams.set("access_token", pageAccessToken);
+    url.searchParams.set("url", mediaUrl);
+    url.searchParams.set("caption", message);
+    const result = await graphFetch<{ id: string; post_id?: string }>(url.toString(), { method: "POST" });
+    const postId = result.post_id ?? result.id;
+    return { id: postId, permalink: `https://www.facebook.com/${postId}` };
+  }
+
+  if (mediaUrl && mediaType === "VIDEO") {
+    const url = new URL(`${GRAPH_BASE}/${pageId}/videos`);
+    url.searchParams.set("access_token", pageAccessToken);
+    url.searchParams.set("file_url", mediaUrl);
+    url.searchParams.set("description", message);
+    const result = await graphFetch<{ id: string }>(url.toString(), { method: "POST" });
+    return { id: result.id, permalink: `https://www.facebook.com/${result.id}` };
+  }
+
+  const url = new URL(`${GRAPH_BASE}/${pageId}/feed`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("message", message);
+  const result = await graphFetch<{ id: string }>(url.toString(), { method: "POST" });
+  return { id: result.id, permalink: `https://www.facebook.com/${result.id}` };
+}
+
+/**
+ * Publishes to an Instagram professional account via the two-step Content
+ * Publishing flow: create a media container, then publish it. Instagram
+ * (unlike Facebook) has no text-only post type - media is required.
+ */
+export async function publishInstagramPost(params: {
+  igUserId: string;
+  pageAccessToken: string;
+  caption: string;
+  mediaUrl: string;
+  mediaType: "IMAGE" | "VIDEO";
+}): Promise<PublishedPost> {
+  const { igUserId, pageAccessToken, caption, mediaUrl, mediaType } = params;
+
+  const createUrl = new URL(`${GRAPH_BASE}/${igUserId}/media`);
+  createUrl.searchParams.set("access_token", pageAccessToken);
+  createUrl.searchParams.set("caption", caption);
+  if (mediaType === "VIDEO") {
+    createUrl.searchParams.set("media_type", "REELS");
+    createUrl.searchParams.set("video_url", mediaUrl);
+  } else {
+    createUrl.searchParams.set("image_url", mediaUrl);
+  }
+  const created = await graphFetch<{ id: string }>(createUrl.toString(), { method: "POST" });
+
+  // Video containers process asynchronously - media_publish fails with "media
+  // not ready" if called before Instagram finishes transcoding, so poll
+  // status_code first (images are ready immediately, no container status).
+  if (mediaType === "VIDEO") {
+    await waitForInstagramContainerReady(created.id, pageAccessToken);
+  }
+
+  const publishUrl = new URL(`${GRAPH_BASE}/${igUserId}/media_publish`);
+  publishUrl.searchParams.set("access_token", pageAccessToken);
+  publishUrl.searchParams.set("creation_id", created.id);
+  const published = await graphFetch<{ id: string }>(publishUrl.toString(), { method: "POST" });
+
+  const permalinkUrl = new URL(`${GRAPH_BASE}/${published.id}`);
+  permalinkUrl.searchParams.set("access_token", pageAccessToken);
+  permalinkUrl.searchParams.set("fields", "permalink");
+  const withPermalink = await graphFetch<{ permalink?: string }>(permalinkUrl.toString()).catch(
+    () => ({ permalink: undefined }) as { permalink?: string },
+  );
+
+  return { id: published.id, permalink: withPermalink.permalink };
 }

@@ -124,6 +124,8 @@ model Organization {
   courseAssignments       CourseAssignment[]
   webhookEndpoints        WebhookEndpoint[]
   metaLeadFormConnections MetaLeadFormConnection[]
+  socialChannels          SocialChannel[]
+  socialPosts             SocialPost[]
   auditLogs               AuditLog[]
   messageTemplates        MessageTemplate[]
   talentPools             TalentPool[]
@@ -192,6 +194,8 @@ model User {
   managedOrganizations     Organization[]           @relation("AccountManagerFor")
   backofficeContactForOrgs Organization[]           @relation("BackofficeContactFor")
   connectedMetaLeadForms   MetaLeadFormConnection[]
+  connectedSocialChannels  SocialChannel[]
+  socialPostsResponsible   SocialPost[]
   tasksCreated             Task[]                   @relation("TaskCreatedBy")
   tasksAssigned            Task[]                   @relation("TaskAssignedTo")
 
@@ -261,6 +265,7 @@ model Pipeline {
   webhookEndpoints        WebhookEndpoint[]
   metaLeadFormConnections MetaLeadFormConnection[]
   automationRules         AutomationRule[]
+  socialPosts             SocialPost[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -573,6 +578,108 @@ model MetaLeadDelivery {
 
   @@unique([connectionId, leadgenId])
   @@index([connectionId])
+}
+
+// ---------------------------------------------------------------------------
+// Social Media Content: agency-run content hub + own publisher
+// ---------------------------------------------------------------------------
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  LINKEDIN
+}
+
+// A connected Page/Business-Account/Organization the agency can publish to on
+// behalf of a client - the "Lead-Quelle" equivalent for outbound content
+// instead of inbound leads. Connected once per client per platform (not per
+// campaign, a Page belongs to the client's brand as a whole), only by agency
+// admins. Shape mirrors MetaLeadFormConnection.
+model SocialChannel {
+  id          String         @id @default(cuid())
+  platform    SocialPlatform
+  externalId  String // Facebook Page id / Instagram Business Account id / LinkedIn Organization URN
+  displayName String
+
+  // Verschlüsselt wie MetaLeadFormConnection.pageAccessTokenEnc.
+  accessTokenEnc String
+  tokenExpiresAt DateTime?
+
+  // Wird auf false gesetzt, sobald die Plattform den Token ablehnt - die
+  // Kanal-Kachel fordert dann zum erneuten Verbinden auf, statt Beiträge
+  // stillschweigend nicht zu veröffentlichen.
+  active    Boolean @default(true)
+  lastError String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  connectedByUserId String?
+  connectedBy       User?   @relation(fields: [connectedByUserId], references: [id], onDelete: SetNull)
+
+  posts SocialPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, platform, externalId])
+  @@index([organizationId])
+}
+
+enum SocialPostStatus {
+  IDEA
+  IN_PRODUCTION
+  CLIENT_REVIEW
+  CHANGES_REQUESTED
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum SocialMediaType {
+  IMAGE
+  VIDEO
+}
+
+// One social media post through its whole lifecycle: idea -> production ->
+// client approval -> scheduled -> actually published by the platform adapter
+// (src/lib/social/publish.ts). Replaces the SocialPilot planning workflow
+// with one system the client also sees into (read-only calendar + approval).
+model SocialPost {
+  id        String           @id @default(cuid())
+  platform  SocialPlatform
+  caption   String
+  mediaUrl  String?
+  mediaType SocialMediaType?
+  status    SocialPostStatus @default(IDEA)
+
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  publishedUrl   String?
+  externalPostId String?
+  publishError   String?
+
+  // Vom Kunden bei "Änderung wünschen" hinterlassener Wunsch - für die
+  // Agentur sichtbar, bis der Beitrag erneut zur Freigabe eingereicht wird.
+  clientFeedback String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  channelId String?
+  channel   SocialChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  pipelineId String?
+  pipeline   Pipeline? @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+
+  responsibleUserId String?
+  responsible       User?   @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status, scheduledAt])
 }
 
 // ---------------------------------------------------------------------------

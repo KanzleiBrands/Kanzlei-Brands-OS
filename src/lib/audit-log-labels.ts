@@ -22,6 +22,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "system_email.portal_invite": "Zugangs-Einladung gesendet",
   "system_email.new_lead_notification": "Lead-Benachrichtigung gesendet",
   "system_email.new_applicant_notification": "Bewerbungs-Benachrichtigung gesendet",
+  "social_post.approved": "Social-Media-Beitrag freigegeben",
+  "social_post.changes_requested": "Änderung an Social-Media-Beitrag gewünscht",
 };
 
 /** For a "system_email.*" audit entry, the "an <to> - <subject>" subtitle shown under its action label. */
