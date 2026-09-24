@@ -29,7 +29,7 @@ export default async function CoursesPage() {
           <NewCourseForm />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
           {courses.map((course) => {
             const lessonCount = course.modules.reduce((sum, m) => sum + m._count.lessons, 0);
             return (
@@ -83,7 +83,7 @@ export default async function CoursesPage() {
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Meine Kurse</h1>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
         {courses.map((course) => {
           const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
           const completed = course.enrollments[0]?.progress.filter((p) => p.completedAt).length ?? 0;
