@@ -18,6 +18,7 @@ import {
   ImageDownIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { VideoTrimmer } from "./video-trimmer";
 
 type Source = "screen" | "camera" | "both";
 type Stage = "source" | "live" | "countdown" | "recording" | "preview";
@@ -324,6 +325,12 @@ export function VideoRecorder({ onCaptured }: { onCaptured: (file: File) => void
     setStage("live");
   }
 
+  function handleTrimmed(file: File) {
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    recordedBlobRef.current = file;
+    setRecordedUrl(URL.createObjectURL(file));
+  }
+
   function accept() {
     if (!recordedBlobRef.current) return;
     const file = new File([recordedBlobRef.current], `aufnahme-${Date.now()}.webm`, {
@@ -415,6 +422,7 @@ export function VideoRecorder({ onCaptured }: { onCaptured: (file: File) => void
               <RotateCcwIcon className="size-4" />
               Nochmal versuchen
             </Button>
+            <VideoTrimmer videoUrl={recordedUrl} fileName="aufnahme.webm" onTrimmed={handleTrimmed} />
             <Button type="button" onClick={accept}>
               <CheckIcon className="size-4" />
               Übernehmen

@@ -43,3 +43,6 @@ next-env.d.ts
 # Locally-stored lesson video uploads (dev fallback when Vercel Blob isn't configured)
 public/uploads/*
 !public/uploads/.gitkeep
+
+# ffmpeg.wasm core runtime - regenerated from node_modules by postinstall (scripts/copy-ffmpeg-core.js)
+public/ffmpeg/

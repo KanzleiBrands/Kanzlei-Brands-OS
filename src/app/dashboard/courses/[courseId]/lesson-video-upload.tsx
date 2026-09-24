@@ -5,6 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { UploadCloudIcon, CheckCircle2Icon, Loader2Icon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { VideoRecorder } from "./video-recorder";
+import { VideoTrimmer } from "./video-trimmer";
 
 type Status = "idle" | "uploading" | "done" | "error";
 
@@ -100,6 +101,9 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
             />
           </label>
           <VideoRecorder onCaptured={handleFile} />
+          {existingVideoUrl && (
+            <VideoTrimmer videoUrl={existingVideoUrl} fileName="zugeschnitten.mp4" onTrimmed={handleFile} />
+          )}
         </div>
       )}
 
@@ -123,6 +127,7 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
         <div className="flex items-center gap-2 rounded-md border p-3 text-sm">
           <CheckCircle2Icon className="size-4 shrink-0 text-emerald-500" />
           <span className="truncate">{fileName}</span>
+          {videoUrl && <VideoTrimmer videoUrl={videoUrl} fileName={fileName ?? undefined} onTrimmed={handleFile} />}
           <button
             type="button"
             onClick={() => {
