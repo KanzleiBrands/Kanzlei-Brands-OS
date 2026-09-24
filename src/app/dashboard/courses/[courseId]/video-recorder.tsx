@@ -154,41 +154,58 @@ export function VideoRecorder({ onCaptured }: { onCaptured: (file: File) => void
 
   useEffect(() => {
     if (stage === "live" || stage === "countdown" || stage === "recording") {
-      if (camVideoRef.current && camStreamRef.current) camVideoRef.current.srcObject = camStreamRef.current;
-      if (screenVideoRef.current && screenStreamRef.current) screenVideoRef.current.srcObject = screenStreamRef.current;
+      // The `autoPlay` attribute isn't reliable once srcObject is assigned
+      // imperatively after mount (varies by browser) - explicitly starting
+      // playback is what makes the preview (and, for "both" mode, the
+      // canvas composite that's actually recorded) reliably show real frames
+      // instead of staying black.
+      if (camVideoRef.current && camStreamRef.current) {
+        camVideoRef.current.srcObject = camStreamRef.current;
+        camVideoRef.current.play().catch(() => {});
+      }
+      if (screenVideoRef.current && screenStreamRef.current) {
+        screenVideoRef.current.srcObject = screenStreamRef.current;
+        screenVideoRef.current.play().catch(() => {});
+      }
     }
   }, [stage, source]);
 
   const startCompositeLoop = useCallback(() => {
     if (compositeRafRef.current) return;
     function draw() {
-      const canvas = canvasRef.current;
-      const screenVideo = screenVideoRef.current;
-      const camVideo = camVideoRef.current;
-      if (!canvas || !screenVideo) return;
-      const w = screenVideo.videoWidth || 1280;
-      const h = screenVideo.videoHeight || 720;
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-      }
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(screenVideo, 0, 0, w, h);
-        if (camVideo && camVideo.readyState >= 2 && camVideo.videoWidth > 0) {
-          const pipW = Math.round(w * 0.22);
-          const pipH = Math.round(pipW * (camVideo.videoHeight / camVideo.videoWidth));
-          const margin = Math.round(w * 0.02);
-          const pipX = margin;
-          const pipY = h - pipH - margin;
-          ctx.save();
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(pipX, pipY, pipW, pipH, 14);
-          else ctx.rect(pipX, pipY, pipW, pipH);
-          ctx.clip();
-          ctx.drawImage(camVideo, pipX, pipY, pipW, pipH);
-          ctx.restore();
+      // requestAnimationFrame never reschedules itself if this throws, which
+      // would silently kill the whole composite loop forever (permanently
+      // black recording) - never let a transient frame error do that.
+      try {
+        const canvas = canvasRef.current;
+        const screenVideo = screenVideoRef.current;
+        const camVideo = camVideoRef.current;
+        const ctx = canvas?.getContext("2d");
+        if (canvas && ctx && screenVideo && screenVideo.readyState >= 2 && screenVideo.videoWidth > 0) {
+          const w = screenVideo.videoWidth;
+          const h = screenVideo.videoHeight;
+          if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+          }
+          ctx.drawImage(screenVideo, 0, 0, w, h);
+          if (camVideo && camVideo.readyState >= 2 && camVideo.videoWidth > 0) {
+            const pipW = Math.round(w * 0.22);
+            const pipH = Math.round(pipW * (camVideo.videoHeight / camVideo.videoWidth));
+            const margin = Math.round(w * 0.02);
+            const pipX = margin;
+            const pipY = h - pipH - margin;
+            ctx.save();
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(pipX, pipY, pipW, pipH, 14);
+            else ctx.rect(pipX, pipY, pipW, pipH);
+            ctx.clip();
+            ctx.drawImage(camVideo, pipX, pipY, pipW, pipH);
+            ctx.restore();
+          }
         }
+      } catch (err) {
+        console.error("[VideoRecorder] composite frame failed:", err);
       }
       compositeRafRef.current = requestAnimationFrame(draw);
     }
@@ -206,7 +223,10 @@ export function VideoRecorder({ onCaptured }: { onCaptured: (file: File) => void
     if (!camStreamRef.current) return;
     stopTrack(camStreamRef.current);
     camStreamRef.current = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
-    if (camVideoRef.current) camVideoRef.current.srcObject = camStreamRef.current;
+    if (camVideoRef.current) {
+      camVideoRef.current.srcObject = camStreamRef.current;
+      camVideoRef.current.play().catch(() => {});
+    }
   }
 
   async function switchMic(deviceId: string) {
