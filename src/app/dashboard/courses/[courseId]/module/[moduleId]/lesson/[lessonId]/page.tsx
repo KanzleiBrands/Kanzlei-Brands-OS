@@ -95,10 +95,14 @@ export default async function LessonPlayerPage({
           <h1 className="mb-3 text-xl font-semibold">{lesson.title}</h1>
 
           {lesson.videoUrl ? (
-            <video src={lesson.videoUrl} controls className="w-full rounded-lg bg-black" />
+            <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
+              <video src={lesson.videoUrl} controls className="size-full object-contain" />
+            </div>
           ) : lesson.thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={lesson.thumbnailUrl} alt={lesson.title} className="w-full rounded-lg object-cover" />
+            <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={lesson.thumbnailUrl} alt={lesson.title} className="size-full object-contain" />
+            </div>
           ) : null}
 
           {lesson.description && <p className="mt-4 text-sm text-muted-foreground">{lesson.description}</p>}
@@ -125,7 +129,11 @@ export default async function LessonPlayerPage({
                   return (
                     <figure key={block.id}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={block.url} alt={block.caption} className="w-full rounded-lg" />
+                      <img
+                        src={block.url}
+                        alt={block.caption}
+                        className="max-h-[480px] w-auto max-w-full rounded-lg object-contain"
+                      />
                       {block.caption && (
                         <figcaption className="mt-1.5 text-xs text-muted-foreground">{block.caption}</figcaption>
                       )}
@@ -165,11 +173,11 @@ export default async function LessonPlayerPage({
           )}
 
           <div className="mt-6 flex items-center justify-between border-t pt-4">
-            {isPreview ? (
-              <span className="text-sm text-muted-foreground">Fortschritt wird in der Vorschau nicht gespeichert.</span>
-            ) : (
-              <LessonCompleteButton lessonId={lesson.id} completed={completedLessonIds.has(lesson.id)} />
-            )}
+            <LessonCompleteButton
+              lessonId={lesson.id}
+              completed={completedLessonIds.has(lesson.id)}
+              disabled={isPreview}
+            />
             {nextLesson && (
               <Link
                 href={`/dashboard/courses/${course.id}/module/${nextLesson.moduleId}/lesson/${nextLesson.id}${previewQuery}`}
