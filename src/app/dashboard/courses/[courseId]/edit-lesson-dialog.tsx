@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { LessonVideoUpload } from "./lesson-video-upload";
 
 export function EditLessonDialog({
   lessonId,
@@ -77,7 +78,7 @@ export function EditLessonDialog({
             <label className="mb-1 block text-sm text-muted-foreground">
               Video {videoUrl ? "(ersetzen)" : "(optional)"}
             </label>
-            <Input name="video" type="file" accept="video/*" />
+            <LessonVideoUpload key={open ? "open" : "closed"} existingVideoUrl={videoUrl} />
           </div>
           <Input name="pdfUrl" placeholder="PDF-Link (optional)" type="url" defaultValue={pdfUrl ?? ""} />
           <Input name="notionUrl" placeholder="Notion-Doc-Link (optional)" type="url" defaultValue={notionUrl ?? ""} />

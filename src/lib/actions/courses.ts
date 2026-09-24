@@ -244,9 +244,16 @@ export async function createLesson(_prevState: string | undefined, formData: For
   if (!courseModule) return "Modul nicht gefunden.";
 
   let videoUrl: string | null = null;
-  const video = formData.get("video");
-  if (video instanceof File && video.size > 0) {
-    videoUrl = await storeFile(video, "lessons");
+  const directVideoUrl = String(formData.get("videoUrl") ?? "").trim();
+  if (directVideoUrl) {
+    // Already uploaded straight to Blob from the browser (see
+    // lesson-video-upload.tsx) - no size limit, nothing left to do here.
+    videoUrl = directVideoUrl;
+  } else {
+    const video = formData.get("video");
+    if (video instanceof File && video.size > 0) {
+      videoUrl = await storeFile(video, "lessons");
+    }
   }
 
   let thumbnailUrl: string | null = null;
@@ -289,9 +296,14 @@ export async function updateLesson(_prevState: string | undefined, formData: For
   if (!lesson) return "Lektion nicht gefunden.";
 
   let videoUrl: string | null | undefined;
-  const video = formData.get("video");
-  if (video instanceof File && video.size > 0) {
-    videoUrl = await storeFile(video, "lessons");
+  const directVideoUrl = String(formData.get("videoUrl") ?? "").trim();
+  if (directVideoUrl) {
+    videoUrl = directVideoUrl;
+  } else {
+    const video = formData.get("video");
+    if (video instanceof File && video.size > 0) {
+      videoUrl = await storeFile(video, "lessons");
+    }
   }
 
   let thumbnailUrl: string | null | undefined;

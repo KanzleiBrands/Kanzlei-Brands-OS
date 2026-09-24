@@ -34,7 +34,7 @@ export default async function CoursesPage() {
             const lessonCount = course.modules.reduce((sum, m) => sum + m._count.lessons, 0);
             return (
               <Card key={course.id} className="overflow-hidden py-0">
-                <Link href={`/dashboard/courses/${course.id}`}>
+                <Link href={`/dashboard/courses/${course.id}`} className="block">
                   <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-32 w-full" />
                 </Link>
                 <CardHeader className="pt-4">
@@ -87,7 +87,7 @@ export default async function CoursesPage() {
           const completed = course.enrollments[0]?.progress.filter((p) => p.completedAt).length ?? 0;
           const percent = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
           return (
-            <Link key={course.id} href={`/dashboard/courses/${course.id}`}>
+            <Link key={course.id} href={`/dashboard/courses/${course.id}`} className="block">
               <Card className="overflow-hidden py-0 transition-colors hover:border-primary">
                 <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="h-36 w-full" />
                 <CardContent className="flex flex-col gap-1 py-4">
