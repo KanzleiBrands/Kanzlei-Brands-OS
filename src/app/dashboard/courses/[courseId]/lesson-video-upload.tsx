@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { UploadCloudIcon, CheckCircle2Icon, Loader2Icon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { VideoRecorder } from "./video-recorder";
 
 type Status = "idle" | "uploading" | "done" | "error";
 
@@ -25,6 +26,7 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
+  const [fallbackFile, setFallbackFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File | undefined) {
@@ -45,19 +47,37 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
     } catch {
       // No Blob token configured (e.g. local dev) or the direct upload
       // otherwise failed - fall back to the classic file-input path, which
-      // still works for smaller files via the server action.
+      // still works for smaller files via the server action. Carry the file
+      // over (it may be an in-memory recording with nothing on disk to
+      // re-pick) by injecting it into the fallback input via DataTransfer.
       setUseFallback(true);
+      setFallbackFile(file);
       setStatus("idle");
       setError(null);
     }
   }
 
+  useEffect(() => {
+    if (useFallback && fallbackFile && inputRef.current) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(fallbackFile);
+      inputRef.current.files = dataTransfer.files;
+    }
+  }, [useFallback, fallbackFile]);
+
   if (useFallback) {
     return (
       <div className="flex flex-col gap-1">
-        <Input ref={inputRef} name="video" type="file" accept="video/*" />
+        <Input
+          ref={inputRef}
+          name="video"
+          type="file"
+          accept="video/*"
+          onChange={(e) => setFallbackFile(e.target.files?.[0] ?? null)}
+        />
         <p className="text-xs text-muted-foreground">
           Direkter Upload nicht verfügbar - dieser Weg ist auf kleinere Dateien begrenzt.
+          {fallbackFile && " Aufnahme wurde übernommen."}
         </p>
       </div>
     );
@@ -68,16 +88,19 @@ export function LessonVideoUpload({ existingVideoUrl }: { existingVideoUrl?: str
       <input type="hidden" name="videoUrl" value={videoUrl ?? ""} />
 
       {status === "idle" && (
-        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-          <UploadCloudIcon className="size-4 shrink-0" />
-          {existingVideoUrl ? "Video ersetzen" : "Video auswählen"} - jede Dateigröße, lädt direkt hoch
-          <input
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+            <UploadCloudIcon className="size-4 shrink-0" />
+            {existingVideoUrl ? "Video ersetzen" : "Video auswählen"} - jede Dateigröße, lädt direkt hoch
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+          </label>
+          <VideoRecorder onCaptured={handleFile} />
+        </div>
       )}
 
       {status === "uploading" && (
