@@ -31,6 +31,23 @@ type Tab =
   | "pagebuilder"
   | "privacy";
 
+const TAB_LABELS: Record<Tab, string> = {
+  account: "Account",
+  notifications: "Benachrichtigungen",
+  team: "Mitarbeiter",
+  mailbox: "Postfach",
+  snippets: "Textbausteine",
+  templates: "Statusvorlagen",
+  hubsettings: "Einstellung Kundenhub",
+  emailcenter: "E-Mail-Center",
+  pagebuilder: "Seiten-Layout",
+  privacy: "Datenschutz",
+};
+
+function tabLinkClass(active: boolean) {
+  return `border-b-2 px-2.5 py-2 text-sm ${active ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`;
+}
+
 export default async function SettingsPage({
   searchParams,
 }: {
@@ -57,6 +74,21 @@ export default async function SettingsPage({
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
 
+  const tabClusters: { label: string; tabs: Tab[] }[] = [
+    { label: "Account", tabs: ["account", "notifications", ...(!isAgency ? (["privacy"] as const) : [])] as Tab[] },
+    {
+      label: "Team & Postfach",
+      tabs: [
+        ...(canManageTeam ? (["team"] as const) : []),
+        ...(canUseMailbox ? (["mailbox"] as const) : []),
+      ] as Tab[],
+    },
+    { label: "Vorlagen", tabs: ["snippets", ...(isAgency ? (["templates"] as const) : [])] as Tab[] },
+    ...(isAgency
+      ? [{ label: "Plattform", tabs: ["hubsettings", "emailcenter", "pagebuilder"] as Tab[] }]
+      : []),
+  ].filter((cluster) => cluster.tabs.length > 0);
+
   const organization = await prisma.organization.findUnique({ where: { id: session.user.organizationId } });
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -75,81 +107,24 @@ export default async function SettingsPage({
       <h1 className="mb-2 text-2xl font-semibold">Einstellungen</h1>
       <p className="mb-6 text-muted-foreground">Account, Team und Postfach verwalten.</p>
 
-      <div className="mb-6 flex flex-wrap gap-1 border-b">
-        <Link
-          href="/dashboard/settings?tab=account"
-          className={`border-b-2 px-3 py-2 text-sm ${tab === "account" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-        >
-          Account
-        </Link>
-        <Link
-          href="/dashboard/settings?tab=notifications"
-          className={`border-b-2 px-3 py-2 text-sm ${tab === "notifications" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-        >
-          Benachrichtigungen
-        </Link>
-        {canManageTeam && (
-          <Link
-            href="/dashboard/settings?tab=team"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "team" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Mitarbeiter
-          </Link>
-        )}
-        {canUseMailbox && (
-          <Link
-            href="/dashboard/settings?tab=mailbox"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "mailbox" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Postfach
-          </Link>
-        )}
-        <Link
-          href="/dashboard/settings?tab=snippets"
-          className={`border-b-2 px-3 py-2 text-sm ${tab === "snippets" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-        >
-          Textbausteine
-        </Link>
-        {isAgency && (
-          <Link
-            href="/dashboard/settings?tab=templates"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "templates" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Statusvorlagen
-          </Link>
-        )}
-        {isAgency && (
-          <Link
-            href="/dashboard/settings?tab=hubsettings"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "hubsettings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Einstellung Kundenhub
-          </Link>
-        )}
-        {isAgency && (
-          <Link
-            href="/dashboard/settings?tab=emailcenter"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "emailcenter" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            E-Mail-Center
-          </Link>
-        )}
-        {isAgency && (
-          <Link
-            href="/dashboard/settings?tab=pagebuilder"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "pagebuilder" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Seiten-Layout
-          </Link>
-        )}
-        {!isAgency && (
-          <Link
-            href="/dashboard/settings?tab=privacy"
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "privacy" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Datenschutz
-          </Link>
-        )}
+      <div className="mb-6 flex flex-wrap items-end gap-x-5 gap-y-3 border-b">
+        {tabClusters.map((cluster, index) => (
+          <div key={cluster.label} className="flex items-end gap-x-5">
+            {index > 0 && <span aria-hidden="true" className="mb-2 h-5 w-px bg-border" />}
+            <div className="flex flex-col gap-1">
+              <span className="px-2.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                {cluster.label}
+              </span>
+              <div className="flex gap-1">
+                {cluster.tabs.map((t) => (
+                  <Link key={t} href={`/dashboard/settings?tab=${t}`} className={tabLinkClass(tab === t)}>
+                    {TAB_LABELS[t]}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {tab === "account" && (

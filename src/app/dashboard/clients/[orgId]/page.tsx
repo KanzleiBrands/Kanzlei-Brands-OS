@@ -7,7 +7,7 @@ import { StatTile } from "@/components/stat-tile";
 import { getBaseUrl } from "@/lib/base-url";
 import { getClientReadiness } from "@/lib/client-readiness";
 import { CampaignsTab } from "./campaigns-tab";
-import { SettingsTab } from "./settings-tab";
+import { SettingsTab, SETTINGS_SUBTAB_VALUES, type SettingsSubTab } from "./settings-tab";
 import { ClientLogTab } from "./client-log-tab";
 import { ContentTab } from "./content-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
@@ -28,18 +28,21 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; subtab?: string }>;
 }) {
   const { orgId } = await params;
   const session = await getSession();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard");
 
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, subtab: subtabParam } = await searchParams;
   const tab: Tab =
     tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" || tabParam === "log" || tabParam === "content"
       ? tabParam
       : "overview";
+  const settingsSubTab: SettingsSubTab = SETTINGS_SUBTAB_VALUES.includes(subtabParam as SettingsSubTab)
+    ? (subtabParam as SettingsSubTab)
+    : "general";
 
   const organization = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -256,6 +259,7 @@ export default async function ClientDetailPage({
 
       {tab === "settings" && (
         <SettingsTab
+          subTab={settingsSubTab}
           organizationId={organization.id}
           organizationName={organization.name}
           archivedAt={organization.archivedAt}

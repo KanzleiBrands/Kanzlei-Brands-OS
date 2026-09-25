@@ -12,10 +12,12 @@ type NavLink = { href: string; label: string; icon?: React.ReactNode };
 export function SidebarNav({
   role,
   links,
+  adminLinks = [],
   clients,
 }: {
   role: string;
   links: NavLink[];
+  adminLinks?: NavLink[];
   clients: ClientOrg[];
 }) {
   const pathname = usePathname();
@@ -121,6 +123,24 @@ export function SidebarNav({
           </Link>
         ))}
       </div>
+
+      {adminLinks.length > 0 && (
+        <div className="mt-5 flex flex-col gap-1">
+          <p className="mb-1 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Verwaltung</p>
+          {adminLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                isActive(link.href) ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {link.icon}
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }

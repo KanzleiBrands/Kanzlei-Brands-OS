@@ -36,31 +36,40 @@ function navFor(role: string, campaignKinds: Set<string>) {
   ];
 
   if (role === "AGENCY_ADMIN") {
-    return [
-      { href: "/dashboard/clients", label: "Kunden", icon: <Building2 className={navIconClass} /> },
-      { href: "/dashboard/inbox", label: "Posteingang", icon: <Inbox className={navIconClass} /> },
-      { href: "/dashboard/tasks", label: "Wiedervorlagen", icon: <CalendarClock className={navIconClass} /> },
-      ...common,
-      { href: "/dashboard/offers", label: "Angebote", icon: <Package className={navIconClass} /> },
-      { href: "/dashboard/audit-log", label: "Audit-Log", icon: <ScrollText className={navIconClass} /> },
-    ];
+    return {
+      main: [
+        { href: "/dashboard/clients", label: "Kunden", icon: <Building2 className={navIconClass} /> },
+        { href: "/dashboard/inbox", label: "Posteingang", icon: <Inbox className={navIconClass} /> },
+        { href: "/dashboard/tasks", label: "Wiedervorlagen", icon: <CalendarClock className={navIconClass} /> },
+        ...common,
+      ],
+      // Konfigurations-/Kontrollseiten statt Tagesgeschäft - eigene Sektion,
+      // damit die Sidebar nicht wie eine einzige flache Liste wirkt.
+      admin: [
+        { href: "/dashboard/offers", label: "Angebote", icon: <Package className={navIconClass} /> },
+        { href: "/dashboard/audit-log", label: "Audit-Log", icon: <ScrollText className={navIconClass} /> },
+      ],
+    };
   }
 
-  return [
-    { href: "/dashboard/hub", label: "Kunden Hub", icon: <LayoutDashboard className={navIconClass} /> },
-    ...common,
-    { href: "/dashboard/pipelines", label: "Kampagnen", icon: <Megaphone className={navIconClass} /> },
-    ...(campaignKinds.has("LEADS")
-      ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen", icon: <Briefcase className={navIconClass} /> }]
-      : []),
-    ...(campaignKinds.has("APPLICANTS")
-      ? [
-          { href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen", icon: <UserPlus className={navIconClass} /> },
-          { href: "/dashboard/talentpool", label: "Talentpool", icon: <Users className={navIconClass} /> },
-        ]
-      : []),
-    { href: "/dashboard/tasks", label: "Wiedervorlagen", icon: <CalendarClock className={navIconClass} /> },
-  ];
+  return {
+    main: [
+      { href: "/dashboard/hub", label: "Kunden Hub", icon: <LayoutDashboard className={navIconClass} /> },
+      ...common,
+      { href: "/dashboard/pipelines", label: "Kampagnen", icon: <Megaphone className={navIconClass} /> },
+      ...(campaignKinds.has("LEADS")
+        ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen", icon: <Briefcase className={navIconClass} /> }]
+        : []),
+      ...(campaignKinds.has("APPLICANTS")
+        ? [
+            { href: "/dashboard/leads?kind=APPLICANTS", label: "Bewerbungen", icon: <UserPlus className={navIconClass} /> },
+            { href: "/dashboard/talentpool", label: "Talentpool", icon: <Users className={navIconClass} /> },
+          ]
+        : []),
+      { href: "/dashboard/tasks", label: "Wiedervorlagen", icon: <CalendarClock className={navIconClass} /> },
+    ],
+    admin: [],
+  };
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -80,7 +89,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     campaignKinds = new Set(pipelines.map((p) => p.kind));
   }
 
-  const links = navFor(session.user.role, campaignKinds);
+  const { main: mainLinks, admin: adminLinks } = navFor(session.user.role, campaignKinds);
 
   const clients =
     session.user.role === "AGENCY_ADMIN"
@@ -115,7 +124,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           className="block dark:hidden"
         />
       </div>
-      <SidebarNav role={session.user.role} links={links} clients={clients} />
+      <SidebarNav role={session.user.role} links={mainLinks} adminLinks={adminLinks} clients={clients} />
       <div className="mt-auto flex flex-col gap-2 pt-4">
         <ThemeToggle />
         <SettingsLink />

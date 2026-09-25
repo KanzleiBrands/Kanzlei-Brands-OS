@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,18 @@ import { HubSettingsForm } from "./hub-settings-form";
 import { MonthlyReportToggle } from "./monthly-report-toggle";
 import { DataRetentionForm } from "./data-retention-form";
 
+export type SettingsSubTab = "general" | "team" | "board" | "training" | "danger";
+
+const SETTINGS_SUBTABS: { value: SettingsSubTab; label: string }[] = [
+  { value: "general", label: "Allgemein" },
+  { value: "team", label: "Mitarbeiter" },
+  { value: "board", label: "Kundenboard & Hub" },
+  { value: "training", label: "Schulung" },
+  { value: "danger", label: "Gefahrenzone" },
+];
+
+export const SETTINGS_SUBTAB_VALUES: SettingsSubTab[] = SETTINGS_SUBTABS.map((s) => s.value);
+
 type Pipeline = { id: string; name: string };
 type Course = { id: string; title: string };
 type PipelineAccess = { pipelineId: string };
@@ -32,6 +45,7 @@ type OrgUser = {
 };
 
 export function SettingsTab({
+  subTab,
   organizationId,
   organizationName,
   archivedAt,
@@ -93,116 +107,142 @@ export function SettingsTab({
   jobsBooked: boolean;
   leadsBooked: boolean;
   inviteReadiness: { ready: boolean; missing: string[] };
+  subTab: SettingsSubTab;
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Kunde</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm">
-          <EditClientNameForm organizationId={organizationId} name={organizationName} />
-        </CardContent>
-      </Card>
+      <div className="flex gap-1 border-b">
+        {SETTINGS_SUBTABS.map((s) => (
+          <Link
+            key={s.value}
+            href={`/dashboard/clients/${organizationId}?tab=settings&subtab=${s.value}`}
+            className={`border-b-2 px-2.5 py-2 text-sm ${
+              subTab === s.value
+                ? "border-primary font-medium"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s.label}
+          </Link>
+        ))}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Kampagnen-Kontingente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <QuotaSettingsForm
-            organizationId={organizationId}
-            leadsQuota={leadsQuota}
-            applicantsQuota={applicantsQuota}
-            leadsUsed={leadsUsed}
-            applicantsUsed={applicantsUsed}
-          />
-        </CardContent>
-      </Card>
+      {subTab === "general" && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Kunde</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm">
+              <EditClientNameForm organizationId={organizationId} name={organizationName} />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Reporting</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <p className="text-sm text-muted-foreground">
-            Automatischer Performance-Report per E-Mail an die Admins dieses Kunden, immer am letzten Tag des
-            Monats.
-          </p>
-          <MonthlyReportToggle organizationId={organizationId} enabled={monthlyReportEnabled} />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Kampagnen-Kontingente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QuotaSettingsForm
+                organizationId={organizationId}
+                leadsQuota={leadsQuota}
+                applicantsQuota={applicantsQuota}
+                leadsUsed={leadsUsed}
+                applicantsUsed={applicantsUsed}
+              />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Datenschutz (DSGVO)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataRetentionForm
-            organizationId={organizationId}
-            applicantDataRetentionMonths={applicantDataRetentionMonths}
-            leadDataRetentionMonths={leadDataRetentionMonths}
-          />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Reporting</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">
+                Automatischer Performance-Report per E-Mail an die Admins dieses Kunden, immer am letzten Tag des
+                Monats.
+              </p>
+              <MonthlyReportToggle organizationId={organizationId} enabled={monthlyReportEnabled} />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Kundenboard: weitere Kampagnen beauftragen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <IntakeSettingsForm
-            organizationId={organizationId}
-            accountManagerId={accountManagerId}
-            leadsFormUrl={leadsFormUrl}
-            applicantsFormUrl={applicantsFormUrl}
-            agencyUsers={agencyUsers}
-          />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Datenschutz (DSGVO)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataRetentionForm
+                organizationId={organizationId}
+                applicantDataRetentionMonths={applicantDataRetentionMonths}
+                leadDataRetentionMonths={leadDataRetentionMonths}
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Kunden-Hub</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <HubSettingsForm
-            organizationId={organizationId}
-            driveFolderUrl={driveFolderUrl}
-            landingPageUrl={landingPageUrl}
-            metaAdLibraryUrl={metaAdLibraryUrl}
-            linkedInAdLibraryUrl={linkedInAdLibraryUrl}
-            bookedProductTags={bookedProductTags}
-            availableProductTags={availableProductTags}
-            activeApplicantChannels={activeApplicantChannels}
-            activeLeadChannels={activeLeadChannels}
-            jobsBooked={jobsBooked}
-            leadsBooked={leadsBooked}
-          />
-        </CardContent>
-      </Card>
+      {subTab === "board" && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Kundenboard: weitere Kampagnen beauftragen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <IntakeSettingsForm
+                organizationId={organizationId}
+                accountManagerId={accountManagerId}
+                leadsFormUrl={leadsFormUrl}
+                applicantsFormUrl={applicantsFormUrl}
+                agencyUsers={agencyUsers}
+              />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Mitarbeiter</CardTitle>
-          <CardAction>
-            <NewUserForm organizationId={organizationId} canAssignAdmin inviteReadiness={inviteReadiness} />
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>E-Mail</TableHead>
-                <TableHead>Rolle</TableHead>
-                <TableHead>Zugang</TableHead>
-                <TableHead>Kampagnen-Zugriff</TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => {
+          <Card>
+            <CardHeader>
+              <CardTitle>Kunden-Hub</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <HubSettingsForm
+                organizationId={organizationId}
+                driveFolderUrl={driveFolderUrl}
+                landingPageUrl={landingPageUrl}
+                metaAdLibraryUrl={metaAdLibraryUrl}
+                linkedInAdLibraryUrl={linkedInAdLibraryUrl}
+                bookedProductTags={bookedProductTags}
+                availableProductTags={availableProductTags}
+                activeApplicantChannels={activeApplicantChannels}
+                activeLeadChannels={activeLeadChannels}
+                jobsBooked={jobsBooked}
+                leadsBooked={leadsBooked}
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {subTab === "team" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mitarbeiter</CardTitle>
+            <CardAction>
+              <NewUserForm organizationId={organizationId} canAssignAdmin inviteReadiness={inviteReadiness} />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>E-Mail</TableHead>
+                  <TableHead>Rolle</TableHead>
+                  <TableHead>Zugang</TableHead>
+                  <TableHead>Kampagnen-Zugriff</TableHead>
+                  <TableHead className="w-20" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => {
                 const activationLink =
                   user.activationToken && user.activationTokenExpiresAt && user.activationTokenExpiresAt > new Date()
                     ? `${baseUrl}/activate/${user.activationToken}`
@@ -250,63 +290,69 @@ export function SettingsTab({
                   </TableRow>
                 );
               })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Schulung</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
-            Wähle, welche Kurse dieser Kunde in seinem Schulungsbereich sehen kann.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {courses.map((course) => (
-              <label key={course.id} className="flex items-center gap-1.5 text-sm">
-                <CourseAssignmentToggle
-                  organizationId={organizationId}
-                  courseId={course.id}
-                  assigned={assignedCourseIds.has(course.id)}
-                />
-                {course.title}
-              </label>
-            ))}
-            {courses.length === 0 && <span className="text-sm text-muted-foreground">Noch keine Kurse angelegt.</span>}
-          </div>
-        </CardContent>
-      </Card>
+      {subTab === "training" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Schulung</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              Wähle, welche Kurse dieser Kunde in seinem Schulungsbereich sehen kann.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {courses.map((course) => (
+                <label key={course.id} className="flex items-center gap-1.5 text-sm">
+                  <CourseAssignmentToggle
+                    organizationId={organizationId}
+                    courseId={course.id}
+                    assigned={assignedCourseIds.has(course.id)}
+                  />
+                  {course.title}
+                </label>
+              ))}
+              {courses.length === 0 && <span className="text-sm text-muted-foreground">Noch keine Kurse angelegt.</span>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle>Gefahrenzone</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {archivedAt ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Dieser Kunde ist archiviert und in der Kunden-Übersicht ausgeblendet. Alle Daten sind weiterhin
-                vorhanden.
-              </p>
-              <div>
-                <ReactivateOrganizationButton organizationId={organizationId} />
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Archiviert diesen Kunden. Er verschwindet aus der Kunden-Übersicht, alle Daten (Kampagnen, Kontakte,
-                Mitarbeiter, Lead-Quellen) bleiben erhalten und du kannst ihn jederzeit wieder reaktivieren.
-              </p>
-              <div>
-                <ArchiveOrganizationButton organizationId={organizationId} organizationName={organizationName} />
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {subTab === "danger" && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle>Gefahrenzone</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {archivedAt ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Dieser Kunde ist archiviert und in der Kunden-Übersicht ausgeblendet. Alle Daten sind weiterhin
+                  vorhanden.
+                </p>
+                <div>
+                  <ReactivateOrganizationButton organizationId={organizationId} />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Archiviert diesen Kunden. Er verschwindet aus der Kunden-Übersicht, alle Daten (Kampagnen,
+                  Kontakte, Mitarbeiter, Lead-Quellen) bleiben erhalten und du kannst ihn jederzeit wieder
+                  reaktivieren.
+                </p>
+                <div>
+                  <ArchiveOrganizationButton organizationId={organizationId} organizationName={organizationName} />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
