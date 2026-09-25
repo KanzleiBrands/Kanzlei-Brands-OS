@@ -76,6 +76,7 @@ export default async function PipelineDetailPage({
       },
       automationRules: true,
       jobPosting: true,
+      organization: { select: { name: true } },
     },
   });
   if (!pipeline) notFound();
@@ -247,6 +248,8 @@ export default async function PipelineDetailPage({
         <JobPostingForm
           pipelineId={pipeline.id}
           pipelineName={pipeline.name}
+          organizationName={pipeline.organization.name}
+          publicUrl={`${baseUrl}/jobs/${pipeline.id}`}
           jobPosting={
             pipeline.jobPosting
               ? {
@@ -260,6 +263,18 @@ export default async function PipelineDetailPage({
                   contactEmail: pipeline.jobPosting.contactEmail,
                   applicationUrl: pipeline.jobPosting.applicationUrl,
                   targetPortals: pipeline.jobPosting.targetPortals,
+                  employerName: pipeline.jobPosting.employerName,
+                  employerLogoUrl: pipeline.jobPosting.employerLogoUrl,
+                  employerWebsite: pipeline.jobPosting.employerWebsite,
+                  street: pipeline.jobPosting.street,
+                  postalCode: pipeline.jobPosting.postalCode,
+                  city: pipeline.jobPosting.city,
+                  country: pipeline.jobPosting.country,
+                  employmentType: pipeline.jobPosting.employmentType,
+                  validThrough: pipeline.jobPosting.validThrough
+                    ? pipeline.jobPosting.validThrough.toISOString().slice(0, 10)
+                    : null,
+                  isPublished: pipeline.jobPosting.isPublished,
                 }
               : null
           }

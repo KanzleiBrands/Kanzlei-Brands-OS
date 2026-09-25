@@ -297,6 +297,35 @@ model JobPosting {
   contactEmail   String?
   applicationUrl String?
 
+  // Arbeitgeber-Identität für die öffentliche Stellenanzeige-Seite
+  // (/jobs/[pipelineId]) und deren JobPosting-Strukturdaten: hier steht
+  // immer der Kunde (Mandant) als Employer, nie die Agentur - Google for
+  // Jobs und (perspektivisch) Indeed lesen hiringOrganization aus genau
+  // diesen Feldern. Fällt employerName leer, zeigt die Seite den
+  // Organisationsnamen des Kunden als Fallback.
+  employerName    String?
+  employerLogoUrl String?
+  employerWebsite String?
+
+  // Strukturierte Adresse fürs JobPosting-Schema (jobLocation) - das freie
+  // Pipeline.location-Textfeld reicht Google/Indeed dafür nicht.
+  street     String?
+  postalCode String?
+  city       String?
+  country    String? @default("DE")
+
+  // schema.org EmploymentType-Wert (z.B. "FULL_TIME") - siehe
+  // src/lib/job-schema.ts.
+  employmentType String?   @default("FULL_TIME")
+  validThrough   DateTime?
+
+  // Steuert, ob /jobs/[pipelineId] öffentlich (200) oder 404 ausliefert.
+  // publishedAt wird beim ersten Veröffentlichen einmalig gesetzt und
+  // danach nicht mehr verändert, weil schema.org datePosted stabil bleiben
+  // soll, auch wenn der Inhalt später bearbeitet wird.
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
   // Katalog-Keys aus src/lib/job-portals.ts - rein informative Checkliste,
   // solange keine der Portal-APIs/-Feeds angebunden ist.
   targetPortals String[] @default([])

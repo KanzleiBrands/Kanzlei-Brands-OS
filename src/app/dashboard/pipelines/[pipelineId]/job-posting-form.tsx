@@ -23,6 +23,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { updateJobPosting, uploadJobPostingImage } from "@/lib/actions/job-postings";
 import { JOB_PORTALS } from "@/lib/job-portals";
+import { EMPLOYMENT_TYPES } from "@/lib/job-schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,16 @@ export type JobPostingData = {
   contactEmail: string | null;
   applicationUrl: string | null;
   targetPortals: string[];
+  employerName: string | null;
+  employerLogoUrl: string | null;
+  employerWebsite: string | null;
+  street: string | null;
+  postalCode: string | null;
+  city: string | null;
+  country: string | null;
+  employmentType: string | null;
+  validThrough: string | null;
+  isPublished: boolean;
 };
 
 function newId() {
@@ -82,10 +93,14 @@ function SortableGalleryImage({ url, onRemove }: { url: string; onRemove: () => 
 export function JobPostingForm({
   pipelineId,
   pipelineName,
+  organizationName,
+  publicUrl,
   jobPosting,
 }: {
   pipelineId: string;
   pipelineName: string;
+  organizationName: string;
+  publicUrl: string;
   jobPosting: JobPostingData | null;
 }) {
   const [error, formAction, isPending] = useActionState(updateJobPosting, undefined);
@@ -104,6 +119,10 @@ export function JobPostingForm({
   const [benefitDraft, setBenefitDraft] = useState("");
 
   const [selectedPortals, setSelectedPortals] = useState<Set<string>>(new Set(jobPosting?.targetPortals ?? []));
+
+  const [employerLogoUrl, setEmployerLogoUrl] = useState(jobPosting?.employerLogoUrl ?? "");
+  const [employerLogoUploading, setEmployerLogoUploading] = useState(false);
+  const [isPublished, setIsPublished] = useState(jobPosting?.isPublished ?? false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -163,6 +182,16 @@ export function JobPostingForm({
     });
   }
 
+  async function handleEmployerLogoFile(file: File | undefined) {
+    if (!file) return;
+    setEmployerLogoUploading(true);
+    const fd = new FormData();
+    fd.set("image", file);
+    const result = await uploadJobPostingImage(fd);
+    setEmployerLogoUploading(false);
+    if (!("error" in result)) setEmployerLogoUrl(result.url);
+  }
+
   function togglePortal(key: string) {
     setSelectedPortals((prev) => {
       const next = new Set(prev);
@@ -179,11 +208,85 @@ export function JobPostingForm({
       <input type="hidden" name="galleryUrls" value={JSON.stringify(gallery.map((g) => g.url))} />
       <input type="hidden" name="benefitsList" value={JSON.stringify(benefits)} />
       <input type="hidden" name="targetPortals" value={JSON.stringify([...selectedPortals])} />
+      <input type="hidden" name="employerLogoUrl" value={employerLogoUrl} />
+      <input type="hidden" name="isPublished" value={isPublished ? "true" : "false"} />
 
       <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
         Stellentitel: <span className="font-medium text-foreground">{pipelineName}</span> - der Titel entspricht immer
         dem Kampagnennamen und wird hier nicht separat gepflegt.
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Arbeitgeber & Arbeitsort</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Diese Angaben erscheinen als Herausgeber der Stelle - bei Google for Jobs und (perspektivisch) weiteren
+            Portalen also der Kunde, nie Kanzlei Brands als Agentur.
+          </p>
+          <div className="flex items-center gap-3">
+            {employerLogoUrl ? (
+              <div className="relative size-14 shrink-0 overflow-hidden rounded-md border bg-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={employerLogoUrl} alt="" className="size-full object-contain" />
+                <button
+                  type="button"
+                  aria-label="Logo entfernen"
+                  onClick={() => setEmployerLogoUrl("")}
+                  className="absolute top-0 right-0 flex size-4 items-center justify-center bg-background/80 text-muted-foreground hover:text-destructive"
+                >
+                  <XIcon className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex size-14 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed text-muted-foreground hover:border-primary hover:text-foreground">
+                {employerLogoUploading ? <Loader2Icon className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={employerLogoUploading}
+                  onChange={(e) => handleEmployerLogoFile(e.target.files?.[0])}
+                />
+              </label>
+            )}
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Input name="employerName" placeholder={organizationName || "Firmenname des Kunden"} defaultValue={jobPosting?.employerName ?? ""} />
+              <Input
+                name="employerWebsite"
+                type="url"
+                placeholder="Webseite des Kunden (optional)"
+                defaultValue={jobPosting?.employerWebsite ?? ""}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Input name="street" placeholder="Straße & Nr." className="col-span-2 sm:col-span-2" defaultValue={jobPosting?.street ?? ""} />
+            <Input name="postalCode" placeholder="PLZ" defaultValue={jobPosting?.postalCode ?? ""} />
+            <Input name="city" placeholder="Stadt" defaultValue={jobPosting?.city ?? ""} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              name="employmentType"
+              defaultValue={jobPosting?.employmentType ?? "FULL_TIME"}
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+            >
+              {EMPLOYMENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <Input
+              name="validThrough"
+              type="date"
+              defaultValue={jobPosting?.validThrough ?? ""}
+              title="Ausschreibung gültig bis (optional)"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -353,12 +456,45 @@ export function JobPostingForm({
 
       <Card>
         <CardHeader>
+          <CardTitle>Veröffentlichung</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Öffentlich sichtbar</span>
+              <span className="block text-xs text-muted-foreground">
+                Schaltet die eigene Stellenanzeige-Seite live - inkl. JobPosting-Strukturdaten für Google for Jobs.
+                Indeed crawlt dieselbe Seite ebenfalls, sobald der klassische XML-Feed 2026 wegfällt. Benötigt
+                mindestens die Stadt unter &bdquo;Arbeitgeber & Arbeitsort&ldquo;.
+              </span>
+            </span>
+          </label>
+          {isPublished && (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-2">
+              <Input readOnly value={publicUrl} className="text-xs" onFocus={(e) => e.currentTarget.select()} />
+              <Button type="button" variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(publicUrl)}>
+                Kopieren
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Zielportale</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Checkliste, wo diese Stelle veröffentlicht werden soll - noch keine automatische Anbindung, dient als
-            Vorbereitung fürs Multiposting.
+            Checkliste, wo diese Stelle zusätzlich veröffentlicht werden soll. Google for Jobs läuft automatisch über
+            die eigene Stellenanzeige-Seite oben; für die übrigen Portale braucht es weitere Schritte deinerseits
+            (Account, Vertrag oder Multiposting-Dienstleister) - siehe Hinweise je Portal.
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {JOB_PORTALS.map((portal) => (

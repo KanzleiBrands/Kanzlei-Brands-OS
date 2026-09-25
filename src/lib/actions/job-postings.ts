@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { JOB_PORTALS } from "@/lib/job-portals";
+import { EMPLOYMENT_TYPES } from "@/lib/job-schema";
 
 function parseStringArray(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -56,6 +57,25 @@ export async function updateJobPosting(_prevState: string | undefined, formData:
   const validPortalKeys = new Set(JOB_PORTALS.map((p) => p.key));
   const targetPortals = parseStringArray(formData.get("targetPortals")).filter((key) => validPortalKeys.has(key));
 
+  const employerName = String(formData.get("employerName") ?? "").trim() || null;
+  const employerLogoUrl = String(formData.get("employerLogoUrl") ?? "").trim() || null;
+  const employerWebsite = String(formData.get("employerWebsite") ?? "").trim() || null;
+  const street = String(formData.get("street") ?? "").trim() || null;
+  const postalCode = String(formData.get("postalCode") ?? "").trim() || null;
+  const city = String(formData.get("city") ?? "").trim() || null;
+  const country = String(formData.get("country") ?? "").trim() || "DE";
+  const validEmploymentTypes = new Set(EMPLOYMENT_TYPES.map((t) => t.value));
+  const employmentTypeRaw = String(formData.get("employmentType") ?? "");
+  const employmentType = validEmploymentTypes.has(employmentTypeRaw) ? employmentTypeRaw : "FULL_TIME";
+  const validThroughRaw = String(formData.get("validThrough") ?? "").trim();
+  const validThrough = validThroughRaw ? new Date(validThroughRaw) : null;
+  const isPublished = formData.get("isPublished") === "true";
+
+  if (isPublished && !city) return "Für die Veröffentlichung wird mindestens die Stadt (Arbeitsort) benötigt.";
+
+  const existing = await prisma.jobPosting.findUnique({ where: { pipelineId }, select: { publishedAt: true } });
+  const publishedAt = isPublished ? (existing?.publishedAt ?? new Date()) : (existing?.publishedAt ?? null);
+
   await prisma.jobPosting.upsert({
     where: { pipelineId },
     create: {
@@ -70,6 +90,17 @@ export async function updateJobPosting(_prevState: string | undefined, formData:
       contactEmail,
       applicationUrl,
       targetPortals,
+      employerName,
+      employerLogoUrl,
+      employerWebsite,
+      street,
+      postalCode,
+      city,
+      country,
+      employmentType,
+      validThrough,
+      isPublished,
+      publishedAt,
     },
     update: {
       heroImageUrl,
@@ -82,6 +113,17 @@ export async function updateJobPosting(_prevState: string | undefined, formData:
       contactEmail,
       applicationUrl,
       targetPortals,
+      employerName,
+      employerLogoUrl,
+      employerWebsite,
+      street,
+      postalCode,
+      city,
+      country,
+      employmentType,
+      validThrough,
+      isPublished,
+      publishedAt,
     },
   });
 
@@ -94,5 +136,6 @@ export async function updateJobPosting(_prevState: string | undefined, formData:
   });
 
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
+  revalidatePath(`/jobs/${pipelineId}`);
   return undefined;
 }
