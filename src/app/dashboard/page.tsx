@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/stat-tile";
 import { PotentialScoreCard } from "./potential-score-card";
 import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS, computeGrowthScore } from "@/lib/growth-levers";
+import { SocialContentSection, type ClientSocialPost } from "./hub/social-content-section";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -71,9 +72,39 @@ export default async function DashboardPage() {
     ? computeGrowthScore(LEAD_GROWTH_LEVERS, organization.activeLeadChannels, organization.bookedProductTags)
     : null;
 
+  const socialPosts = await prisma.socialPost.findMany({
+    where: { organizationId: session.user.organizationId, status: { in: ["CLIENT_REVIEW", "SCHEDULED", "PUBLISHED"] } },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+  const toClientPost = (post: (typeof socialPosts)[number]): ClientSocialPost => ({
+    id: post.id,
+    platform: post.platform,
+    caption: post.caption,
+    mediaUrl: post.mediaUrl,
+    mediaUrls: post.mediaUrls,
+    mediaType: post.mediaType,
+    status: post.status as "CLIENT_REVIEW" | "SCHEDULED" | "PUBLISHED",
+    scheduledAt: post.scheduledAt?.toISOString() ?? null,
+    publishedAt: post.publishedAt?.toISOString() ?? null,
+    publishedUrl: post.publishedUrl,
+  });
+  const pendingApproval = socialPosts.filter((p) => p.status === "CLIENT_REVIEW").map(toClientPost);
+  const socialTimeline = socialPosts
+    .filter((p) => p.status === "SCHEDULED" || p.status === "PUBLISHED")
+    .map(toClientPost)
+    .sort((a, b) => {
+      const aDate = a.publishedAt ?? a.scheduledAt ?? "";
+      const bDate = b.publishedAt ?? b.scheduledAt ?? "";
+      return bDate.localeCompare(aDate);
+    })
+    .slice(0, 8);
+
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Übersicht - {session.user.name}</h1>
+
+      <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />
 
       {leadPipelines.length > 0 && (
         <>

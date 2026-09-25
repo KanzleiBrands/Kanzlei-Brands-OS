@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 
-const OFFICE_PHONE = "+4940238359780";
-const OFFICE_PHONE_LABEL = "040 238 359 780";
+export const OFFICE_PHONE = "+4940238359780";
+export const OFFICE_PHONE_LABEL = "040 238 359 780";
 
 export function ContactCard({
   title,

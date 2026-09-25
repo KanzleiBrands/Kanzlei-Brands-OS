@@ -8,8 +8,8 @@ import { getOffersSectionEnabled } from "@/lib/actions/offers";
 import { CampaignRequestCard } from "../pipelines/campaign-request-card";
 import { ContactCard } from "./contact-card";
 import { ResourceLinksCard } from "./resource-links-card";
+import { OfficeHoursCard } from "./office-hours-card";
 import { InterestButton } from "./interest-button";
-import { SocialContentSection, type ClientSocialPost } from "./social-content-section";
 
 const ACCOUNT_MANAGER_EMAIL = "support@kanzlei-brands.de";
 const BACKOFFICE_EMAIL = "buchhaltung@kanzlei-brands.de";
@@ -57,34 +57,6 @@ export default async function KundenHubPage() {
       })
     : [];
 
-  const socialPosts = await prisma.socialPost.findMany({
-    where: { organizationId: session.user.organizationId, status: { in: ["CLIENT_REVIEW", "SCHEDULED", "PUBLISHED"] } },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-  });
-  const toClientPost = (post: (typeof socialPosts)[number]): ClientSocialPost => ({
-    id: post.id,
-    platform: post.platform,
-    caption: post.caption,
-    mediaUrl: post.mediaUrl,
-    mediaUrls: post.mediaUrls,
-    mediaType: post.mediaType,
-    status: post.status as "CLIENT_REVIEW" | "SCHEDULED" | "PUBLISHED",
-    scheduledAt: post.scheduledAt?.toISOString() ?? null,
-    publishedAt: post.publishedAt?.toISOString() ?? null,
-    publishedUrl: post.publishedUrl,
-  });
-  const pendingApproval = socialPosts.filter((p) => p.status === "CLIENT_REVIEW").map(toClientPost);
-  const socialTimeline = socialPosts
-    .filter((p) => p.status === "SCHEDULED" || p.status === "PUBLISHED")
-    .map(toClientPost)
-    .sort((a, b) => {
-      const aDate = a.publishedAt ?? a.scheduledAt ?? "";
-      const bDate = b.publishedAt ?? b.scheduledAt ?? "";
-      return bDate.localeCompare(aDate);
-    })
-    .slice(0, 8);
-
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-2 text-2xl font-semibold">Kunden-Hub - {session.user.name}</h1>
@@ -94,7 +66,7 @@ export default async function KundenHubPage() {
           : "Deine Ansprechpartner und Ressourcen von Kanzlei Brands an einem Ort."}
       </p>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ContactCard
           title="Account Manager"
           description="Fragen zu Kampagnen, Strategie oder neuen Themen?"
@@ -107,6 +79,7 @@ export default async function KundenHubPage() {
           contact={agency?.backofficeContact ?? null}
           teamEmail={BACKOFFICE_EMAIL}
         />
+        <OfficeHoursCard />
       </div>
 
       <div className="mb-8">
@@ -137,8 +110,6 @@ export default async function KundenHubPage() {
           canRequest={canRequest}
         />
       </div>
-
-      <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />
 
       {offersSectionEnabled && (
         <>
