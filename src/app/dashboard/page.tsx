@@ -104,8 +104,6 @@ export default async function DashboardPage() {
     <div className="p-4 sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Übersicht - {session.user.name}</h1>
 
-      <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />
-
       {leadPipelines.length > 0 && (
         <>
           <h2 className="mb-3 text-lg font-semibold">Mandatsakquise</h2>
@@ -269,6 +267,10 @@ export default async function DashboardPage() {
             {recentContacts.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Kontakte.</p>}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mt-6">
+        <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />
       </div>
     </div>
   );
