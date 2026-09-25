@@ -56,7 +56,7 @@ export default async function CourseDetailPage({
         <BackLink href="/dashboard/courses">Zurück zur Kursverwaltung</BackLink>
 
         <div className="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex w-full gap-4 sm:w-auto">
+          <div className="flex w-full items-start gap-4 sm:w-auto">
             <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-24 shrink-0 rounded-lg sm:w-40" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -110,7 +110,7 @@ export default async function CourseDetailPage({
             <Card key={courseModule.id}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
                     <CourseThumbnail
                       src={courseModule.thumbnailUrl}
                       alt={courseModule.title}
