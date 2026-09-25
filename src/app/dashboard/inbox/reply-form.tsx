@@ -20,14 +20,14 @@ export function ReplyForm({ contactId, defaultSubject }: { contactId: string; de
   }, [isPending, error]);
 
   return (
-    <form ref={formRef} action={formAction} key={contactId} className="flex flex-col gap-2 border-t p-4">
+    <form ref={formRef} action={formAction} key={contactId} className="flex flex-col gap-2 border-t bg-card p-4">
       <input type="hidden" name="contactId" value={contactId} />
       <Input name="subject" placeholder="Betreff" defaultValue={defaultSubject} required />
       <textarea
         name="text"
         placeholder="Nachricht..."
         required
-        rows={4}
+        rows={3}
         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       {error && <p className="text-sm text-destructive">{error}</p>}
