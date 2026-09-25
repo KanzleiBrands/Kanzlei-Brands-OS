@@ -14,7 +14,8 @@ export type ClientSocialPost = {
   platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
   caption: string;
   mediaUrl: string | null;
-  mediaType: "IMAGE" | "VIDEO" | null;
+  mediaUrls: string[];
+  mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | null;
   status: "CLIENT_REVIEW" | "SCHEDULED" | "PUBLISHED";
   scheduledAt: string | null;
   publishedAt: string | null;
@@ -26,6 +27,17 @@ function formatDate(iso: string): string {
 }
 
 function MediaPreview({ post }: { post: ClientSocialPost }) {
+  if (post.mediaType === "CAROUSEL" && post.mediaUrls.length > 0) {
+    return (
+      <div className="relative overflow-hidden rounded-lg border bg-black" style={{ aspectRatio: "16 / 9" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={post.mediaUrls[0]} alt="" className="size-full object-contain" />
+        <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+          Karussell · {post.mediaUrls.length}
+        </span>
+      </div>
+    );
+  }
   if (!post.mediaUrl) return null;
   return (
     <div className="overflow-hidden rounded-lg border bg-black" style={{ aspectRatio: "16 / 9" }}>
@@ -125,15 +137,22 @@ export function SocialContentSection({
           <CardContent className="flex flex-col gap-3">
             {timeline.map((post) => (
               <div key={post.id} className="flex items-center gap-3 rounded-lg border p-2.5 text-sm">
-                {post.mediaUrl && (
+                {post.mediaType === "CAROUSEL" && post.mediaUrls[0] ? (
                   <div className="h-12 w-20 shrink-0 overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
-                    {post.mediaType === "VIDEO" ? (
-                      <video src={post.mediaUrl} className="size-full object-contain" />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={post.mediaUrl} alt="" className="size-full object-contain" />
-                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={post.mediaUrls[0]} alt="" className="size-full object-contain" />
                   </div>
+                ) : (
+                  post.mediaUrl && (
+                    <div className="h-12 w-20 shrink-0 overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
+                      {post.mediaType === "VIDEO" ? (
+                        <video src={post.mediaUrl} className="size-full object-contain" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={post.mediaUrl} alt="" className="size-full object-contain" />
+                      )}
+                    </div>
+                  )
                 )}
                 <PlatformIcon platform={post.platform} />
                 <p className="min-w-0 flex-1 truncate">{post.caption}</p>

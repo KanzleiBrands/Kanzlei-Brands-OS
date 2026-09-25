@@ -301,7 +301,9 @@ export default async function ClientDetailPage({
             status: post.status,
             caption: post.caption,
             mediaUrl: post.mediaUrl,
+            mediaUrls: post.mediaUrls,
             mediaType: post.mediaType,
+            utmCampaign: post.utmCampaign,
             channelId: post.channelId,
             pipelineId: post.pipelineId,
             responsibleUserId: post.responsibleUserId,
@@ -323,6 +325,20 @@ export default async function ClientDetailPage({
             parentCommentId: comment.parentCommentId,
             postedAt: comment.postedAt.toISOString(),
           }))}
+          analyticsPosts={socialPosts
+            .filter((post) => post.status === "PUBLISHED" && post.publishedAt)
+            .map((post) => ({
+              id: post.id,
+              platform: post.platform,
+              caption: post.caption,
+              publishedAt: post.publishedAt!.toISOString(),
+              publishedUrl: post.publishedUrl,
+              reach: post.reach,
+              likeCount: post.likeCount,
+              commentCount: post.commentCount,
+              shareCount: post.shareCount,
+              clickCount: post.clickCount,
+            }))}
         />
       )}
 

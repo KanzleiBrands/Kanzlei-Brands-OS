@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { decryptToken } from "@/lib/auth-encryption";
-import { publishFacebookPost, publishInstagramPost, MetaGraphError } from "@/lib/meta/graph";
+import {
+  publishFacebookPost,
+  publishFacebookCarousel,
+  publishInstagramPost,
+  publishInstagramCarousel,
+  MetaGraphError,
+} from "@/lib/meta/graph";
 import { publishLinkedInPost, LinkedInApiError } from "@/lib/linkedin/client";
+import { appendUtmParams } from "@/lib/social/utm";
 
 /**
  * Actually publishes every SCHEDULED post whose time has come, via the
@@ -25,31 +32,51 @@ export async function publishDueSocialPosts(): Promise<{ published: number; fail
         throw new Error("Kein aktiver Kanal für diesen Beitrag verbunden.");
       }
       const accessToken = decryptToken(post.channel.accessTokenEnc);
+      const caption = appendUtmParams(post.caption, post.platform, post.utmCampaign);
+      const isCarousel = post.mediaType === "CAROUSEL" && post.mediaUrls.length > 0;
       let result: { id: string; permalink?: string };
 
       if (post.platform === "FACEBOOK") {
-        result = await publishFacebookPost({
-          pageId: post.channel.externalId,
-          pageAccessToken: accessToken,
-          message: post.caption,
-          mediaUrl: post.mediaUrl ?? undefined,
-          mediaType: post.mediaType ?? undefined,
-        });
+        result = isCarousel
+          ? await publishFacebookCarousel({
+              pageId: post.channel.externalId,
+              pageAccessToken: accessToken,
+              message: caption,
+              mediaUrls: post.mediaUrls,
+            })
+          : await publishFacebookPost({
+              pageId: post.channel.externalId,
+              pageAccessToken: accessToken,
+              message: caption,
+              mediaUrl: post.mediaUrl ?? undefined,
+              mediaType: post.mediaType === "CAROUSEL" ? undefined : (post.mediaType ?? undefined),
+            });
       } else if (post.platform === "INSTAGRAM") {
-        if (!post.mediaUrl || !post.mediaType) throw new Error("Instagram-Beitrag benötigt ein Bild oder Video.");
-        result = await publishInstagramPost({
-          igUserId: post.channel.externalId,
-          pageAccessToken: accessToken,
-          caption: post.caption,
-          mediaUrl: post.mediaUrl,
-          mediaType: post.mediaType,
-        });
+        if (isCarousel) {
+          result = await publishInstagramCarousel({
+            igUserId: post.channel.externalId,
+            pageAccessToken: accessToken,
+            caption,
+            mediaUrls: post.mediaUrls,
+          });
+        } else {
+          if (!post.mediaUrl || !post.mediaType) throw new Error("Instagram-Beitrag benötigt ein Bild oder Video.");
+          if (post.mediaType === "CAROUSEL") throw new Error("Karussell-Beitrag benötigt mindestens 2 Bilder.");
+          result = await publishInstagramPost({
+            igUserId: post.channel.externalId,
+            pageAccessToken: accessToken,
+            caption,
+            mediaUrl: post.mediaUrl,
+            mediaType: post.mediaType,
+          });
+        }
       } else {
         const linkedInResult = await publishLinkedInPost({
           accessToken,
           organizationUrn: post.channel.externalId,
-          text: post.caption,
+          text: caption,
           mediaUrl: post.mediaUrl ?? undefined,
+          mediaUrls: isCarousel ? post.mediaUrls : undefined,
           mediaType: post.mediaType ?? undefined,
         });
         result = { id: linkedInResult.id };

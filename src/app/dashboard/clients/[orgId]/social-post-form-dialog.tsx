@@ -2,7 +2,19 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
-import { ImageIcon, Loader2Icon, PencilIcon, PlusIcon, UploadCloudIcon, XIcon } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  GripVerticalIcon,
+  ImagesIcon,
+  ImageIcon,
+  Loader2Icon,
+  PencilIcon,
+  PlusIcon,
+  UploadCloudIcon,
+  XIcon,
+} from "lucide-react";
 import { createSocialPost, updateSocialPost, uploadSocialPostImage } from "@/lib/actions/social-posts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlatformIcon } from "@/components/platform-icon";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { AiCaptionAssistant } from "./ai-caption-assistant";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type Pipeline = { id: string; name: string };
@@ -26,13 +39,17 @@ export type SocialPostStatus =
   | "PUBLISHED"
   | "FAILED";
 
+export type SocialMediaTypeValue = "IMAGE" | "VIDEO" | "CAROUSEL";
+
 export type SocialPostData = {
   id: string;
   platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
   status: SocialPostStatus;
   caption: string;
   mediaUrl: string | null;
-  mediaType: "IMAGE" | "VIDEO" | null;
+  mediaUrls: string[];
+  mediaType: SocialMediaTypeValue | null;
+  utmCampaign: string | null;
   channelId: string | null;
   pipelineId: string | null;
   responsibleUserId: string | null;
@@ -40,6 +57,43 @@ export type SocialPostData = {
   publishedAt: string | null; // ISO
   publishedUrl: string | null;
 };
+
+function newId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function SortableCarouselImage({ url, onRemove }: { url: string; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: url });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="flex items-center gap-1.5 rounded-lg border bg-card p-1.5"
+    >
+      <button
+        type="button"
+        aria-label="Verschieben"
+        className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVerticalIcon className="size-3.5" />
+      </button>
+      <div className="h-14 w-24 shrink-0 overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="" className="size-full object-contain" />
+      </div>
+      <button
+        type="button"
+        aria-label="Bild entfernen"
+        onClick={onRemove}
+        className="ml-auto flex size-6 shrink-0 items-center justify-center text-muted-foreground hover:text-destructive"
+      >
+        <XIcon className="size-4" />
+      </button>
+    </div>
+  );
+}
 
 const PLATFORM_LABELS: Record<Channel["platform"], string> = {
   FACEBOOK: "Facebook",
@@ -84,11 +138,17 @@ export function SocialPostFormDialog({
 
   const [platform, setPlatform] = useState<Channel["platform"]>(post?.platform ?? "FACEBOOK");
   const [channelId, setChannelId] = useState(post?.channelId ?? "");
+  const [caption, setCaption] = useState(post?.caption ?? "");
   const [mediaUrl, setMediaUrl] = useState(post?.mediaUrl ?? "");
-  const [mediaType, setMediaType] = useState<"IMAGE" | "VIDEO" | "">(post?.mediaType ?? "");
+  const [mediaType, setMediaType] = useState<SocialMediaTypeValue | "">(post?.mediaType ?? "");
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaProgress, setMediaProgress] = useState(0);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [carousel, setCarousel] = useState<{ id: string; url: string }[]>(
+    (post?.mediaUrls ?? []).map((url) => ({ id: newId(), url })),
+  );
+  const [carouselUploading, setCarouselUploading] = useState(false);
+  const carouselSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const channelsForPlatform = channels.filter((c) => c.platform === platform);
 
@@ -104,13 +164,41 @@ export function SocialPostFormDialog({
       // Reset a create dialog's fields each time it's reopened, so a
       // previous submission's state doesn't linger into the next one.
       formRef.current?.reset();
+      setCaption("");
       setMediaUrl("");
       setMediaType("");
       setMediaError(null);
+      setCarousel([]);
       setChannelId("");
       setPlatform("FACEBOOK");
     }
     setOpen(next);
+  }
+
+  async function handleCarouselFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setCarouselUploading(true);
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.set("image", file);
+      const result = await uploadSocialPostImage(fd);
+      if (!("error" in result)) {
+        setCarousel((c) => [...c, { id: newId(), url: result.url }]);
+      } else {
+        setMediaError(result.error);
+      }
+    }
+    setCarouselUploading(false);
+  }
+
+  function handleCarouselDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setCarousel((c) => {
+      const oldIndex = c.findIndex((item) => item.id === active.id);
+      const newIndex = c.findIndex((item) => item.id === over.id);
+      return arrayMove(c, oldIndex, newIndex);
+    });
   }
 
   async function handleImageFile(file: File | undefined) {
@@ -196,6 +284,7 @@ export function SocialPostFormDialog({
           <input type="hidden" name="platform" value={platform} />
           <input type="hidden" name="mediaUrl" value={mediaUrl} />
           <input type="hidden" name="mediaType" value={mediaType} />
+          <input type="hidden" name="mediaUrls" value={JSON.stringify(carousel.map((c) => c.url))} />
 
           <div className="flex flex-col gap-1">
             <Label>Plattform</Label>
@@ -239,10 +328,96 @@ export function SocialPostFormDialog({
             )}
           </div>
 
-          <Textarea name="caption" placeholder="Text / Caption" rows={4} defaultValue={post?.caption} required />
+          <Textarea
+            name="caption"
+            placeholder="Text / Caption"
+            rows={4}
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            required
+          />
+          <AiCaptionAssistant caption={caption} platform={platform} onInsert={(text) => setCaption(text)} />
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Bild oder Video</Label>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="social-post-utm">UTM-Kampagne (optional)</Label>
+            <Input
+              id="social-post-utm"
+              name="utmCampaign"
+              placeholder="z.B. fruehjahrsverkauf_2026"
+              defaultValue={post?.utmCampaign ?? ""}
+            />
+            <p className="text-xs text-muted-foreground">
+              Wird an jeden Link in der Caption angehängt (utm_source={PLATFORM_LABELS[platform].toLowerCase()}, utm_medium=social).
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label>Format</Label>
+            <div className="flex gap-1.5">
+              {(
+                [
+                  { value: "IMAGE", label: "Bild" },
+                  { value: "VIDEO", label: "Video" },
+                  { value: "CAROUSEL", label: "Karussell" },
+                ] as const
+              ).map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={mediaType === option.value ? "default" : "outline"}
+                  onClick={() => {
+                    setMediaType(option.value);
+                    setMediaError(null);
+                    if (option.value === "CAROUSEL") {
+                      setMediaUrl("");
+                    } else {
+                      setCarousel([]);
+                    }
+                  }}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {mediaType === "CAROUSEL" ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Karussell-Bilder (2-10)</Label>
+                <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted">
+                  {carouselUploading ? <Loader2Icon className="size-3.5 animate-spin" /> : <ImagesIcon className="size-3.5" />}
+                  Bilder hinzufügen
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    disabled={carouselUploading}
+                    onChange={(e) => handleCarouselFiles(e.target.files)}
+                  />
+                </label>
+              </div>
+              {carousel.length > 0 && (
+                <DndContext sensors={carouselSensors} collisionDetection={closestCenter} onDragEnd={handleCarouselDragEnd}>
+                  <SortableContext items={carousel.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-1.5">
+                      {carousel.map((item) => (
+                        <SortableCarouselImage
+                          key={item.id}
+                          url={item.url}
+                          onRemove={() => setCarousel((c) => c.filter((x) => x.id !== item.id))}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+              {mediaError && <p className="text-xs text-destructive">{mediaError}</p>}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
             {mediaUploading ? (
               <div className="rounded-md border p-3">
                 <div className="mb-1.5 flex items-center gap-2 text-sm">
@@ -288,7 +463,8 @@ export function SocialPostFormDialog({
               </div>
             )}
             {mediaError && <p className="text-xs text-destructive">{mediaError}</p>}
-          </div>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <Label htmlFor="social-post-scheduled">Geplantes Veröffentlichungsdatum</Label>

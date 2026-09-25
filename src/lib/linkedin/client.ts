@@ -132,9 +132,10 @@ export async function publishLinkedInPost(params: {
   organizationUrn: string;
   text: string;
   mediaUrl?: string;
-  mediaType?: "IMAGE" | "VIDEO";
+  mediaUrls?: string[];
+  mediaType?: "IMAGE" | "VIDEO" | "CAROUSEL";
 }): Promise<PublishedLinkedInPost> {
-  const { accessToken, organizationUrn, text, mediaUrl, mediaType } = params;
+  const { accessToken, organizationUrn, text, mediaUrl, mediaUrls, mediaType } = params;
 
   if (mediaType === "VIDEO") {
     throw new LinkedInApiError("LinkedIn-Video-Upload wird noch nicht unterstützt - Beitrag bitte ohne Video oder mit Bild planen.");
@@ -149,7 +150,10 @@ export async function publishLinkedInPost(params: {
     isReshareDisabledByAuthor: false,
   };
 
-  if (mediaUrl && mediaType === "IMAGE") {
+  if (mediaType === "CAROUSEL" && mediaUrls && mediaUrls.length > 0) {
+    const imageUrns = await Promise.all(mediaUrls.map((url) => uploadLinkedInImage(accessToken, organizationUrn, url)));
+    body.content = { multiImage: { images: imageUrns.map((id) => ({ id })) } };
+  } else if (mediaUrl && mediaType === "IMAGE") {
     const imageUrn = await uploadLinkedInImage(accessToken, organizationUrn, mediaUrl);
     body.content = { media: { id: imageUrn } };
   }

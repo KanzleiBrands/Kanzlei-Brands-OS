@@ -7,6 +7,8 @@ import { SocialPostFormDialog } from "./social-post-form-dialog";
 import { SocialPostBoard, type BoardPost } from "./social-post-board";
 import { SocialPostCalendar } from "./social-post-calendar";
 import { SocialCommentInbox, type CommentInboxPost, type CommentInboxComment } from "./social-comment-inbox";
+import { SocialCsvImportDialog } from "./social-csv-import-dialog";
+import { SocialAnalytics, type AnalyticsPost } from "./social-analytics";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type Pipeline = { id: string; name: string };
@@ -19,6 +21,7 @@ export function ContentTab({
   pipelines,
   agencyUsers,
   comments,
+  analyticsPosts,
 }: {
   organizationId: string;
   channels: Channel[];
@@ -26,8 +29,9 @@ export function ContentTab({
   pipelines: Pipeline[];
   agencyUsers: AgencyUser[];
   comments: CommentInboxComment[];
+  analyticsPosts: AnalyticsPost[];
 }) {
-  const [view, setView] = useState<"board" | "calendar" | "community">("board");
+  const [view, setView] = useState<"board" | "calendar" | "community" | "analytics">("board");
   const commentInboxPosts: CommentInboxPost[] = posts.map((post) => ({
     id: post.id,
     platform: post.platform,
@@ -52,8 +56,14 @@ export function ContentTab({
           <Button type="button" size="sm" variant={view === "community" ? "default" : "outline"} onClick={() => setView("community")}>
             Community
           </Button>
+          <Button type="button" size="sm" variant={view === "analytics" ? "default" : "outline"} onClick={() => setView("analytics")}>
+            Analytics
+          </Button>
         </div>
-        <SocialPostFormDialog organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
+        <div className="flex gap-1.5">
+          <SocialCsvImportDialog organizationId={organizationId} />
+          <SocialPostFormDialog organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
+        </div>
       </div>
 
       {view === "board" && (
@@ -63,6 +73,7 @@ export function ContentTab({
         <SocialPostCalendar organizationId={organizationId} posts={posts} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
       )}
       {view === "community" && <SocialCommentInbox organizationId={organizationId} posts={commentInboxPosts} comments={comments} />}
+      {view === "analytics" && <SocialAnalytics posts={analyticsPosts} />}
     </div>
   );
 }

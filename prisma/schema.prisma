@@ -639,6 +639,7 @@ enum SocialPostStatus {
 enum SocialMediaType {
   IMAGE
   VIDEO
+  CAROUSEL
 }
 
 // One social media post through its whole lifecycle: idea -> production ->
@@ -649,7 +650,8 @@ model SocialPost {
   id        String           @id @default(cuid())
   platform  SocialPlatform
   caption   String
-  mediaUrl  String?
+  mediaUrl  String? // single image/video (mediaType IMAGE|VIDEO)
+  mediaUrls String[]         @default([]) // carousel images (mediaType CAROUSEL) - 2-10 images
   mediaType SocialMediaType?
   status    SocialPostStatus @default(IDEA)
 
@@ -662,6 +664,21 @@ model SocialPost {
   // Vom Kunden bei "Änderung wünschen" hinterlassener Wunsch - für die
   // Agentur sichtbar, bis der Beitrag erneut zur Freigabe eingereicht wird.
   clientFeedback String?
+
+  // An jeden Link in der Caption angehängt (utm_source/utm_medium werden aus
+  // der Plattform abgeleitet, nur die Kampagne ist frei wählbar) - siehe
+  // src/lib/social/utm.ts.
+  utmCampaign String?
+
+  // Von Meta abgerufene Leistungskennzahlen (src/lib/social/insights-sync.ts) -
+  // aktueller Stand, keine Historie. null bis zum ersten Sync nach Veröffentlichung.
+  impressions      Int?
+  reach            Int?
+  likeCount        Int?
+  commentCount     Int?
+  shareCount       Int?
+  clickCount       Int?
+  insightsSyncedAt DateTime?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

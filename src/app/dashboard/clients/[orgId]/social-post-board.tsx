@@ -71,15 +71,25 @@ function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
         </button>
         <p className="min-w-0 flex-1 line-clamp-3 whitespace-pre-line">{post.caption}</p>
       </div>
-      {post.mediaUrl && (
-        <div className="h-20 w-full overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
-          {post.mediaType === "VIDEO" ? (
-            <video src={post.mediaUrl} className="size-full object-contain" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.mediaUrl} alt="" className="size-full object-contain" />
-          )}
+      {post.mediaType === "CAROUSEL" && post.mediaUrls[0] ? (
+        <div className="relative h-20 w-full overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={post.mediaUrls[0]} alt="" className="size-full object-contain" />
+          <span className="absolute top-1 right-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[0.65rem] font-medium text-white">
+            {post.mediaUrls.length}
+          </span>
         </div>
+      ) : (
+        post.mediaUrl && (
+          <div className="h-20 w-full overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
+            {post.mediaType === "VIDEO" ? (
+              <video src={post.mediaUrl} className="size-full object-contain" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={post.mediaUrl} alt="" className="size-full object-contain" />
+            )}
+          </div>
+        )
       )}
       {post.clientFeedback && (
         <p className="rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-400">

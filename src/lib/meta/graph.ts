@@ -414,6 +414,152 @@ export async function publishInstagramPost(params: {
   return { id: published.id, permalink: withPermalink.permalink };
 }
 
+/**
+ * Publishes a multi-photo Facebook Page post: each image is first uploaded
+ * as an unpublished photo (published=false) to get a media fbid, then all
+ * fbids are attached to a single /feed post - the documented way to get a
+ * Facebook carousel/multi-photo post instead of several separate posts.
+ */
+export async function publishFacebookCarousel(params: {
+  pageId: string;
+  pageAccessToken: string;
+  message: string;
+  mediaUrls: string[];
+}): Promise<PublishedPost> {
+  const { pageId, pageAccessToken, message, mediaUrls } = params;
+
+  const photoIds = await Promise.all(
+    mediaUrls.map(async (mediaUrl) => {
+      const url = new URL(`${GRAPH_BASE}/${pageId}/photos`);
+      url.searchParams.set("access_token", pageAccessToken);
+      url.searchParams.set("url", mediaUrl);
+      url.searchParams.set("published", "false");
+      const result = await graphFetch<{ id: string }>(url.toString(), { method: "POST" });
+      return result.id;
+    }),
+  );
+
+  const feedUrl = new URL(`${GRAPH_BASE}/${pageId}/feed`);
+  feedUrl.searchParams.set("access_token", pageAccessToken);
+  feedUrl.searchParams.set("message", message);
+  feedUrl.searchParams.set("attached_media", JSON.stringify(photoIds.map((id) => ({ media_fbid: id }))));
+  const result = await graphFetch<{ id: string }>(feedUrl.toString(), { method: "POST" });
+  return { id: result.id, permalink: `https://www.facebook.com/${result.id}` };
+}
+
+/**
+ * Publishes an Instagram carousel (2-10 images): each image becomes an
+ * unpublished "carousel item" child container, then a parent container of
+ * media_type CAROUSEL references all children and is published as a whole -
+ * same Content Publishing API as publishInstagramPost, one extra layer.
+ */
+export async function publishInstagramCarousel(params: {
+  igUserId: string;
+  pageAccessToken: string;
+  caption: string;
+  mediaUrls: string[];
+}): Promise<PublishedPost> {
+  const { igUserId, pageAccessToken, caption, mediaUrls } = params;
+
+  const childIds = await Promise.all(
+    mediaUrls.map(async (mediaUrl) => {
+      const url = new URL(`${GRAPH_BASE}/${igUserId}/media`);
+      url.searchParams.set("access_token", pageAccessToken);
+      url.searchParams.set("image_url", mediaUrl);
+      url.searchParams.set("is_carousel_item", "true");
+      const result = await graphFetch<{ id: string }>(url.toString(), { method: "POST" });
+      return result.id;
+    }),
+  );
+
+  const createUrl = new URL(`${GRAPH_BASE}/${igUserId}/media`);
+  createUrl.searchParams.set("access_token", pageAccessToken);
+  createUrl.searchParams.set("caption", caption);
+  createUrl.searchParams.set("media_type", "CAROUSEL");
+  createUrl.searchParams.set("children", childIds.join(","));
+  const created = await graphFetch<{ id: string }>(createUrl.toString(), { method: "POST" });
+
+  const publishUrl = new URL(`${GRAPH_BASE}/${igUserId}/media_publish`);
+  publishUrl.searchParams.set("access_token", pageAccessToken);
+  publishUrl.searchParams.set("creation_id", created.id);
+  const published = await graphFetch<{ id: string }>(publishUrl.toString(), { method: "POST" });
+
+  const permalinkUrl = new URL(`${GRAPH_BASE}/${published.id}`);
+  permalinkUrl.searchParams.set("access_token", pageAccessToken);
+  permalinkUrl.searchParams.set("fields", "permalink");
+  const withPermalink = await graphFetch<{ permalink?: string }>(permalinkUrl.toString()).catch(
+    () => ({ permalink: undefined }) as { permalink?: string },
+  );
+
+  return { id: published.id, permalink: withPermalink.permalink };
+}
+
+// ---------------------------------------------------------------------------
+// Social Media Content: Analytics (post insights)
+// ---------------------------------------------------------------------------
+
+export type SocialPostInsights = {
+  impressions?: number;
+  reach?: number;
+  likeCount?: number;
+  commentCount?: number;
+  shareCount?: number;
+  clickCount?: number;
+};
+
+type MetaInsightMetric = { name: string; values?: { value: number }[]; total_value?: { value: number } };
+
+/** Combines Page Insights (reach/impressions/clicks) with plain post fields (likes/comments/shares) - Graph splits these across two endpoints. */
+export async function fetchFacebookPostInsights(postId: string, pageAccessToken: string): Promise<SocialPostInsights> {
+  const insightsUrl = new URL(`${GRAPH_BASE}/${postId}/insights`);
+  insightsUrl.searchParams.set("access_token", pageAccessToken);
+  insightsUrl.searchParams.set("metric", "post_impressions,post_impressions_unique,post_clicks");
+  const insights = await graphFetch<{ data: MetaInsightMetric[] }>(insightsUrl.toString()).catch(() => ({ data: [] }));
+  const metricValue = (name: string) => insights.data.find((m) => m.name === name)?.values?.[0]?.value;
+
+  const fieldsUrl = new URL(`${GRAPH_BASE}/${postId}`);
+  fieldsUrl.searchParams.set("access_token", pageAccessToken);
+  fieldsUrl.searchParams.set("fields", "shares,likes.summary(true),comments.summary(true)");
+  type PostFields = {
+    shares?: { count: number };
+    likes?: { summary?: { total_count: number } };
+    comments?: { summary?: { total_count: number } };
+  };
+  const fields = await graphFetch<PostFields>(fieldsUrl.toString()).catch(() => ({}) as PostFields);
+
+  return {
+    impressions: metricValue("post_impressions"),
+    reach: metricValue("post_impressions_unique"),
+    clickCount: metricValue("post_clicks"),
+    likeCount: fields.likes?.summary?.total_count,
+    commentCount: fields.comments?.summary?.total_count,
+    shareCount: fields.shares?.count,
+  };
+}
+
+/** Instagram media insights - which metrics are valid depends on media_product_type (feed/reel/carousel), so a failure of the whole call is swallowed rather than failing the sync for one post. */
+export async function fetchInstagramMediaInsights(mediaId: string, pageAccessToken: string): Promise<SocialPostInsights> {
+  const url = new URL(`${GRAPH_BASE}/${mediaId}/insights`);
+  url.searchParams.set("access_token", pageAccessToken);
+  url.searchParams.set("metric", "reach,likes,comments,shares,saved");
+  try {
+    const result = await graphFetch<{ data: MetaInsightMetric[] }>(url.toString());
+    const metricValue = (name: string) => {
+      const metric = result.data.find((m) => m.name === name);
+      return metric?.values?.[0]?.value ?? metric?.total_value?.value;
+    };
+    return {
+      reach: metricValue("reach"),
+      likeCount: metricValue("likes"),
+      commentCount: metricValue("comments"),
+      shareCount: metricValue("shares"),
+    };
+  } catch (error) {
+    if (error instanceof MetaGraphError) return {};
+    throw error;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Social Media Content: Community Center (comments)
 // ---------------------------------------------------------------------------

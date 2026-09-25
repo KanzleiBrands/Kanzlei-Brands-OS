@@ -67,6 +67,7 @@ export default async function KundenHubPage() {
     platform: post.platform,
     caption: post.caption,
     mediaUrl: post.mediaUrl,
+    mediaUrls: post.mediaUrls,
     mediaType: post.mediaType,
     status: post.status as "CLIENT_REVIEW" | "SCHEDULED" | "PUBLISHED",
     scheduledAt: post.scheduledAt?.toISOString() ?? null,
