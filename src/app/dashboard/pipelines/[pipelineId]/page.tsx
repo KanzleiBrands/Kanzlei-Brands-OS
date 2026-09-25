@@ -15,9 +15,12 @@ import { NotifyNewContactToggle } from "./notify-new-contact-toggle";
 import { AutomationsPanel } from "./automations-panel";
 import { FinalStageSelector } from "./final-stage-selector";
 import { JobPostingForm } from "./job-posting-form";
+import { EmailMarketingTab, type FunnelData } from "./email-marketing-tab";
+import { EMAIL_MARKETING_PRODUCT_TAG } from "@/lib/funnels/constants";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
+import { contactDisplayName } from "@/lib/contact-display";
 
-type Tab = "leads" | "settings" | "sources" | "multiposting";
+type Tab = "leads" | "settings" | "sources" | "multiposting" | "email-marketing";
 
 export default async function PipelineDetailPage({
   params,
@@ -54,7 +57,9 @@ export default async function PipelineDetailPage({
         ? "sources"
         : tabParam === "multiposting" && canManageSettings
           ? "multiposting"
-          : "leads";
+          : tabParam === "email-marketing"
+            ? "email-marketing"
+            : "leads";
 
   const pipeline = await prisma.pipeline.findUnique({
     where: { id: pipelineId },
@@ -76,13 +81,18 @@ export default async function PipelineDetailPage({
       },
       automationRules: true,
       jobPosting: true,
-      organization: { select: { name: true } },
+      organization: { select: { name: true, bookedProductTags: true } },
     },
   });
   if (!pipeline) notFound();
 
   const canManageMultiposting = canManageSettings && pipeline.kind === "APPLICANTS";
   if (tab === "multiposting" && !canManageMultiposting) tab = "leads";
+
+  const canViewEmailMarketing = pipeline.kind === "LEADS";
+  const canManageEmailMarketing = canManageSettings && canViewEmailMarketing;
+  const emailMarketingBooked = pipeline.organization.bookedProductTags.includes(EMAIL_MARKETING_PRODUCT_TAG);
+  if (tab === "email-marketing" && !canViewEmailMarketing) tab = "leads";
 
   const baseUrl = await getBaseUrl();
   const siblingPipelines =
@@ -103,6 +113,79 @@ export default async function PipelineDetailPage({
         })
       : [];
 
+  let funnelsData: FunnelData[] = [];
+  let senderAccounts: { id: string; email: string; userName: string }[] = [];
+  if (tab === "email-marketing" && canViewEmailMarketing && (canManageSettings || emailMarketingBooked)) {
+    const funnels = await prisma.nurtureFunnel.findMany({
+      where: { pipelineId: pipeline.id },
+      orderBy: { createdAt: "asc" },
+      include: {
+        steps: { orderBy: { order: "asc" } },
+        enrollments: {
+          include: { contact: { select: { firstName: true, lastName: true, companyName: true, phone: true } } },
+        },
+      },
+    });
+
+    const stepIds = funnels.flatMap((f) => f.steps.map((s) => s.id));
+    const stepStats = stepIds.length
+      ? await prisma.funnelStepSend.groupBy({
+          by: ["stepId"],
+          where: { stepId: { in: stepIds } },
+          _count: { _all: true, openedAt: true, clickedAt: true },
+        })
+      : [];
+    const statsByStep = new Map(stepStats.map((s) => [s.stepId, s._count]));
+
+    const allContacts = pipeline.stages.flatMap((s) => s.contacts);
+
+    funnelsData = funnels.map((f) => {
+      const enrolledIds = new Set(f.enrollments.map((e) => e.contactId));
+      return {
+        id: f.id,
+        name: f.name,
+        active: f.active,
+        triggerType: f.triggerType,
+        inactivityDays: f.inactivityDays,
+        senderAccountId: f.senderAccountId,
+        steps: f.steps.map((s) => {
+          const stats = statsByStep.get(s.id);
+          return {
+            id: s.id,
+            order: s.order,
+            delayDays: s.delayDays,
+            subject: s.subject,
+            preheader: s.preheader,
+            bodyText: s.bodyText,
+            ctaLabel: s.ctaLabel,
+            ctaUrl: s.ctaUrl,
+            sentCount: stats?._all ?? 0,
+            openCount: stats?.openedAt ?? 0,
+            clickCount: stats?.clickedAt ?? 0,
+          };
+        }),
+        enrollments: f.enrollments.map((e) => ({
+          id: e.id,
+          contactName: contactDisplayName(e.contact),
+          status: e.status,
+          currentStepOrder: e.currentStepOrder,
+        })),
+        enrollableContacts: allContacts
+          .filter((c) => !enrolledIds.has(c.id))
+          .map((c) => ({ id: c.id, name: contactDisplayName(c), email: c.email })),
+      };
+    });
+
+    if (canManageEmailMarketing) {
+      const accounts = await prisma.emailAccount.findMany({
+        where: { user: { organizationId: pipeline.organizationId } },
+        include: { user: { select: { name: true } } },
+        orderBy: { email: "asc" },
+      });
+      senderAccounts = accounts.map((a) => ({ id: a.id, email: a.email, userName: a.user.name ?? a.email }));
+    }
+  }
+
   return (
     <div className="p-4 sm:p-8">
       <div className="mb-4">
@@ -113,7 +196,7 @@ export default async function PipelineDetailPage({
         </p>
       </div>
 
-      {canManageSettings && (
+      {(canManageSettings || canViewEmailMarketing) && (
         <div className="mb-6 flex gap-1 overflow-x-auto border-b">
           <Link
             href={`/dashboard/pipelines/${pipeline.id}?tab=leads`}
@@ -121,12 +204,14 @@ export default async function PipelineDetailPage({
           >
             {pipeline.kind === "APPLICANTS" ? "Bewerbungen" : "Leads"}
           </Link>
-          <Link
-            href={`/dashboard/pipelines/${pipeline.id}?tab=settings`}
-            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Kampagnen-Einstellungen
-          </Link>
+          {canManageSettings && (
+            <Link
+              href={`/dashboard/pipelines/${pipeline.id}?tab=settings`}
+              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              Kampagnen-Einstellungen
+            </Link>
+          )}
           {canManageSources && (
             <Link
               href={`/dashboard/pipelines/${pipeline.id}?tab=sources`}
@@ -141,6 +226,14 @@ export default async function PipelineDetailPage({
               className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "multiposting" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               Stellenportale
+            </Link>
+          )}
+          {canViewEmailMarketing && (
+            <Link
+              href={`/dashboard/pipelines/${pipeline.id}?tab=email-marketing`}
+              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "email-marketing" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              E-Mail Marketing
             </Link>
           )}
         </div>
@@ -278,6 +371,18 @@ export default async function PipelineDetailPage({
                 }
               : null
           }
+        />
+      )}
+
+      {tab === "email-marketing" && canViewEmailMarketing && (
+        <EmailMarketingTab
+          pipelineId={pipeline.id}
+          organizationId={pipeline.organizationId}
+          isAgency={canManageSettings}
+          canManage={canManageEmailMarketing}
+          booked={emailMarketingBooked}
+          funnels={funnelsData}
+          senderAccounts={senderAccounts}
         />
       )}
     </div>

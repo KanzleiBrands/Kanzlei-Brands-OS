@@ -123,7 +123,7 @@ export async function fetchMicrosoftEmail(accessToken: string) {
 
 export async function sendMicrosoftMail(
   accessToken: string,
-  params: { to: string; subject: string; text: string },
+  params: { to: string; subject: string; text: string; html?: string },
 ) {
   const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
     method: "POST",
@@ -134,7 +134,7 @@ export async function sendMicrosoftMail(
     body: JSON.stringify({
       message: {
         subject: params.subject,
-        body: { contentType: "Text", content: params.text },
+        body: params.html ? { contentType: "HTML", content: params.html } : { contentType: "Text", content: params.text },
         toRecipients: [{ emailAddress: { address: params.to } }],
       },
       saveToSentItems: true,

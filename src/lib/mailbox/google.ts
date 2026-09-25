@@ -72,14 +72,37 @@ export async function fetchGoogleEmail(accessToken: string) {
   return data.email;
 }
 
-function encodeMimeMessage(params: { from: string; to: string; subject: string; text: string }) {
+function encodeMimeMessage(params: { from: string; to: string; subject: string; text: string; html?: string }) {
+  if (!params.html) {
+    const message = [
+      `From: ${params.from}`,
+      `To: ${params.to}`,
+      `Subject: ${params.subject}`,
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      params.text,
+    ].join("\r\n");
+    return Buffer.from(message).toString("base64url");
+  }
+
+  const boundary = `boundary_${Date.now()}`;
   const message = [
     `From: ${params.from}`,
     `To: ${params.to}`,
     `Subject: ${params.subject}`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
     "Content-Type: text/plain; charset=utf-8",
     "",
     params.text,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=utf-8",
+    "",
+    params.html,
+    "",
+    `--${boundary}--`,
   ].join("\r\n");
   return Buffer.from(message).toString("base64url");
 }
@@ -176,7 +199,7 @@ export async function listGmailMessages(accessToken: string, since: Date): Promi
 
 export async function sendGmail(
   accessToken: string,
-  params: { from: string; to: string; subject: string; text: string },
+  params: { from: string; to: string; subject: string; text: string; html?: string },
 ) {
   const raw = encodeMimeMessage(params);
   const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {

@@ -37,16 +37,28 @@ export async function getValidAccessToken(account: EmailAccount): Promise<string
 
 export async function sendEmailViaAccount(
   account: EmailAccount,
-  params: { to: string; subject: string; text: string },
+  params: { to: string; subject: string; text: string; html?: string },
 ) {
   const user = await prisma.user.findUnique({ where: { id: account.userId }, select: { signature: true } });
   const text = user?.signature ? `${params.text}\n\n${user.signature}` : params.text;
+  const html =
+    params.html && user?.signature
+      ? `${params.html}<p>${escapeHtml(user.signature).replace(/\n/g, "<br>")}</p>`
+      : params.html;
 
   const accessToken = await getValidAccessToken(account);
   if (account.provider === "GOOGLE") {
-    const result = await sendGmail(accessToken, { ...params, text, from: account.email });
+    const result = await sendGmail(accessToken, { ...params, text, html, from: account.email });
     return result.id;
   }
-  await sendMicrosoftMail(accessToken, { ...params, text });
+  await sendMicrosoftMail(accessToken, { ...params, text, html });
   return `msgraph-${Date.now()}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

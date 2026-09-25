@@ -267,6 +267,7 @@ model Pipeline {
   automationRules         AutomationRule[]
   socialPosts             SocialPost[]
   jobPosting              JobPosting?
+  nurtureFunnels          NurtureFunnel[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -429,6 +430,7 @@ model Contact {
   automationLogs     AutomationLog[]
   metaLeadDeliveries MetaLeadDelivery[]
   tasks              Task[]
+  funnelEnrollments  FunnelEnrollment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -936,7 +938,8 @@ model EmailAccount {
   refreshTokenEnc String
   expiresAt       DateTime
 
-  messages EmailMessage[]
+  messages       EmailMessage[]
+  nurtureFunnels NurtureFunnel[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1204,4 +1207,125 @@ model AuditLog {
 
   @@index([organizationId])
   @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// E-Mail-Marketing (Nurture-Funnels für Mandatsakquise-Leads)
+// ---------------------------------------------------------------------------
+
+enum FunnelTriggerType {
+  MANUAL // Leads werden von Agentur/Kunde gezielt ausgewählt und eingeschrieben
+  ON_NEW_LEAD // jeder neue Lead dieser Kampagne wird automatisch eingeschrieben
+  ON_INACTIVITY // Leads werden nach inactivityDays Tagen ohne Aktivität automatisch eingeschrieben
+}
+
+enum FunnelEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  STOPPED // manuell entfernt, oder automatisch gestoppt weil der Lead eine Erfolgs-/Ablehnungsstufe erreicht hat
+}
+
+// Ein Nurture-Funnel (Willkommens-/Aufwärm-Sequenz) für eine Mandatsakquise-
+// Kampagne (Pipeline.kind == LEADS). Versendet wird über das verbundene
+// Postfach (EmailAccount) eines Mitarbeiters des Kunden - siehe
+// src/lib/mailbox/send.ts - damit Antworten direkt im echten Postfach des
+// Kunden landen, nicht über die System-Absenderadresse.
+model NurtureFunnel {
+  id     String  @id @default(cuid())
+  name   String
+  active Boolean @default(false)
+
+  triggerType    FunnelTriggerType @default(MANUAL)
+  inactivityDays Int? // nur relevant bei triggerType = ON_INACTIVITY
+
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  senderAccountId String?
+  senderAccount   EmailAccount? @relation(fields: [senderAccountId], references: [id], onDelete: SetNull)
+
+  steps       FunnelStep[]
+  enrollments FunnelEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pipelineId])
+}
+
+// Eine E-Mail innerhalb eines Funnels. delayDays ist die Wartezeit NACH der
+// Einschreibung (order 1) bzw. nach dem Versand des vorherigen Schritts
+// (order > 1) - modelliert die "Warten auf X Tage"-Knoten aus dem Referenz-
+// Flow implizit über den nächsten Schritt, statt als eigene Entität.
+model FunnelStep {
+  id        String @id @default(cuid())
+  order     Int
+  delayDays Int    @default(0)
+
+  subject   String
+  preheader String?
+  // Reiner Text mit {{firstName}}/{{lastName}}/{{companyName}}-Platzhaltern
+  // und optionalen [Linktext](https://...)-Links, die beim Versand in
+  // klick-getrackte Links umgewandelt werden - bewusst kein HTML-Editor,
+  // damit die Mail wie eine echte persönliche Nachricht aus dem Postfach
+  // des Kunden wirkt statt wie ein Marketing-Newsletter.
+  bodyText String
+  ctaLabel String?
+  ctaUrl   String?
+
+  funnelId String
+  funnel   NurtureFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+
+  sends FunnelStepSend[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([funnelId, order])
+}
+
+// Ein Lead in einem Funnel. nextSendAt ist der Cursor, den der Funnel-Cron
+// abfragt; currentStepOrder = 0 bedeutet "noch keine E-Mail verschickt".
+model FunnelEnrollment {
+  id     String                  @id @default(cuid())
+  status FunnelEnrollmentStatus @default(ACTIVE)
+
+  funnelId  String
+  funnel    NurtureFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  currentStepOrder Int       @default(0)
+  nextSendAt       DateTime?
+
+  enrolledAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sends FunnelStepSend[]
+
+  @@unique([funnelId, contactId])
+  @@index([funnelId])
+  @@index([nextSendAt])
+}
+
+// Eine tatsächlich versendete E-Mail eines Schritts - trackingToken
+// identifiziert die Zeile im Öffnungs-Pixel bzw. Klick-Redirect (siehe
+// src/app/api/track/*), ohne die interne ID preiszugeben.
+model FunnelStepSend {
+  id            String @id @default(cuid())
+  trackingToken String @unique @default(cuid())
+
+  enrollmentId String
+  enrollment   FunnelEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stepId       String
+  step         FunnelStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  sentAt     DateTime  @default(now())
+  openedAt   DateTime?
+  openCount  Int       @default(0)
+  clickedAt  DateTime?
+  clickCount Int       @default(0)
+
+  @@index([stepId])
+  @@index([enrollmentId])
 }

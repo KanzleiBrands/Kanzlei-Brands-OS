@@ -7,10 +7,12 @@ const PUBLIC_PREFIXES = [
   "/activate",
   "/nutzungsbedingungen",
   "/datenloeschung",
+  "/jobs",
   "/api/auth",
   "/api/webhooks",
   "/api/cron",
   "/api/integrations",
+  "/api/track",
 ];
 
 export default auth((req) => {

@@ -3,8 +3,7 @@
 import { requireSession, assertOrganizationAccess, AccessDeniedError } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { sendSystemEmail } from "@/lib/email/resend";
-import { sendSlackNotification } from "@/lib/slack";
+import { notifyAccountManager } from "@/lib/actions/account-manager-notify";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 /**
@@ -29,25 +28,14 @@ export async function requestAdditionalQuota(_prevState: string | undefined, for
     throw error;
   }
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    include: { accountManager: { select: { email: true, name: true } } },
-  });
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
   if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
-
-  const recipients = organization.accountManager
-    ? [organization.accountManager]
-    : await prisma.user.findMany({
-        where: { role: "AGENCY_ADMIN", organizationId: organization.parentId ?? undefined },
-        select: { email: true, name: true },
-      });
 
   const kindLabel = CAMPAIGN_KIND_LABELS[kind] ?? kind;
   const subject = `${organization.name} möchte eine weitere ${kindLabel}-Kampagne beauftragen`;
   const text = `${organization.name} hat das gebuchte Kontingent für ${kindLabel} aufgebraucht und möchte eine weitere Kampagne beauftragen.\n\nAngefragt von: ${session.user.name} (${session.user.email})`;
 
-  await Promise.all(recipients.map((recipient) => sendSystemEmail({ to: recipient.email, subject, text })));
-  await sendSlackNotification(`📣 ${text}`);
+  await notifyAccountManager(organizationId, subject, text);
 
   await logAudit({
     action: "campaign_request.submitted",

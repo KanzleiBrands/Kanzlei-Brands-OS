@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
+import { notifyAccountManager } from "@/lib/actions/account-manager-notify";
 
 function parseStringArray(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -171,6 +172,14 @@ export async function registerInterest(_prevState: string | undefined, formData:
     organizationId: session.user.organizationId,
     userId: session.user.id,
   });
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: session.user.organizationId },
+    select: { name: true },
+  });
+  const subject = `${organization?.name ?? "Ein Kunde"} hat Interesse an "${offer.title}"`;
+  const text = `${session.user.name} (${session.user.email}) hat bei "${offer.title}" auf Interesse geklickt.${note ? `\n\nNachricht: ${note}` : ""}`;
+  await notifyAccountManager(session.user.organizationId, subject, text);
 
   revalidatePath("/dashboard/hub");
 }
