@@ -160,12 +160,12 @@ export default async function ClientDetailPage({
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-1 border-b">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b">
         {TAB_ORDER.map((item) => (
           <Link
             key={item.value}
             href={`/dashboard/clients/${organization.id}?tab=${item.value}`}
-            className={`border-b-2 px-3 py-2 text-sm ${tab === item.value ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === item.value ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {item.label}
           </Link>

@@ -111,12 +111,12 @@ export function SettingsTab({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 overflow-x-auto border-b">
         {SETTINGS_SUBTABS.map((s) => (
           <Link
             key={s.value}
             href={`/dashboard/clients/${organizationId}?tab=settings&subtab=${s.value}`}
-            className={`border-b-2 px-2.5 py-2 text-sm ${
+            className={`flex-shrink-0 border-b-2 px-2.5 py-2 text-sm whitespace-nowrap ${
               subTab === s.value
                 ? "border-primary font-medium"
                 : "border-transparent text-muted-foreground hover:text-foreground"
