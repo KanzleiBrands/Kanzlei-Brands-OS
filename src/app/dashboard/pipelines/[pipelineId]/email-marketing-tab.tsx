@@ -33,6 +33,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSaveToast } from "@/hooks/use-save-toast";
 
+const BODY_VARIABLES = [
+  { token: "{{firstName}}", label: "Vorname" },
+  { token: "{{lastName}}", label: "Nachname" },
+  { token: "{{companyName}}", label: "Firma" },
+] as const;
+
+function insertAtCursor(textarea: HTMLTextAreaElement, text: string) {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  textarea.value = `${textarea.value.slice(0, start)}${text}${textarea.value.slice(end)}`;
+  const cursor = start + text.length;
+  textarea.focus();
+  textarea.setSelectionRange(cursor, cursor);
+}
+
 export type FunnelStepData = {
   id: string;
   order: number;
@@ -151,6 +166,7 @@ function StepForm({
   const [error, formAction, isPending] = useActionState(action, undefined);
   useSaveToast(error, isPending, step ? "Schritt gespeichert." : "Schritt hinzugefügt.");
   const wasPending = useRef(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) onDone();
@@ -167,9 +183,23 @@ function StepForm({
       </div>
       <Input name="subject" placeholder="Betreff" defaultValue={step?.subject ?? ""} required />
       <Input name="preheader" placeholder="Preheader (optional)" defaultValue={step?.preheader ?? ""} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">Variable einfügen:</span>
+        {BODY_VARIABLES.map((v) => (
+          <button
+            key={v.token}
+            type="button"
+            onClick={() => bodyRef.current && insertAtCursor(bodyRef.current, v.token)}
+            className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
       <Textarea
+        ref={bodyRef}
         name="bodyText"
-        placeholder={"Text der E-Mail. Platzhalter: {{firstName}}, {{lastName}}, {{companyName}}. Links: [Linktext](https://...)"}
+        placeholder={"Text der E-Mail. Links: [Linktext](https://...)"}
         rows={6}
         defaultValue={step?.bodyText ?? ""}
         required

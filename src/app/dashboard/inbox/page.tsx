@@ -61,16 +61,16 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] flex-col md:h-[calc(100vh-4rem)]">
-      <div className="border-b p-4 sm:p-6">
-        <h1 className="text-2xl font-semibold">Posteingang</h1>
-        <p className="text-muted-foreground">
+      <div className={`${showListOnMobile ? "block" : "hidden"} border-b px-4 py-4 sm:px-6 md:block`}>
+        <h1 className="text-2xl font-semibold tracking-tight">Posteingang</h1>
+        <p className="text-sm text-muted-foreground">
           E-Mail-Korrespondenz mit Leads &amp; Bewerbern aus allen verbundenen Postfächern.
         </p>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${showListOnMobile ? "block" : "hidden"} w-full flex-shrink-0 overflow-y-auto border-r md:block md:w-80`}
+          className={`${showListOnMobile ? "block" : "hidden"} w-full flex-shrink-0 overflow-y-auto border-r bg-card/30 md:block md:w-80 lg:w-96`}
         >
           {threads.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -81,42 +81,46 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
               </p>
             </div>
           )}
-          {threads.map((thread) => {
-            const latest = thread[0];
-            const isActive = latest.contactId === activeContactId;
-            const needsReply = latest.direction === "INBOUND";
-            const name = contactDisplayName(latest.contact);
-            return (
-              <Link
-                key={latest.contactId}
-                href={`/dashboard/inbox?contact=${latest.contactId}`}
-                className={`flex items-start gap-3 border-b px-4 py-3 transition-colors hover:bg-muted ${isActive ? "bg-muted" : ""}`}
-              >
-                <div
-                  className="flex size-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium text-white"
-                  style={{ backgroundColor: avatarColorFor(name) }}
+          <div className="flex flex-col gap-1 p-2">
+            {threads.map((thread) => {
+              const latest = thread[0];
+              const isActive = latest.contactId === activeContactId;
+              const needsReply = latest.direction === "INBOUND";
+              const name = contactDisplayName(latest.contact);
+              return (
+                <Link
+                  key={latest.contactId}
+                  href={`/dashboard/inbox?contact=${latest.contactId}`}
+                  className={`flex items-start gap-3 rounded-xl px-3 py-3 transition-colors ${
+                    isActive ? "bg-primary/10" : "hover:bg-muted"
+                  }`}
                 >
-                  {initialsOf(latest.contact.firstName, latest.contact.lastName)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="flex-shrink-0 text-xs text-muted-foreground">{formatListDate(latest.sentAt)}</p>
+                  <div
+                    className="flex size-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                    style={{ backgroundColor: avatarColorFor(name) }}
+                  >
+                    {initialsOf(latest.contact.firstName, latest.contact.lastName)}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {latest.contact.pipeline.organization.name} &middot; {latest.contact.pipeline.name}
-                  </p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    {needsReply && <span className="size-1.5 flex-shrink-0 rounded-full bg-primary" aria-hidden="true" />}
-                    <p className={`truncate text-sm ${needsReply ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                      {latest.direction === "OUTBOUND" ? "Du: " : ""}
-                      {latest.subject ?? latest.bodyText?.slice(0, 60) ?? ""}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`truncate text-sm ${needsReply ? "font-semibold" : "font-medium"}`}>{name}</p>
+                      <p className="flex-shrink-0 text-xs text-muted-foreground">{formatListDate(latest.sentAt)}</p>
+                    </div>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {latest.contact.pipeline.organization.name} &middot; {latest.contact.pipeline.name}
                     </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {needsReply && <span className="size-1.5 flex-shrink-0 rounded-full bg-primary" aria-hidden="true" />}
+                      <p className={`truncate text-sm ${needsReply ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                        {latest.direction === "OUTBOUND" ? "Du: " : ""}
+                        {latest.subject ?? latest.bodyText?.slice(0, 60) ?? ""}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            );
-          })}
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
         <div className={`${showListOnMobile ? "hidden" : "flex"} w-full flex-1 flex-col overflow-hidden md:flex`}>
@@ -127,12 +131,16 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-b p-4">
-                <Link href="/dashboard/inbox" aria-label="Zurück zur Übersicht" className="text-muted-foreground hover:text-foreground md:hidden">
+              <div className="flex items-center gap-3 border-b bg-card/60 px-4 py-3.5 shadow-sm">
+                <Link
+                  href="/dashboard/inbox"
+                  aria-label="Zurück zur Übersicht"
+                  className="text-muted-foreground hover:text-foreground md:hidden"
+                >
                   <ArrowLeftIcon className="size-5" />
                 </Link>
                 <div
-                  className="flex size-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium text-white"
+                  className="flex size-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                   style={{ backgroundColor: avatarColorFor(contactDisplayName(activeContact)) }}
                 >
                   {initialsOf(activeContact.firstName, activeContact.lastName)}
@@ -143,36 +151,48 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                 </div>
                 <Link
                   href={`/dashboard/contacts/${activeContact.id}`}
-                  className="flex-shrink-0 rounded-md border px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
+                  className="flex-shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
                 >
                   Zum Kontakt
                 </Link>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="flex flex-col gap-3">
-                  {activeThreadAsc.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`max-w-[85%] rounded-2xl border px-4 py-3 shadow-sm sm:max-w-2xl ${
-                        message.direction === "OUTBOUND" ? "ml-auto bg-primary/5" : "bg-card"
-                      }`}
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-4 text-xs text-muted-foreground">
-                        <span>{message.fromAddress}</span>
-                        <span>
-                          {message.sentAt.toLocaleDateString("de-DE")}{" "}
-                          {message.sentAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-                        </span>
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="flex flex-col gap-4">
+                  {activeThreadAsc.map((message) => {
+                    const isOutbound = message.direction === "OUTBOUND";
+                    return (
+                      <div
+                        key={message.id}
+                        className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-xl ${
+                          isOutbound
+                            ? "ml-auto rounded-br-md bg-primary text-primary-foreground"
+                            : "rounded-bl-md border bg-card"
+                        }`}
+                      >
+                        <div
+                          className={`mb-1.5 flex items-center justify-between gap-4 text-xs ${
+                            isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
+                          }`}
+                        >
+                          <span className="truncate">{message.fromAddress}</span>
+                          <span className="flex-shrink-0">
+                            {message.sentAt.toLocaleDateString("de-DE")}{" "}
+                            {message.sentAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        {message.subject && <p className="mb-1 text-sm font-semibold">{message.subject}</p>}
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {message.bodyText ?? "(kein Textinhalt)"}
+                        </p>
                       </div>
-                      {message.subject && <p className="mb-1 text-sm font-medium">{message.subject}</p>}
-                      <p className="whitespace-pre-wrap text-sm">{message.bodyText ?? "(kein Textinhalt)"}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               <ReplyForm
+                key={activeContact.id}
                 contactId={activeContact.id}
                 defaultSubject={activeThread[0]?.subject ? `Re: ${activeThread[0].subject}` : ""}
               />
