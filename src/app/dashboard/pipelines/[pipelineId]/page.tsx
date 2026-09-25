@@ -14,9 +14,10 @@ import { DuplicateWarningToggle } from "./duplicate-warning-toggle";
 import { NotifyNewContactToggle } from "./notify-new-contact-toggle";
 import { AutomationsPanel } from "./automations-panel";
 import { FinalStageSelector } from "./final-stage-selector";
+import { JobPostingForm } from "./job-posting-form";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
-type Tab = "leads" | "settings" | "sources";
+type Tab = "leads" | "settings" | "sources" | "multiposting";
 
 export default async function PipelineDetailPage({
   params,
@@ -46,12 +47,14 @@ export default async function PipelineDetailPage({
   // sources) are agency-only; clients only ever see the plain Leads view.
   const canManageSettings = session.user.role === "AGENCY_ADMIN";
   const canManageSources = session.user.role === "AGENCY_ADMIN";
-  const tab: Tab =
+  let tab: Tab =
     tabParam === "settings" && canManageSettings
       ? "settings"
       : tabParam === "sources" && canManageSources
         ? "sources"
-        : "leads";
+        : tabParam === "multiposting" && canManageSettings
+          ? "multiposting"
+          : "leads";
 
   const pipeline = await prisma.pipeline.findUnique({
     where: { id: pipelineId },
@@ -72,9 +75,13 @@ export default async function PipelineDetailPage({
         include: { deliveries: { orderBy: { createdAt: "desc" }, take: 5 } },
       },
       automationRules: true,
+      jobPosting: true,
     },
   });
   if (!pipeline) notFound();
+
+  const canManageMultiposting = canManageSettings && pipeline.kind === "APPLICANTS";
+  if (tab === "multiposting" && !canManageMultiposting) tab = "leads";
 
   const baseUrl = await getBaseUrl();
   const siblingPipelines =
@@ -106,25 +113,33 @@ export default async function PipelineDetailPage({
       </div>
 
       {canManageSettings && (
-        <div className="mb-6 flex flex-wrap gap-1 border-b">
+        <div className="mb-6 flex gap-1 overflow-x-auto border-b">
           <Link
             href={`/dashboard/pipelines/${pipeline.id}?tab=leads`}
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "leads" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "leads" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {pipeline.kind === "APPLICANTS" ? "Bewerbungen" : "Leads"}
           </Link>
           <Link
             href={`/dashboard/pipelines/${pipeline.id}?tab=settings`}
-            className={`border-b-2 px-3 py-2 text-sm ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             Kampagnen-Einstellungen
           </Link>
           {canManageSources && (
             <Link
               href={`/dashboard/pipelines/${pipeline.id}?tab=sources`}
-              className={`border-b-2 px-3 py-2 text-sm ${tab === "sources" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "sources" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               Lead-Quellen
+            </Link>
+          )}
+          {canManageMultiposting && (
+            <Link
+              href={`/dashboard/pipelines/${pipeline.id}?tab=multiposting`}
+              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "multiposting" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              Stellenportale
             </Link>
           )}
         </div>
@@ -226,6 +241,29 @@ export default async function PipelineDetailPage({
             }))}
           />
         </div>
+      )}
+
+      {tab === "multiposting" && canManageMultiposting && (
+        <JobPostingForm
+          pipelineId={pipeline.id}
+          pipelineName={pipeline.name}
+          jobPosting={
+            pipeline.jobPosting
+              ? {
+                  heroImageUrl: pipeline.jobPosting.heroImageUrl,
+                  galleryUrls: pipeline.jobPosting.galleryUrls,
+                  aboutUs: pipeline.jobPosting.aboutUs,
+                  tasks: pipeline.jobPosting.tasks,
+                  profile: pipeline.jobPosting.profile,
+                  benefitsList: pipeline.jobPosting.benefitsList,
+                  contactName: pipeline.jobPosting.contactName,
+                  contactEmail: pipeline.jobPosting.contactEmail,
+                  applicationUrl: pipeline.jobPosting.applicationUrl,
+                  targetPortals: pipeline.jobPosting.targetPortals,
+                }
+              : null
+          }
+        />
       )}
     </div>
   );

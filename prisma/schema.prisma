@@ -266,11 +266,43 @@ model Pipeline {
   metaLeadFormConnections MetaLeadFormConnection[]
   automationRules         AutomationRule[]
   socialPosts             SocialPost[]
+  jobPosting              JobPosting?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([organizationId])
+}
+
+// Vorbereitungs-Inhalte fürs Multiposting auf Stellenportale (Indeed,
+// StepStone, XING etc.) - der Stellentitel ist bewusst NICHT hier
+// gespeichert, sondern bleibt immer Pipeline.name, damit Kampagne und
+// Stellenanzeige nie auseinanderlaufen. 1:1 zu einer APPLICANTS-Pipeline,
+// wird lazy angelegt sobald die Agentur das Modul zum ersten Mal befüllt.
+model JobPosting {
+  id         String   @id @default(cuid())
+  pipelineId String   @unique
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  heroImageUrl String?
+  galleryUrls  String[] @default([])
+
+  aboutUs String? // Über uns / über die Kanzlei
+  tasks   String? // Aufgaben der Stelle
+  profile String? // Dein Profil / Anforderungen
+
+  benefitsList String[] @default([])
+
+  contactName    String?
+  contactEmail   String?
+  applicationUrl String?
+
+  // Katalog-Keys aus src/lib/job-portals.ts - rein informative Checkliste,
+  // solange keine der Portal-APIs/-Feeds angebunden ist.
+  targetPortals String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Stage {
