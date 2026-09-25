@@ -129,6 +129,7 @@ model Organization {
   auditLogs               AuditLog[]
   messageTemplates        MessageTemplate[]
   talentPools             TalentPool[]
+  partnerPointsTransactions PartnerPointsTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -198,6 +199,7 @@ model User {
   socialPostsResponsible   SocialPost[]
   tasksCreated             Task[]                   @relation("TaskCreatedBy")
   tasksAssigned            Task[]                   @relation("TaskAssignedTo")
+  partnerPointsTransactions PartnerPointsTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1328,4 +1330,84 @@ model FunnelStepSend {
 
   @@index([stepId])
   @@index([enrollmentId])
+}
+
+// ---------------------------------------------------------------------------
+// Partnerprogramm (Prämien-Punkte für Kunden)
+// ---------------------------------------------------------------------------
+
+enum PartnerTransactionKind {
+  EARNED // Punkte für eine erledigte PartnerAction gutgeschrieben (Agentur bestätigt manuell)
+  REDEEMED // Punkte gegen eine PartnerReward eingelöst (Kunde selbst, negative Punktzahl)
+  ADJUSTMENT // manuelle Korrektur durch die Agentur, ohne Bezug zu Action/Reward
+}
+
+// Katalog-Eintrag "Punkte sammeln" - global, gilt für alle Kunden. Punkte
+// werden nicht automatisch erkannt (z.B. Google-Bewertung lässt sich nicht
+// zuverlässig einem Kunden zuordnen), sondern von der Agentur nach Prüfung
+// manuell gutgeschrieben - siehe PartnerPointsTransaction.
+model PartnerAction {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  ctaLabel    String  @default("Jetzt starten")
+  ctaUrl      String?
+  points      Int     @default(1)
+  order       Int     @default(0)
+  active      Boolean @default(true)
+
+  transactions PartnerPointsTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+}
+
+// Katalog-Eintrag "Punkte einlösen" - global, gilt für alle Kunden.
+model PartnerReward {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  ctaLabel    String  @default("Prämien-Punkte einlösen")
+  pointsCost  Int
+  order       Int     @default(0)
+  active      Boolean @default(true)
+
+  transactions PartnerPointsTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+}
+
+// Ledger-Zeile pro Kunde - der Punktestand ergibt sich als SUM(points) über
+// alle Zeilen eines Kunden, statt einen mutable Zähler zu pflegen (gleiche
+// Begründung wie bei Activity/AuditLog: vollständige, nachvollziehbare
+// Historie statt nur eines Endstands).
+model PartnerPointsTransaction {
+  id     String                 @id @default(cuid())
+  kind   PartnerTransactionKind
+  points Int // vorzeichenbehaftet: positiv bei EARNED, negativ bei REDEEMED, beides möglich bei ADJUSTMENT
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  actionId String?
+  action   PartnerAction? @relation(fields: [actionId], references: [id], onDelete: SetNull)
+  rewardId String?
+  reward   PartnerReward? @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+
+  note String?
+
+  // Bei EARNED/ADJUSTMENT der Agentur-Mitarbeiter, der gutgeschrieben hat;
+  // bei REDEEMED der Kunde, der eingelöst hat.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
 }

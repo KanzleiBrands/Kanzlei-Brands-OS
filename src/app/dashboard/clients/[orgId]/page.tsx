@@ -11,14 +11,17 @@ import { SettingsTab, SETTINGS_SUBTAB_VALUES, type SettingsSubTab } from "./sett
 import { ClientLogTab } from "./client-log-tab";
 import { ContentTab } from "./content-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
+import { PartnerProgramTab } from "./partner-program-tab";
+import { getPartnerPointsBalance } from "@/lib/actions/partner-program";
 
-type Tab = "overview" | "jobs" | "leads" | "content" | "settings" | "log";
+type Tab = "overview" | "jobs" | "leads" | "content" | "settings" | "log" | "partner";
 
 const TAB_ORDER: { value: Tab; label: string }[] = [
   { value: "overview", label: "Übersicht" },
   { value: "jobs", label: "Stellenanzeigen" },
   { value: "leads", label: "Mandatsakquise" },
   { value: "content", label: "Social Media Content" },
+  { value: "partner", label: "Partnerprogramm" },
   { value: "settings", label: "Kundeneinstellungen" },
   { value: "log", label: "Kunden-Log" },
 ];
@@ -37,7 +40,12 @@ export default async function ClientDetailPage({
 
   const { tab: tabParam, subtab: subtabParam } = await searchParams;
   const tab: Tab =
-    tabParam === "settings" || tabParam === "jobs" || tabParam === "leads" || tabParam === "log" || tabParam === "content"
+    tabParam === "settings" ||
+    tabParam === "jobs" ||
+    tabParam === "leads" ||
+    tabParam === "log" ||
+    tabParam === "content" ||
+    tabParam === "partner"
       ? tabParam
       : "overview";
   const settingsSubTab: SettingsSubTab = SETTINGS_SUBTAB_VALUES.includes(subtabParam as SettingsSubTab)
@@ -126,6 +134,22 @@ export default async function ClientDetailPage({
           })
         ).map((o) => o.productTag!)
       : [];
+  const partnerData =
+    tab === "partner"
+      ? await (async () => {
+          const [balance, partnerActions, transactions] = await Promise.all([
+            getPartnerPointsBalance(organization.id),
+            prisma.partnerAction.findMany({ where: { active: true }, orderBy: { order: "asc" } }),
+            prisma.partnerPointsTransaction.findMany({
+              where: { organizationId: organization.id },
+              include: { action: { select: { title: true } }, reward: { select: { title: true } }, user: { select: { name: true } } },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+            }),
+          ]);
+          return { balance, partnerActions, transactions };
+        })()
+      : null;
 
   function toCampaign(pipeline: NonNullable<typeof organization>["pipelines"][number]) {
     const cardStats = computeCampaignCardStats(pipeline);
@@ -347,6 +371,24 @@ export default async function ClientDetailPage({
       )}
 
       {tab === "log" && <ClientLogTab users={organization.users} entries={auditEntries} />}
+
+      {tab === "partner" && partnerData && (
+        <PartnerProgramTab
+          organizationId={organization.id}
+          balance={partnerData.balance}
+          actions={partnerData.partnerActions.map((a) => ({ id: a.id, title: a.title, points: a.points }))}
+          transactions={partnerData.transactions.map((t) => ({
+            id: t.id,
+            kind: t.kind,
+            points: t.points,
+            note: t.note,
+            actionTitle: t.action?.title ?? null,
+            rewardTitle: t.reward?.title ?? null,
+            userName: t.user?.name ?? null,
+            createdAt: t.createdAt.toLocaleString("de-DE"),
+          }))}
+        />
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Briefcase,
   UserPlus,
   Users,
+  GiftIcon,
 } from "lucide-react";
 import { signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -47,6 +48,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
       // damit die Sidebar nicht wie eine einzige flache Liste wirkt.
       admin: [
         { href: "/dashboard/offers", label: "Angebote", icon: <Package className={navIconClass} /> },
+        { href: "/dashboard/partner-program", label: "Partnerprogramm", icon: <GiftIcon className={navIconClass} /> },
         { href: "/dashboard/audit-log", label: "Audit-Log", icon: <ScrollText className={navIconClass} /> },
       ],
     };
@@ -55,6 +57,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
   return {
     main: [
       { href: "/dashboard/hub", label: "Kunden Hub", icon: <LayoutDashboard className={navIconClass} /> },
+      { href: "/dashboard/partner-program", label: "Partnerprogramm", icon: <GiftIcon className={navIconClass} /> },
       ...common,
       { href: "/dashboard/pipelines", label: "Kampagnen", icon: <Megaphone className={navIconClass} /> },
       ...(campaignKinds.has("LEADS")
