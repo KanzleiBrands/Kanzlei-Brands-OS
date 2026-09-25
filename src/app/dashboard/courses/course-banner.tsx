@@ -1,8 +1,8 @@
 import { PlayCircleIcon } from "lucide-react";
 
 const SIZE_CONFIG = {
-  lg: { pad: "p-5 sm:p-6", thumb: "w-28 sm:w-36", title: "text-xl sm:text-2xl", eyebrow: "text-xs" },
-  md: { pad: "p-4 sm:p-5", thumb: "w-20 sm:w-24", title: "text-lg sm:text-xl", eyebrow: "text-[11px]" },
+  lg: { pad: "p-4 sm:p-6", thumb: "w-16 sm:w-36", title: "text-lg sm:text-2xl", eyebrow: "text-xs" },
+  md: { pad: "p-3 sm:p-5", thumb: "w-14 sm:w-24", title: "text-base sm:text-xl", eyebrow: "text-[11px]" },
 } as const;
 
 /**
@@ -58,11 +58,11 @@ export function CourseBanner({
             )}
           </div>
           <div className="min-w-0">
-            <p className={`font-medium tracking-wide text-white/60 uppercase ${eyebrowSize}`}>{eyebrow}</p>
-            <h1 className={`mt-0.5 truncate font-bold text-white ${titleSize}`} title={title}>
+            <p className={`truncate font-medium tracking-wide text-white/60 uppercase ${eyebrowSize}`}>{eyebrow}</p>
+            <h1 className={`mt-0.5 line-clamp-2 font-bold break-words text-white ${titleSize}`} title={title}>
               {title}
             </h1>
-            {meta && <p className="mt-1 text-sm text-white/50">{meta}</p>}
+            {meta && <p className="mt-1 line-clamp-2 text-sm text-white/50">{meta}</p>}
           </div>
         </div>
         {right && <div className="shrink-0">{right}</div>}

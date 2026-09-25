@@ -56,11 +56,11 @@ export default async function CourseDetailPage({
         <BackLink href="/dashboard/courses">Zurück zur Kursverwaltung</BackLink>
 
         <div className="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex gap-4">
-            <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-40 shrink-0 rounded-lg" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold">{course.title}</h1>
+          <div className="flex w-full gap-4 sm:w-auto">
+            <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-24 shrink-0 rounded-lg sm:w-40" />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold break-words sm:text-2xl">{course.title}</h1>
                 <Badge variant="secondary">{course.category === "ONBOARDING" ? "Onboarding" : "Training"}</Badge>
               </div>
               {course.description && <p className="mt-1 text-muted-foreground">{course.description}</p>}
@@ -110,14 +110,14 @@ export default async function CourseDetailPage({
             <Card key={courseModule.id}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex gap-3">
+                  <div className="flex min-w-0 flex-1 gap-3">
                     <CourseThumbnail
                       src={courseModule.thumbnailUrl}
                       alt={courseModule.title}
-                      className="w-24 shrink-0 rounded-md"
+                      className="w-16 shrink-0 rounded-md sm:w-24"
                     />
-                    <div>
-                      <CardTitle className="text-base">
+                    <div className="min-w-0">
+                      <CardTitle className="text-base break-words">
                         {moduleIndex + 1}. {courseModule.title}
                       </CardTitle>
                       {courseModule.description && (
@@ -251,15 +251,15 @@ export default async function CourseDetailPage({
             <CourseThumbnail
               src={nextLessonModule.thumbnailUrl}
               alt=""
-              className="w-16 shrink-0 rounded-md sm:w-20"
+              className="w-12 shrink-0 rounded-md sm:w-20"
             />
             <div className="min-w-0">
               <p className="text-xs font-medium text-white/50 uppercase">Mache direkt weiter!</p>
-              <p className="truncate font-medium text-white">{nextLesson.title}</p>
+              <p className="line-clamp-2 font-medium break-words text-white">{nextLesson.title}</p>
             </div>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-neutral-900">
-            Fortsetzen
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-sm font-medium text-neutral-900 sm:px-3">
+            <span className="hidden sm:inline">Fortsetzen</span>
             <ChevronRightIcon className="size-4" />
           </span>
         </Link>
@@ -285,10 +285,10 @@ export default async function CourseDetailPage({
                 <CourseThumbnail
                   src={courseModule.thumbnailUrl}
                   alt={courseModule.title}
-                  className="w-28 shrink-0 rounded-lg sm:w-32"
+                  className="w-16 shrink-0 rounded-lg sm:w-32"
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-medium">
+                  <p className="line-clamp-2 font-medium break-words">
                     Modul {moduleIndex + 1} – {courseModule.title}
                   </p>
                   <p className="mt-0.5 text-xs font-medium text-muted-foreground uppercase">

@@ -95,10 +95,10 @@ export default async function ModuleDetailPage({
               <CourseThumbnail
                 src={lesson.thumbnailUrl ?? courseModule.thumbnailUrl}
                 alt=""
-                className="w-20 shrink-0 rounded-md sm:w-24"
+                className="w-14 shrink-0 rounded-md sm:w-24"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">
+                <p className="line-clamp-2 font-medium break-words">
                   {index + 1}. {lesson.title}
                 </p>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -115,8 +115,8 @@ export default async function ModuleDetailPage({
                 </div>
               </div>
               {isNext ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">
-                  Fortsetzen
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-2.5 py-1.5 text-sm font-medium text-white sm:px-3 dark:bg-white dark:text-neutral-900">
+                  <span className="hidden sm:inline">Fortsetzen</span>
                   <ChevronRightIcon className="size-4" />
                 </span>
               ) : completed ? (
