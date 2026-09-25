@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,7 @@ import { StatTile } from "@/components/stat-tile";
 import { PotentialScoreCard } from "./potential-score-card";
 import { APPLICANT_GROWTH_LEVERS, LEAD_GROWTH_LEVERS, computeGrowthScore } from "@/lib/growth-levers";
 import { SocialContentSection, type ClientSocialPost } from "./hub/social-content-section";
+import { getPageLayout } from "@/lib/page-layout";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -100,90 +102,90 @@ export default async function DashboardPage() {
     })
     .slice(0, 8);
 
-  return (
-    <div className="p-4 sm:p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Übersicht - {session.user.name}</h1>
+  const layout = await getPageLayout("OVERVIEW");
 
-      {leadPipelines.length > 0 && (
-        <>
-          <h2 className="mb-3 text-lg font-semibold">Mandatsakquise</h2>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatTile
-              label="Neu in 30 Tagen"
-              value={leadStats.newLast30Days}
-              subtext={`${leadStats.totalContacts} Kontakte gesamt`}
-            />
-            <StatTile
-              label="Unbearbeitet"
-              value={leadStats.unprocessed}
-              subtext={`${leadStats.staleUnprocessed} seit über 3 Tagen offen`}
-            />
-            <StatTile label="In Bearbeitung" value={leadStats.inProgress} subtext="aktuell in Bearbeitung" />
-            <StatTile
-              label="Abgeschlossen in 12 Monaten"
-              value={leadStats.completedLast365Days}
-              subtext={`${leadStats.completedTotal} gesamt`}
-            />
-            <StatTile
-              label="Dealvolumen (30 Tage)"
-              value={eurFormatter.format(dealVolumeStats.last30DaysEur)}
-              subtext={`${eurFormatter.format(dealVolumeStats.totalEur)} gesamt`}
-            />
-          </div>
-        </>
-      )}
+  const sections: Record<string, React.ReactNode> = {
+    leads_stats: leadPipelines.length > 0 && (
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Mandatsakquise</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <StatTile
+            label="Neu in 30 Tagen"
+            value={leadStats.newLast30Days}
+            subtext={`${leadStats.totalContacts} Kontakte gesamt`}
+          />
+          <StatTile
+            label="Unbearbeitet"
+            value={leadStats.unprocessed}
+            subtext={`${leadStats.staleUnprocessed} seit über 3 Tagen offen`}
+          />
+          <StatTile label="In Bearbeitung" value={leadStats.inProgress} subtext="aktuell in Bearbeitung" />
+          <StatTile
+            label="Abgeschlossen in 12 Monaten"
+            value={leadStats.completedLast365Days}
+            subtext={`${leadStats.completedTotal} gesamt`}
+          />
+          <StatTile
+            label="Dealvolumen (30 Tage)"
+            value={eurFormatter.format(dealVolumeStats.last30DaysEur)}
+            subtext={`${eurFormatter.format(dealVolumeStats.totalEur)} gesamt`}
+          />
+        </div>
+      </div>
+    ),
 
-      {applicantPipelines.length > 0 && (
-        <>
-          <h2 className="mb-3 text-lg font-semibold">Bewerbungen</h2>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatTile
-              label="Neu in 30 Tagen"
-              value={applicantStats.newLast30Days}
-              subtext={`${applicantStats.totalContacts} Kontakte gesamt`}
-            />
-            <StatTile
-              label="Unbearbeitet"
-              value={applicantStats.unprocessed}
-              subtext={`${applicantStats.staleUnprocessed} seit über 3 Tagen offen`}
-            />
-            <StatTile label="In Bearbeitung" value={applicantStats.inProgress} subtext="aktuell in Bearbeitung" />
-            <StatTile
-              label="Eingestellt in 12 Monaten"
-              value={applicantStats.completedLast365Days}
-              subtext={`${applicantStats.completedTotal} gesamt`}
-            />
-            <StatTile
-              label="Einstellungen (30 Tage)"
-              value={applicantsCompleted.last30Days}
-              subtext={`${applicantsCompleted.total} gesamt`}
-            />
-          </div>
-        </>
-      )}
+    applicants_stats: applicantPipelines.length > 0 && (
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Bewerbungen</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <StatTile
+            label="Neu in 30 Tagen"
+            value={applicantStats.newLast30Days}
+            subtext={`${applicantStats.totalContacts} Kontakte gesamt`}
+          />
+          <StatTile
+            label="Unbearbeitet"
+            value={applicantStats.unprocessed}
+            subtext={`${applicantStats.staleUnprocessed} seit über 3 Tagen offen`}
+          />
+          <StatTile label="In Bearbeitung" value={applicantStats.inProgress} subtext="aktuell in Bearbeitung" />
+          <StatTile
+            label="Eingestellt in 12 Monaten"
+            value={applicantStats.completedLast365Days}
+            subtext={`${applicantStats.completedTotal} gesamt`}
+          />
+          <StatTile
+            label="Einstellungen (30 Tage)"
+            value={applicantsCompleted.last30Days}
+            subtext={`${applicantsCompleted.total} gesamt`}
+          />
+        </div>
+      </div>
+    ),
 
-      {(jobsBooked || leadsBooked) && (
-        <>
-          <h2 className="mb-3 text-lg font-semibold">Dein Potenzialscore</h2>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {jobsBooked && applicantScore && (
-              <PotentialScoreCard
-                title="Recruiting-Kampagne"
-                percent={applicantScore.percent}
-                unmetLevers={applicantScore.unmetLevers}
-              />
-            )}
-            {leadsBooked && leadScore && (
-              <PotentialScoreCard
-                title="Mandatsakquise-Kampagne"
-                percent={leadScore.percent}
-                unmetLevers={leadScore.unmetLevers}
-              />
-            )}
-          </div>
-        </>
-      )}
+    potential_score: (jobsBooked || leadsBooked) && (
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Dein Potenzialscore</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {jobsBooked && applicantScore && (
+            <PotentialScoreCard
+              title="Recruiting-Kampagne"
+              percent={applicantScore.percent}
+              unmetLevers={applicantScore.unmetLevers}
+            />
+          )}
+          {leadsBooked && leadScore && (
+            <PotentialScoreCard
+              title="Mandatsakquise-Kampagne"
+              percent={leadScore.percent}
+              unmetLevers={leadScore.unmetLevers}
+            />
+          )}
+        </div>
+      </div>
+    ),
 
+    campaigns_contacts: (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
         <Card>
           <CardHeader>
@@ -268,9 +270,19 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+    ),
 
-      <div className="mt-6">
-        <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />
+    social_content: <SocialContentSection pendingApproval={pendingApproval} timeline={socialTimeline} />,
+  };
+
+  return (
+    <div className="p-4 sm:p-8">
+      <h1 className="mb-6 text-2xl font-semibold">Übersicht - {session.user.name}</h1>
+
+      <div className="flex flex-col gap-6">
+        {layout
+          .filter((block) => block.enabled)
+          .map((block) => <Fragment key={block.key}>{sections[block.key]}</Fragment>)}
       </div>
     </div>
   );

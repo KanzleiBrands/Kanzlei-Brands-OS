@@ -15,6 +15,8 @@ import { PrivacySection } from "./privacy-section";
 import { NotificationsSection } from "./notifications-section";
 import { EmailCenterSection, type SystemEmailTemplateData } from "./email-center-section";
 import { SYSTEM_EMAIL_DEFAULTS, SYSTEM_EMAIL_TYPES } from "@/lib/email/system-email-defaults";
+import { PageLayoutBuilder } from "./page-layout-builder";
+import { getPageLayout } from "@/lib/page-layout";
 import type { EditableStage } from "./stage-list-editor";
 
 type Tab =
@@ -26,6 +28,7 @@ type Tab =
   | "templates"
   | "hubsettings"
   | "emailcenter"
+  | "pagebuilder"
   | "privacy";
 
 export default async function SettingsPage({
@@ -49,7 +52,7 @@ export default async function SettingsPage({
     ...(canManageTeam ? (["team"] as const) : []),
     ...(canUseMailbox ? (["mailbox"] as const) : []),
     "snippets",
-    ...(isAgency ? (["templates", "hubsettings", "emailcenter"] as const) : []),
+    ...(isAgency ? (["templates", "hubsettings", "emailcenter", "pagebuilder"] as const) : []),
     ...(!isAgency ? (["privacy"] as const) : []),
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
@@ -131,6 +134,14 @@ export default async function SettingsPage({
             E-Mail-Center
           </Link>
         )}
+        {isAgency && (
+          <Link
+            href="/dashboard/settings?tab=pagebuilder"
+            className={`border-b-2 px-3 py-2 text-sm ${tab === "pagebuilder" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Seiten-Layout
+          </Link>
+        )}
         {!isAgency && (
           <Link
             href="/dashboard/settings?tab=privacy"
@@ -181,6 +192,8 @@ export default async function SettingsPage({
       )}
 
       {tab === "emailcenter" && isAgency && <EmailCenterSectionData baseUrl={await getBaseUrl()} />}
+
+      {tab === "pagebuilder" && isAgency && <PageLayoutBuilderData />}
 
       {tab === "privacy" && !isAgency && (
         <PrivacySection
@@ -276,6 +289,11 @@ async function EmailCenterSectionData({ baseUrl }: { baseUrl: string }) {
   });
 
   return <EmailCenterSection templates={templates} baseUrl={baseUrl} />;
+}
+
+async function PageLayoutBuilderData() {
+  const [overview, hub] = await Promise.all([getPageLayout("OVERVIEW"), getPageLayout("HUB")]);
+  return <PageLayoutBuilder overview={overview} hub={hub} />;
 }
 
 async function MailboxSectionData({

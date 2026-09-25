@@ -1100,6 +1100,30 @@ model OfferInterest {
 }
 
 // ---------------------------------------------------------------------------
+// Seiten-Layout: agency-editable order/visibility of the fixed, data-driven
+// sections on client-facing dashboard pages (see src/lib/page-layout.ts for
+// the block catalog). Global across all clients, not per-organization.
+// ---------------------------------------------------------------------------
+
+enum DashboardPage {
+  OVERVIEW
+  HUB
+}
+
+model PageLayoutBlock {
+  id       String        @id @default(cuid())
+  page     DashboardPage
+  blockKey String
+  order    Int
+  enabled  Boolean       @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([page, blockKey])
+  @@index([page])
+}
+
+// ---------------------------------------------------------------------------
 // DSGVO / compliance
 // ---------------------------------------------------------------------------
 
