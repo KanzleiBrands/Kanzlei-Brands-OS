@@ -30,11 +30,11 @@ export function ReplyForm({ contactId, defaultSubject }: { contactId: string; de
 
   if (!expanded) {
     return (
-      <div className="border-t bg-card/60 p-3 sm:p-4">
+      <div className="border-t border-foreground/10 p-3 sm:p-4">
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="flex w-full items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-left text-sm text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-foreground"
+          className="flex w-full items-center gap-2 rounded-full border border-foreground/10 bg-background px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
         >
           Antworten&hellip;
         </button>
@@ -43,7 +43,7 @@ export function ReplyForm({ contactId, defaultSubject }: { contactId: string; de
   }
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-2 border-t bg-card/60 p-3 sm:p-4">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-2 border-t border-foreground/10 p-3 sm:p-4">
       <input type="hidden" name="contactId" value={contactId} />
       <Input name="subject" placeholder="Betreff" defaultValue={defaultSubject} required />
       <Textarea ref={textareaRef} name="text" placeholder="Nachricht..." required rows={4} />

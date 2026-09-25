@@ -29,6 +29,7 @@ import { EMAIL_MARKETING_PRICE_LABEL } from "@/lib/funnels/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSaveToast } from "@/hooks/use-save-toast";
@@ -306,6 +307,7 @@ function FunnelSettingsForm({ funnel, senderAccounts }: { funnel: FunnelData; se
   const [error, formAction, isPending] = useActionState(updateFunnelSettings, undefined);
   useSaveToast(error, isPending, "Funnel-Einstellungen gespeichert.");
   const [triggerType, setTriggerType] = useState(funnel.triggerType);
+  const [senderAccountId, setSenderAccountId] = useState(funnel.senderAccountId ?? "");
   const [, startTransition] = useTransition();
   const [deletePending, setDeletePending] = useState(false);
 
@@ -319,16 +321,17 @@ function FunnelSettingsForm({ funnel, senderAccounts }: { funnel: FunnelData; se
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Trigger</label>
-          <select
-            name="triggerType"
-            value={triggerType}
-            onChange={(e) => setTriggerType(e.target.value as FunnelData["triggerType"])}
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="MANUAL">Manuell einschreiben</option>
-            <option value="ON_NEW_LEAD">Automatisch bei neuem Lead</option>
-            <option value="ON_INACTIVITY">Automatisch nach Inaktivität</option>
-          </select>
+          <input type="hidden" name="triggerType" value={triggerType} />
+          <Select value={triggerType} onValueChange={(v) => setTriggerType(v as FunnelData["triggerType"])}>
+            <SelectTrigger className="h-9 w-56">
+              <SelectValue>{(v: FunnelData["triggerType"]) => TRIGGER_LABELS[v]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="MANUAL">Manuell einschreiben</SelectItem>
+              <SelectItem value="ON_NEW_LEAD">Automatisch bei neuem Lead</SelectItem>
+              <SelectItem value="ON_INACTIVITY">Automatisch nach Inaktivität</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {triggerType === "ON_INACTIVITY" && (
           <div className="flex flex-col gap-1">
@@ -338,14 +341,25 @@ function FunnelSettingsForm({ funnel, senderAccounts }: { funnel: FunnelData; se
         )}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Absender-Postfach</label>
-          <select name="senderAccountId" defaultValue={funnel.senderAccountId ?? ""} className="h-9 rounded-md border bg-background px-3 text-sm">
-            <option value="">Kein Postfach ausgewählt</option>
-            {senderAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.userName} ({a.email})
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="senderAccountId" value={senderAccountId} />
+          <Select value={senderAccountId} onValueChange={(v) => setSenderAccountId(v ?? "")}>
+            <SelectTrigger className="h-9 w-64">
+              <SelectValue>
+                {(v: string) => {
+                  const account = senderAccounts.find((a) => a.id === v);
+                  return account ? `${account.userName} (${account.email})` : "Kein Postfach ausgewählt";
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="min-w-80">
+              <SelectItem value="">Kein Postfach ausgewählt</SelectItem>
+              {senderAccounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.userName} ({a.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <label className="mb-2 flex items-center gap-1.5 text-sm">
           <input type="checkbox" name="active" value="true" defaultChecked={funnel.active} />

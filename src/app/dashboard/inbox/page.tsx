@@ -60,17 +60,17 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   const showListOnMobile = !selectedContactId;
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] flex-col md:h-[calc(100vh-4rem)]">
-      <div className={`${showListOnMobile ? "block" : "hidden"} border-b px-4 py-4 sm:px-6 md:block`}>
-        <h1 className="text-2xl font-semibold tracking-tight">Posteingang</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col p-4 sm:h-[calc(100vh-4rem)] sm:p-8">
+      <div className={`${showListOnMobile ? "block" : "hidden"} shrink-0 md:block`}>
+        <h1 className="mb-2 text-2xl font-semibold">Posteingang</h1>
+        <p className="mb-4 text-muted-foreground sm:mb-6">
           E-Mail-Korrespondenz mit Leads &amp; Bewerbern aus allen verbundenen Postfächern.
         </p>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
         <div
-          className={`${showListOnMobile ? "block" : "hidden"} w-full flex-shrink-0 overflow-y-auto border-r bg-card/30 md:block md:w-80 lg:w-96`}
+          className={`${showListOnMobile ? "block" : "hidden"} w-full flex-shrink-0 overflow-y-auto border-r border-foreground/10 md:block md:w-80 lg:w-96`}
         >
           {threads.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -131,7 +131,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-b bg-card/60 px-4 py-3.5 shadow-sm">
+              <div className="flex items-center gap-3 border-b border-foreground/10 px-4 py-3.5">
                 <Link
                   href="/dashboard/inbox"
                   aria-label="Zurück zur Übersicht"
@@ -164,10 +164,10 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                     return (
                       <div
                         key={message.id}
-                        className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-xl ${
+                        className={`max-w-[88%] rounded-2xl px-4 py-3 sm:max-w-xl ${
                           isOutbound
                             ? "ml-auto rounded-br-md bg-primary text-primary-foreground"
-                            : "rounded-bl-md border bg-card"
+                            : "rounded-bl-md bg-muted"
                         }`}
                       >
                         <div
