@@ -203,6 +203,7 @@ export async function updateOrganizationIntakeSettings(_prevState: string | unde
   if (!organization || organization.type !== "CLIENT") return "Kunde nicht gefunden.";
 
   const accountManagerId = String(formData.get("accountManagerId") ?? "").trim() || null;
+  const backofficeContactId = String(formData.get("backofficeContactId") ?? "").trim() || null;
   const leadsFormUrl = String(formData.get("leadsFormUrl") ?? "").trim() || null;
   const applicantsFormUrl = String(formData.get("applicantsFormUrl") ?? "").trim() || null;
 
@@ -210,10 +211,14 @@ export async function updateOrganizationIntakeSettings(_prevState: string | unde
     const manager = await prisma.user.findUnique({ where: { id: accountManagerId } });
     if (!manager || manager.role !== "AGENCY_ADMIN") return "Ungültiger Account Manager.";
   }
+  if (backofficeContactId) {
+    const contact = await prisma.user.findUnique({ where: { id: backofficeContactId } });
+    if (!contact || contact.role !== "AGENCY_ADMIN") return "Ungültiger Backoffice-Ansprechpartner.";
+  }
 
   await prisma.organization.update({
     where: { id: organizationId },
-    data: { accountManagerId, leadsFormUrl, applicantsFormUrl },
+    data: { accountManagerId, backofficeContactId, leadsFormUrl, applicantsFormUrl },
   });
 
   revalidatePath(`/dashboard/clients/${organizationId}`);
@@ -224,8 +229,8 @@ export async function updateOrganizationIntakeSettings(_prevState: string | unde
  * Werbebibliothek) und bereits gebuchte Produkte (blendet passende Angebote
  * im Kunden-Hub aus). Alles optional und jederzeit von der Agentur änderbar,
  * siehe /dashboard/hub für die Kundensicht. Der Backoffice-Ansprechpartner
- * ist bewusst kein Feld hier - es gibt nur eine Buchhaltung für alle Kunden,
- * siehe updatePortalBackofficeContact.
+ * ist bewusst kein Feld hier - der wird pro Kunde in updateOrganizationIntakeSettings
+ * gepflegt, mit dem portalweiten Kontakt (siehe updatePortalBackofficeContact) als Fallback.
  */
 export async function updateHubSettings(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
@@ -263,10 +268,11 @@ export async function updateHubSettings(_prevState: string | undefined, formData
 }
 
 /**
- * Buchhaltungs-/Backoffice-Ansprechpartner: portalweit ein einziger, nicht
- * pro Kunde (es gibt nur eine Buchhaltung für alle Kunden). Wird auf der
- * Agentur-Organisation selbst gespeichert und im Kunden-Hub jedes Kunden
- * gleichermaßen angezeigt.
+ * Buchhaltungs-/Backoffice-Ansprechpartner: portalweiter Standardkontakt,
+ * auf der Agentur-Organisation selbst gespeichert. Dient als Fallback im
+ * Kunden-Hub, wenn ein Kunde keinen eigenen Backoffice-Ansprechpartner hat
+ * (siehe Organization.backofficeContactId pro Kunde, gepflegt in
+ * updateOrganizationIntakeSettings).
  */
 export async function updatePortalBackofficeContact(
   _prevState: string | undefined,

@@ -59,6 +59,7 @@ export function SettingsTab({
   leadsUsed,
   applicantsUsed,
   accountManagerId,
+  backofficeContactId,
   leadsFormUrl,
   applicantsFormUrl,
   agencyUsers,
@@ -90,6 +91,7 @@ export function SettingsTab({
   leadsUsed: number;
   applicantsUsed: number;
   accountManagerId: string | null;
+  backofficeContactId: string | null;
   leadsFormUrl: string | null;
   applicantsFormUrl: string | null;
   agencyUsers: { id: string; name: string }[];
@@ -191,6 +193,7 @@ export function SettingsTab({
               <IntakeSettingsForm
                 organizationId={organizationId}
                 accountManagerId={accountManagerId}
+                backofficeContactId={backofficeContactId}
                 leadsFormUrl={leadsFormUrl}
                 applicantsFormUrl={applicantsFormUrl}
                 agencyUsers={agencyUsers}

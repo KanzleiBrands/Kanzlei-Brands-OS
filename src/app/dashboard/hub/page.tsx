@@ -28,11 +28,13 @@ export default async function KundenHubPage() {
       where: { id: session.user.organizationId },
       include: {
         accountManager: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
+        backofficeContact: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } },
       },
     }),
-    // Die Buchhaltung/Backoffice ist portalweit einheitlich (es gibt nur
-    // eine für alle Kunden) und wird daher auf der Agentur-Organisation
-    // selbst gepflegt, nicht pro Kunde - siehe updatePortalBackofficeContact.
+    // Fallback, falls dieser Kunde keinen eigenen Backoffice-Ansprechpartner
+    // hat (siehe Organization.backofficeContactId, gepflegt pro Kunde in
+    // updateOrganizationIntakeSettings): der portalweite Standardkontakt auf
+    // der Agentur-Organisation selbst, siehe updatePortalBackofficeContact.
     prisma.organization.findFirst({
       where: { type: "AGENCY" },
       select: { backofficeContact: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } } },
@@ -73,7 +75,7 @@ export default async function KundenHubPage() {
         <ContactCard
           title="Buchhaltung / Backoffice"
           description="Fragen zu Rechnungen oder Vertragswesen?"
-          contact={agency?.backofficeContact ?? null}
+          contact={organization.backofficeContact ?? agency?.backofficeContact ?? null}
           teamEmail={BACKOFFICE_EMAIL}
         />
         <OfficeHoursCard />

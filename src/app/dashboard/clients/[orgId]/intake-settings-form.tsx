@@ -12,12 +12,14 @@ type AgencyUser = { id: string; name: string };
 export function IntakeSettingsForm({
   organizationId,
   accountManagerId,
+  backofficeContactId,
   leadsFormUrl,
   applicantsFormUrl,
   agencyUsers,
 }: {
   organizationId: string;
   accountManagerId: string | null;
+  backofficeContactId: string | null;
   leadsFormUrl: string | null;
   applicantsFormUrl: string | null;
   agencyUsers: AgencyUser[];
@@ -48,6 +50,28 @@ export function IntakeSettingsForm({
         <p className="text-sm text-muted-foreground">
           Bekommt eine Anfrage, wenn dieser Kunde weitere Kontingente beauftragen möchte. Ohne Zuweisung geht die
           Anfrage an alle Agentur-Admins.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm text-muted-foreground">Backoffice-/Buchhaltungs-Ansprechpartner</label>
+        <Select name="backofficeContactId" defaultValue={backofficeContactId ?? ""}>
+          <SelectTrigger className="max-w-64">
+            <SelectValue>
+              {(value: string) => agencyUsers.find((u) => u.id === value)?.name ?? "Nicht zugewiesen"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {agencyUsers.map((user) => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          Wird diesem Kunden im Kunden-Hub bei Fragen zu Rechnungen/Vertragswesen angezeigt. Ohne Zuweisung greift
+          der portalweite Standardkontakt aus den Agentur-Einstellungen.
         </p>
       </div>
 

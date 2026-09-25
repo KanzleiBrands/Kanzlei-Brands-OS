@@ -297,6 +297,7 @@ export default async function ClientDetailPage({
           leadsUsed={leadsUsed}
           applicantsUsed={applicantsUsed}
           accountManagerId={organization.accountManagerId}
+          backofficeContactId={organization.backofficeContactId}
           leadsFormUrl={organization.leadsFormUrl}
           applicantsFormUrl={organization.applicantsFormUrl}
           agencyUsers={agencyUsers}
