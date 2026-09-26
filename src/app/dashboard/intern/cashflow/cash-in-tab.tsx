@@ -1,4 +1,5 @@
-import { listCashInForYear, listCashInForecast, type CashInEntry, type CashInStatus } from "@/lib/easybill/client";
+import { listCashInForecast, type CashInEntry, type CashInStatus } from "@/lib/easybill/client";
+import { getCashInForYear } from "@/lib/cashflow/cash-in-fallback";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CustomerMappingRow } from "./customer-mapping-row";
@@ -53,7 +54,7 @@ function InvoiceTable({ rows, emptyLabel }: { rows: CashInEntry[]; emptyLabel: s
 
 export async function CashInTab({ organizationId, year }: { organizationId: string; year: number }) {
   const [invoicesResult, forecastResult, clients] = await Promise.all([
-    listCashInForYear(year),
+    getCashInForYear(organizationId, year),
     listCashInForecast(6),
     prisma.organization.findMany({
       where: { type: "CLIENT", parentId: organizationId },
@@ -62,9 +63,7 @@ export async function CashInTab({ organizationId, year }: { organizationId: stri
     }),
   ]);
 
-  const invoices = invoicesResult.ok
-    ? [...invoicesResult.rows].sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate))
-    : [];
+  const invoices = [...invoicesResult.rows].sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate));
   const forecast = forecastResult.ok ? [...forecastResult.rows].sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate)) : [];
   const notConnected = !invoicesResult.ok || !forecastResult.ok;
 
@@ -91,8 +90,10 @@ export async function CashInTab({ organizationId, year }: { organizationId: stri
 
       {notConnected && (
         <p className="rounded-md border border-dashed border-foreground/15 p-3 text-sm text-muted-foreground">
-          Hinweis: EasyBill ist nicht verbunden ({!invoicesResult.ok ? invoicesResult.error : (forecastResult as { ok: false; error: string }).error}).
-          Ohne EASYBILL_API_KEY werden keine Rechnungen angezeigt.
+          Hinweis: EasyBill ist nicht verbunden ({invoicesResult.error ?? (forecastResult as { ok: false; error: string }).error}).{" "}
+          {invoicesResult.usedFallback
+            ? "Die Rechnungen unten stammen aus dem importierten Verlauf (2025/2026), nicht live - der Forecast bleibt leer."
+            : "Ohne EASYBILL_API_KEY werden keine Rechnungen angezeigt."}
         </p>
       )}
 

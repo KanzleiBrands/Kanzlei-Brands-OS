@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { listCashInForYear } from "@/lib/easybill/client";
+import { getCashInForYear } from "@/lib/cashflow/cash-in-fallback";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfitGoalForm } from "./profit-goal-form";
 import { TaxReserveForm } from "./tax-reserve-form";
@@ -9,13 +9,13 @@ const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR",
 export async function AnnualTab({ organizationId, year }: { organizationId: string; year: number }) {
   const [organization, cashInResult, costEntries] = await Promise.all([
     prisma.organization.findUnique({ where: { id: organizationId }, select: { profitGoalAnnual: true, cashflowTaxReservePercent: true } }),
-    listCashInForYear(year),
+    getCashInForYear(organizationId, year),
     prisma.cashflowCostEntry.findMany({
       where: { organizationId, transactionDate: { gte: new Date(`${year}-01-01`), lt: new Date(`${year + 1}-01-01`) } },
     }),
   ]);
 
-  const cashIn = cashInResult.ok ? cashInResult.rows.reduce((sum, r) => sum + r.amountNet, 0) : 0;
+  const cashIn = cashInResult.rows.reduce((sum, r) => sum + r.amountNet, 0);
   const cashOut = costEntries.reduce((sum, e) => sum + e.amountNet, 0);
   const operatingCashflow = cashIn - cashOut;
   const taxReservePercent = organization?.cashflowTaxReservePercent ?? null;
@@ -39,7 +39,10 @@ export async function AnnualTab({ organizationId, year }: { organizationId: stri
 
       {!cashInResult.ok && (
         <p className="rounded-md border border-dashed border-foreground/15 p-3 text-sm text-muted-foreground">
-          Hinweis: EasyBill ist nicht verbunden ({cashInResult.error}). Cash-In zeigt 0, bis EASYBILL_API_KEY gesetzt ist.
+          Hinweis: EasyBill ist nicht verbunden ({cashInResult.error}).{" "}
+          {cashInResult.usedFallback
+            ? "Cash-In zeigt hier den importierten Verlauf (2025/2026), nicht Live-Daten."
+            : "Cash-In zeigt 0, bis EASYBILL_API_KEY gesetzt ist."}
         </p>
       )}
 

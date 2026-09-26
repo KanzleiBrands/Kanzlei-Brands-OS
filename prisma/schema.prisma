@@ -160,6 +160,7 @@ model Organization {
   marketingFunnels          MarketingFunnel[]
   cashflowCostEntries       CashflowCostEntry[]
   salesActivityLogs         SalesActivityLog[]
+  cashInLedgerEntries       CashInLedgerEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1778,6 +1779,33 @@ model SalesActivityLog {
   updatedAt DateTime @updatedAt
 
   @@index([organizationId, activityType, activityDate])
+}
+
+// Historische Cash-In-Rechnungen aus dem "Cashflow Cockpit"-Sheet - Fallback
+// fuer die Jahre/Monate, in denen EasyBill (noch) nicht verbunden ist oder
+// keine Historie fuehrt. Sobald EasyBill live Daten liefert, hat das Vorrang
+// (siehe src/lib/cashflow/cash-in-fallback.ts).
+enum CashInLedgerStatus {
+  GEPLANT
+  BEZAHLT
+  UEBERFAELLIG
+}
+
+model CashInLedgerEntry {
+  id             String             @id @default(cuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceDate    DateTime
+  customerName   String
+  product        String
+  amountNet      Float
+  taxRatePercent Float              @default(19)
+  status         CashInLedgerStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, invoiceDate])
 }
 
 // ---------------------------------------------------------------------------

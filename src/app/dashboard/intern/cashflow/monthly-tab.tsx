@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { listCashInForYear } from "@/lib/easybill/client";
+import { getCashInForYear } from "@/lib/cashflow/cash-in-fallback";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
@@ -9,13 +9,13 @@ export async function MonthlyTab({ organizationId, year, month }: { organization
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 1);
   const [cashInResult, costEntries] = await Promise.all([
-    listCashInForYear(year),
+    getCashInForYear(organizationId, year),
     prisma.cashflowCostEntry.findMany({ where: { organizationId, transactionDate: { gte: monthStart, lt: monthEnd } } }),
   ]);
 
-  const cashInThisMonth = cashInResult.ok
-    ? cashInResult.rows.filter((r) => new Date(r.invoiceDate).getMonth() + 1 === month).reduce((sum, r) => sum + r.amountNet, 0)
-    : 0;
+  const cashInThisMonth = cashInResult.rows
+    .filter((r) => new Date(r.invoiceDate).getMonth() + 1 === month)
+    .reduce((sum, r) => sum + r.amountNet, 0);
   const cashOutThisMonth = costEntries.reduce((sum, e) => sum + e.amountNet, 0);
   const operatingCashflow = cashInThisMonth - cashOutThisMonth;
 
@@ -37,6 +37,7 @@ export async function MonthlyTab({ organizationId, year, month }: { organization
       {!cashInResult.ok && (
         <p className="rounded-md border border-dashed border-foreground/15 p-3 text-sm text-muted-foreground">
           Hinweis: EasyBill ist nicht verbunden ({cashInResult.error}).
+          {cashInResult.usedFallback && " Cash-In zeigt hier den importierten Verlauf, nicht Live-Daten."}
         </p>
       )}
 
