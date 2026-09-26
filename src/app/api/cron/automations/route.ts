@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
+import { renderBrandedEmail } from "@/lib/email/template";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
 import { syncAllMailboxes } from "@/lib/mailbox/sync";
@@ -82,9 +83,17 @@ export async function GET(request: Request) {
         rule.trigger === "NEW_LEAD"
           ? `Neuer ${noun}: ${name} (${rule.pipeline.name})`
           : `${noun} seit ${threshold} Std. unbearbeitet: ${name} (${rule.pipeline.name})`;
-      const text = `${name} in der Kampagne "${rule.pipeline.name}" wartet auf Bearbeitung.\n\n${baseUrl}/dashboard/contacts/${contact.id}`;
+      const contactUrl = `${baseUrl}/dashboard/contacts/${contact.id}`;
+      const { html, text } = renderBrandedEmail({
+        baseUrl,
+        preheader: subject,
+        heading: `Moin ${rule.recipientUser.name},`,
+        paragraphs: [`${name} in der Kampagne "${rule.pipeline.name}" wartet auf Bearbeitung.`],
+        ctaLabel: "Kontakt öffnen",
+        ctaUrl: contactUrl,
+      });
 
-      const result = await sendSystemEmail({ to: rule.recipientUser.email, subject, text });
+      const result = await sendSystemEmail({ to: rule.recipientUser.email, subject, text, html });
       if (!result.ok) {
         errors.push(`${rule.id}/${contact.id}: ${result.error}`);
         continue;
