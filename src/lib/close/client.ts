@@ -68,13 +68,45 @@ export async function syncFunnelSendToClose(subscriberId: string, subject: strin
 // ---------------------------------------------------------------------------
 // Cashflow-/Sales-Cockpit: Live-Auswertungen direkt aus Close.io, nichts wird
 // bei uns gespiegelt/gespeichert. Nutzt Close.ios klassische List-Endpoints
-// mit Django-Style-Filtersuffixen (__gte/__lte) und _skip/_limit-Pagination -
-// Feldnamen sind nach Close.io-API-Dokumentationsstand, aber ohne echten
-// CLOSE_API_KEY in dieser Sandbox nicht gegen die echte API testbar. Bei
-// Abweichungen (z.B. andere Feldnamen) hier zuerst nachjustieren.
+// mit Django-Style-Filtersuffixen (__gte/__lte) und _skip/_limit-Pagination.
+// Gegen einen echten Account geprüft: /activity/call/ liefert user_id, aber
+// KEIN user_name - Namen kommen deshalb separat über resolveCloseUserNames()
+// (GET /me/ -> GET /organization/{id}/, dieselben Felder wie die
+// Mitgliederliste). Bei Opportunities bleibt date_won als Filter/Feldname
+// unverifiziert (die verfügbare Prüfung zeigte nur den abgeleiteten
+// close_at-Wert) - bei Abweichungen hier zuerst nachjustieren.
 // ---------------------------------------------------------------------------
 
 export type CloseResult<T> = { ok: true; rows: T[] } | { ok: false; error: string };
+
+let cachedUserNames: Promise<Map<string, string>> | null = null;
+
+/** Löst Close-User-IDs zu "Vorname Nachname" auf - gecacht pro Server-Instanz, da sich Org-Mitglieder selten ändern. */
+async function resolveCloseUserNames(apiKey: string): Promise<Map<string, string>> {
+  if (!cachedUserNames) {
+    cachedUserNames = (async () => {
+      const meRes = await fetch(`${CLOSE_API_BASE}/me/`, { headers: { Authorization: closeAuthHeader(apiKey) } });
+      if (!meRes.ok) throw new Error(`Close.io-Nutzerabfrage fehlgeschlagen (${meRes.status})`);
+      const me = (await meRes.json()) as { organizations?: { id: string }[] };
+      const orgId = me.organizations?.[0]?.id;
+      if (!orgId) return new Map<string, string>();
+
+      const orgRes = await fetch(`${CLOSE_API_BASE}/organization/${orgId}/`, { headers: { Authorization: closeAuthHeader(apiKey) } });
+      if (!orgRes.ok) throw new Error(`Close.io-Organisationsabfrage fehlgeschlagen (${orgRes.status})`);
+      const org = (await orgRes.json()) as { memberships?: { user_id: string; user_first_name: string; user_last_name: string }[] };
+
+      const names = new Map<string, string>();
+      for (const membership of org.memberships ?? []) {
+        names.set(membership.user_id, `${membership.user_first_name} ${membership.user_last_name}`.trim());
+      }
+      return names;
+    })().catch((error) => {
+      cachedUserNames = null;
+      throw error;
+    });
+  }
+  return cachedUserNames;
+}
 
 async function closeFetchAll<T>(path: string, params: Record<string, string>, apiKey: string): Promise<T[]> {
   const results: T[] = [];
@@ -111,11 +143,14 @@ export async function listWonOpportunitiesByMonth(year: number): Promise<CloseRe
   if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
 
   try {
-    const opportunities = await closeFetchAll<CloseOpportunity>(
-      "/opportunity/",
-      { status_type: "won", date_won__gte: `${year}-01-01`, date_won__lte: `${year}-12-31` },
-      apiKey,
-    );
+    const [opportunities, userNames] = await Promise.all([
+      closeFetchAll<CloseOpportunity>(
+        "/opportunity/",
+        { status_type: "won", date_won__gte: `${year}-01-01`, date_won__lte: `${year}-12-31` },
+        apiKey,
+      ),
+      resolveCloseUserNames(apiKey),
+    ]);
 
     const byKey = new Map<string, MonthlyDealVolume>();
     for (const opp of opportunities) {
@@ -123,9 +158,10 @@ export async function listWonOpportunitiesByMonth(year: number): Promise<CloseRe
       const month = new Date(opp.date_won).getMonth() + 1;
       const key = `${opp.user_id}:${month}`;
       const valueNet = opp.value / 100;
+      const userName = userNames.get(opp.user_id) ?? opp.user_name ?? "Unbekannt";
       const existing = byKey.get(key);
       if (existing) existing.valueNet += valueNet;
-      else byKey.set(key, { month, userId: opp.user_id, userName: opp.user_name ?? "Unbekannt", valueNet });
+      else byKey.set(key, { month, userId: opp.user_id, userName, valueNet });
     }
     return { ok: true, rows: Array.from(byKey.values()) };
   } catch (error) {
@@ -137,7 +173,6 @@ type CloseCallActivity = {
   id: string;
   direction: string;
   user_id: string;
-  user_name: string | null;
   date_created: string;
 };
 
@@ -149,19 +184,23 @@ export async function listOutboundCallsByMonth(year: number): Promise<CloseResul
   if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
 
   try {
-    const calls = await closeFetchAll<CloseCallActivity>(
-      "/activity/call/",
-      { direction: "outbound", date_created__gte: `${year}-01-01T00:00:00`, date_created__lte: `${year}-12-31T23:59:59` },
-      apiKey,
-    );
+    const [calls, userNames] = await Promise.all([
+      closeFetchAll<CloseCallActivity>(
+        "/activity/call/",
+        { direction: "outbound", date_created__gte: `${year}-01-01T00:00:00`, date_created__lte: `${year}-12-31T23:59:59` },
+        apiKey,
+      ),
+      resolveCloseUserNames(apiKey),
+    ]);
 
     const byKey = new Map<string, MonthlyCallCount>();
     for (const call of calls) {
       const month = new Date(call.date_created).getMonth() + 1;
       const key = `${call.user_id}:${month}`;
+      const userName = userNames.get(call.user_id) ?? "Unbekannt";
       const existing = byKey.get(key);
       if (existing) existing.callCount += 1;
-      else byKey.set(key, { month, userId: call.user_id, userName: call.user_name ?? "Unbekannt", callCount: 1 });
+      else byKey.set(key, { month, userId: call.user_id, userName, callCount: 1 });
     }
     return { ok: true, rows: Array.from(byKey.values()) };
   } catch (error) {
