@@ -17,6 +17,7 @@ import { useSaveToast } from "@/hooks/use-save-toast";
 import { ThumbnailGenerator } from "./thumbnail-generator";
 
 const LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
+const AUDIENCE_LABELS: Record<string, string> = { CLIENT: "Kunden", INTERNAL: "Mitarbeiter (internes Portal)" };
 
 export function NewCourseForm() {
   const [open, setOpen] = useState(false);
@@ -80,6 +81,15 @@ export function NewCourseForm() {
             <SelectContent>
               <SelectItem value="ONBOARDING">Onboarding</SelectItem>
               <SelectItem value="TRAINING">Training</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select name="audience" defaultValue="CLIENT">
+            <SelectTrigger>
+              <SelectValue>{(value: string) => AUDIENCE_LABELS[value] ?? value}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="CLIENT">{AUDIENCE_LABELS.CLIENT}</SelectItem>
+              <SelectItem value="INTERNAL">{AUDIENCE_LABELS.INTERNAL}</SelectItem>
             </SelectContent>
           </Select>
           {error && <p className="text-sm text-destructive">{error}</p>}

@@ -15,6 +15,11 @@ const PUBLIC_PREFIXES = [
   "/api/track",
 ];
 
+// AGENCY_STAFF (Vertrieb, Backoffice, ... - siehe AgencyDepartment) hat keinen
+// CRM-Zugriff, nur das interne Portal. Diese Pfade bleiben trotzdem erreichbar,
+// weil sie geteilt sind (Schulung) oder das interne Portal selbst darstellen.
+const AGENCY_STAFF_ALLOWED_PREFIXES = ["/dashboard/intern", "/dashboard/courses", "/dashboard/settings"];
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isPublic = PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -31,6 +36,18 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  const role = req.auth?.user?.role;
+
+  // Internes Portal (Intranet) ist nur für Agentur-Mitarbeiter - Kunden
+  // (CLIENT_ADMIN/CLIENT_STAFF) dürfen es unter keinen Umständen sehen.
+  if (pathname.startsWith("/dashboard/intern") && role !== "AGENCY_ADMIN" && role !== "AGENCY_STAFF") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  if (role === "AGENCY_STAFF" && !AGENCY_STAFF_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.redirect(new URL("/dashboard/intern", req.url));
   }
 });
 

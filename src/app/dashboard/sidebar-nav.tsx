@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRightIcon, LayoutDashboard } from "lucide-react";
+import { ArrowLeftRightIcon, ChevronRightIcon, LayoutDashboard } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 
@@ -14,11 +14,14 @@ export function SidebarNav({
   links,
   adminLinks = [],
   clients,
+  showPortalSwitch = false,
 }: {
   role: string;
   links: NavLink[];
   adminLinks?: NavLink[];
   clients: ClientOrg[];
+  /** Nur AGENCY_ADMIN kann zwischen Kundenportal (CRM) und internem Portal wechseln. */
+  showPortalSwitch?: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -96,10 +99,21 @@ export function SidebarNav({
     );
   }
 
+  const inInternalPortal = pathname.startsWith("/dashboard/intern");
+
   return (
     <nav className="flex flex-1 flex-col">
+      {showPortalSwitch && (
+        <Link
+          href={inInternalPortal ? "/dashboard/clients" : "/dashboard/intern"}
+          className="mb-4 flex items-center gap-2 rounded-md border border-dashed border-foreground/15 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ArrowLeftRightIcon className="size-4 flex-shrink-0" />
+          {inInternalPortal ? "Zurück zum Kundenportal" : "Internes Portal"}
+        </Link>
+      )}
       <div className="flex flex-col gap-1">
-        {role !== "AGENCY_ADMIN" && (
+        {role !== "AGENCY_ADMIN" && role !== "AGENCY_STAFF" && (
           <Link
             href="/dashboard"
             className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${

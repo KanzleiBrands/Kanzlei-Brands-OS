@@ -14,14 +14,22 @@ function requireAgencyAdmin(role: string) {
 const PAGE_PATHS: Record<DashboardPage, string> = {
   OVERVIEW: "/dashboard",
   HUB: "/dashboard/hub",
+  SALES_HUB: "/dashboard/intern",
+  BACKOFFICE_HUB: "/dashboard/intern",
+  FULFILLMENT_HUB: "/dashboard/intern",
+  MARKETING_HUB: "/dashboard/intern",
+  EXECUTIVE_HUB: "/dashboard/intern",
 };
+
+const VALID_PAGES = new Set(Object.keys(PAGE_BLOCK_CATALOG));
 
 export async function savePageLayout(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
   requireAgencyAdmin(session.user.role);
 
   const page = String(formData.get("page") ?? "");
-  if (page !== "OVERVIEW" && page !== "HUB") return "Ungültige Seite.";
+  if (!VALID_PAGES.has(page)) return "Ungültige Seite.";
+  const typedPage = page as DashboardPage;
 
   let blocks: { key: string; enabled: boolean }[];
   try {
@@ -30,15 +38,15 @@ export async function savePageLayout(_prevState: string | undefined, formData: F
     return "Ungültige Daten.";
   }
 
-  const validKeys = new Set(PAGE_BLOCK_CATALOG[page].map((b) => b.key));
+  const validKeys = new Set(PAGE_BLOCK_CATALOG[typedPage].map((b) => b.key));
   const filtered = blocks.filter((b) => validKeys.has(b.key));
   if (filtered.length !== validKeys.size) return "Unvollständige Daten - bitte Seite neu laden.";
 
   await prisma.$transaction(
     filtered.map((block, index) =>
       prisma.pageLayoutBlock.upsert({
-        where: { page_blockKey: { page, blockKey: block.key } },
-        create: { page, blockKey: block.key, order: index, enabled: block.enabled },
+        where: { page_blockKey: { page: typedPage, blockKey: block.key } },
+        create: { page: typedPage, blockKey: block.key, order: index, enabled: block.enabled },
         update: { order: index, enabled: block.enabled },
       }),
     ),
@@ -47,12 +55,12 @@ export async function savePageLayout(_prevState: string | undefined, formData: F
   await logAudit({
     action: "page_layout.updated",
     entityType: "PageLayoutBlock",
-    entityId: page,
+    entityId: typedPage,
     organizationId: session.user.organizationId,
     userId: session.user.id,
   });
 
-  revalidatePath(PAGE_PATHS[page]);
+  revalidatePath(PAGE_PATHS[typedPage]);
   revalidatePath("/dashboard/settings");
   return undefined;
 }

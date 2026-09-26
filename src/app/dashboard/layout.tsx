@@ -54,6 +54,18 @@ function navFor(role: string, campaignKinds: Set<string>) {
     };
   }
 
+  // Nicht-Fulfillment-Mitarbeiter (Vertrieb, Backoffice, ...) - nur das
+  // interne Portal, kein CRM/Kunden-Zugriff (siehe src/proxy.ts).
+  if (role === "AGENCY_STAFF") {
+    return {
+      main: [
+        { href: "/dashboard/intern", label: "Mein Dashboard", icon: <LayoutDashboard className={navIconClass} /> },
+        ...common,
+      ],
+      admin: [],
+    };
+  }
+
   return {
     main: [
       { href: "/dashboard/hub", label: "Kunden Hub", icon: <LayoutDashboard className={navIconClass} /> },
@@ -80,7 +92,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session?.user) redirect("/login");
 
   let campaignKinds = new Set<string>();
-  if (session.user.role !== "AGENCY_ADMIN") {
+  if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") {
     const accessible = await accessiblePipelineIds(session, session.user.organizationId);
     const pipelines = await prisma.pipeline.findMany({
       where: {
@@ -127,7 +139,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
           className="block dark:hidden"
         />
       </div>
-      <SidebarNav role={session.user.role} links={mainLinks} adminLinks={adminLinks} clients={clients} />
+      <SidebarNav
+        role={session.user.role}
+        links={mainLinks}
+        adminLinks={adminLinks}
+        clients={clients}
+        showPortalSwitch={session.user.role === "AGENCY_ADMIN"}
+      />
       <div className="mt-auto flex flex-col gap-2 pt-4">
         <ThemeToggle />
         <SettingsLink />

@@ -80,7 +80,7 @@ export default async function ClientDetailPage({
   const applicantsUsed = jobPipelines.length;
   const jobsBooked = organization.applicantsQuota !== null || applicantsUsed > 0;
   const leadsBooked = organization.leadsQuota !== null || leadsUsed > 0;
-  const courses = await prisma.course.findMany({ orderBy: { createdAt: "desc" } });
+  const courses = await prisma.course.findMany({ where: { audience: "CLIENT" }, orderBy: { createdAt: "desc" } });
   const stageTemplates = await prisma.stageTemplate.findMany({
     orderBy: { createdAt: "asc" },
     select: { id: true, name: true },

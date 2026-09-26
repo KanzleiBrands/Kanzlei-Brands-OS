@@ -5,6 +5,7 @@ import { AvatarUploadForm } from "./avatar-upload-form";
 
 const ROLE_LABELS: Record<string, string> = {
   AGENCY_ADMIN: "Agentur-Admin",
+  AGENCY_STAFF: "Mitarbeiter (internes Portal)",
   CLIENT_ADMIN: "Kunden-Admin",
   CLIENT_STAFF: "Mitarbeiter",
 };

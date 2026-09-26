@@ -58,24 +58,31 @@ export default async function SettingsPage({
 
   const { tab: tabParam, connected, error } = await searchParams;
   const isAgency = session.user.role === "AGENCY_ADMIN";
+  // AGENCY_STAFF (nur internes Portal) hat keinen CRM-Zugriff - Postfach
+  // (syncs ins Posteingang), Textbausteine (Kunden-Auto-Replies) und
+  // Datenschutz (Kunden-Datenlöschfristen) sind für sie irrelevant.
+  const isInternalStaffOnly = session.user.role === "AGENCY_STAFF";
   const canManageTeam = session.user.role === "CLIENT_ADMIN" || isAgency;
-  // Every user can connect their own mailbox: clients for their own use, and
-  // agency staff so the team-wide /dashboard/inbox has something to sync.
-  const canUseMailbox = true;
+  // Kunden und Fulfillment-Mitarbeiter können ihr eigenes Postfach anbinden -
+  // Kunden für den eigenen Gebrauch, Fulfillment fürs team-weite /dashboard/inbox.
+  const canUseMailbox = !isInternalStaffOnly;
 
   const validTabs: Tab[] = [
     "account",
     "notifications",
     ...(canManageTeam ? (["team"] as const) : []),
     ...(canUseMailbox ? (["mailbox"] as const) : []),
-    "snippets",
+    ...(isInternalStaffOnly ? [] : (["snippets"] as const)),
     ...(isAgency ? (["templates", "hubsettings", "emailcenter", "pagebuilder"] as const) : []),
-    ...(!isAgency ? (["privacy"] as const) : []),
+    ...(!isAgency && !isInternalStaffOnly ? (["privacy"] as const) : []),
   ];
   const tab: Tab = validTabs.includes(tabParam as Tab) ? (tabParam as Tab) : "account";
 
   const tabClusters: { label: string; tabs: Tab[] }[] = [
-    { label: "Account", tabs: ["account", "notifications", ...(!isAgency ? (["privacy"] as const) : [])] as Tab[] },
+    {
+      label: "Account",
+      tabs: ["account", "notifications", ...(!isAgency && !isInternalStaffOnly ? (["privacy"] as const) : [])] as Tab[],
+    },
     {
       label: "Team & Postfach",
       tabs: [
@@ -83,7 +90,9 @@ export default async function SettingsPage({
         ...(canUseMailbox ? (["mailbox"] as const) : []),
       ] as Tab[],
     },
-    { label: "Vorlagen", tabs: ["snippets", ...(isAgency ? (["templates"] as const) : [])] as Tab[] },
+    ...(isInternalStaffOnly
+      ? []
+      : [{ label: "Vorlagen", tabs: ["snippets", ...(isAgency ? (["templates"] as const) : [])] as Tab[] }]),
     ...(isAgency
       ? [{ label: "Plattform", tabs: ["hubsettings", "emailcenter", "pagebuilder"] as Tab[] }]
       : []),

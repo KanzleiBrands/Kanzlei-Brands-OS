@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { AgencyDepartment } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertOrganizationAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { generateActivationToken } from "@/lib/invite";
 import { getBaseUrl } from "@/lib/base-url";
 import { getClientReadiness } from "@/lib/client-readiness";
+import { AGENCY_DEPARTMENTS } from "@/lib/agency-departments";
 
 import { slugify } from "@/lib/slugify";
 
@@ -308,6 +310,7 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const requestedRole = String(formData.get("role") ?? "CLIENT_STAFF");
+  const requestedDepartment = String(formData.get("department") ?? "");
 
   if (!organizationId || !name || !email) {
     return { status: "error", message: "Alle Felder sind erforderlich." };
@@ -322,10 +325,21 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
 
   // CLIENT_ADMIN may only create staff in their own org, never other admins.
   const role = session.user.role === "AGENCY_ADMIN" ? requestedRole : "CLIENT_STAFF";
-  if (role === "AGENCY_ADMIN") {
+  let department: AgencyDepartment | null = null;
+  if (role === "AGENCY_ADMIN" || role === "AGENCY_STAFF") {
     // Agency staff accounts may only be created directly in the agency's own org.
     if (organizationId !== session.user.organizationId) {
       return { status: "error", message: "Agentur-Mitarbeiter können nur in der eigenen Organisation angelegt werden." };
+    }
+    if (role === "AGENCY_STAFF") {
+      // AGENCY_STAFF has no CRM access at all - the department decides which
+      // Hub they land on in the internen Portal, so it can't be left unset.
+      if (!AGENCY_DEPARTMENTS.includes(requestedDepartment as AgencyDepartment)) {
+        return { status: "error", message: "Bitte eine Abteilung auswählen." };
+      }
+      department = requestedDepartment as AgencyDepartment;
+    } else if (AGENCY_DEPARTMENTS.includes(requestedDepartment as AgencyDepartment)) {
+      department = requestedDepartment as AgencyDepartment;
     }
   } else if (role !== "CLIENT_ADMIN" && role !== "CLIENT_STAFF") {
     return { status: "error", message: "Ungültige Rolle." };
@@ -352,6 +366,7 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
       name,
       email,
       role,
+      department,
       organizationId,
       passwordHash: null,
       activationToken: token,
@@ -375,6 +390,27 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
   revalidatePath("/dashboard/settings");
 
   return { status: "success", link };
+}
+
+/** Ändert die Abteilung eines Agentur-Mitarbeiters (bestimmt dessen Hub im internen Portal) - nur AGENCY_ADMIN. */
+export async function updateAgencyUserDepartment(userId: string, department: string | null) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können die Abteilung ändern.";
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.organizationId !== session.user.organizationId || (user.role !== "AGENCY_ADMIN" && user.role !== "AGENCY_STAFF")) {
+    return "Ungültiger Mitarbeiter.";
+  }
+  if (department !== null && !AGENCY_DEPARTMENTS.includes(department as AgencyDepartment)) {
+    return "Ungültige Abteilung.";
+  }
+  if (user.role === "AGENCY_STAFF" && department === null) {
+    return "Mitarbeiter ohne Fulfillment-Zugriff benötigen eine Abteilung.";
+  }
+
+  await prisma.user.update({ where: { id: userId }, data: { department: department as AgencyDepartment | null } });
+  revalidatePath("/dashboard/settings");
+  return undefined;
 }
 
 export async function regenerateActivationLink(userId: string): Promise<CreateUserResult> {

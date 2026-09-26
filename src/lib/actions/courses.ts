@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/access";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { parseLessonBlocks, firstVideoBlockUrl, type LessonBlock } from "@/lib/lesson-blocks";
+import { isAgencyDepartment } from "@/lib/agency-departments";
 
 // ---------------------------------------------------------------------------
 // Course
@@ -26,8 +27,10 @@ export async function createCourse(_prevState: string | undefined, formData: For
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const category = String(formData.get("category") ?? "TRAINING");
+  const audience = String(formData.get("audience") ?? "CLIENT");
   if (!title) return "Titel ist erforderlich.";
   if (category !== "ONBOARDING" && category !== "TRAINING") return "Ungültige Kategorie.";
+  if (audience !== "CLIENT" && audience !== "INTERNAL") return "Ungültige Zielgruppe.";
 
   let thumbnailUrl: string | null = null;
   try {
@@ -37,7 +40,7 @@ export async function createCourse(_prevState: string | undefined, formData: For
   }
 
   await prisma.course.create({
-    data: { title, description: description || null, category, thumbnailUrl },
+    data: { title, description: description || null, category, audience, thumbnailUrl },
   });
 
   revalidatePath("/dashboard/courses");
@@ -58,6 +61,11 @@ export async function updateCourse(_prevState: string | undefined, formData: For
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return "Kurs nicht gefunden.";
 
+  // Zielgruppe ist nach dem Anlegen bewusst nicht mehr änderbar - ein
+  // Wechsel würde bestehende CourseAssignment/CourseDepartmentAssignment
+  // verwaist zurücklassen, ohne dass hier aufgeräumt wird.
+  const audience = course.audience;
+
   let thumbnailUrl: string | null | undefined;
   try {
     thumbnailUrl = await uploadImageField(formData, "thumbnail");
@@ -71,6 +79,7 @@ export async function updateCourse(_prevState: string | undefined, formData: For
       title,
       description: description || null,
       category,
+      audience,
       ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
     },
   });
@@ -78,6 +87,30 @@ export async function updateCourse(_prevState: string | undefined, formData: For
   revalidatePath("/dashboard/courses");
   revalidatePath(`/dashboard/courses/${courseId}`);
   return undefined;
+}
+
+/** Weist einen internen (audience=INTERNAL) Kurs einer Abteilung zu/ab - Pendant zu setCourseAssignment für Kunden. */
+export async function setCourseDepartmentAssignment(formData: FormData) {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") return;
+
+  const courseId = String(formData.get("courseId") ?? "");
+  const department = String(formData.get("department") ?? "");
+  const assign = formData.get("assign") === "true";
+  if (!isAgencyDepartment(department)) return;
+
+  if (assign) {
+    await prisma.courseDepartmentAssignment.upsert({
+      where: { courseId_department: { courseId, department } },
+      update: {},
+      create: { courseId, department },
+    });
+  } else {
+    await prisma.courseDepartmentAssignment.deleteMany({ where: { courseId, department } });
+  }
+
+  revalidatePath("/dashboard/intern/verwaltung");
+  revalidatePath("/dashboard/courses");
 }
 
 export async function deleteCourse(formData: FormData) {

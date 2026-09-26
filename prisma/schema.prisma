@@ -119,16 +119,16 @@ model Organization {
   // (Art. 5 Abs. 1 lit. e DSGVO) - Empfehlung in der Praxis 6 Monate.
   leadDataRetentionMonths      Int?
 
-  users                   User[]
-  pipelines               Pipeline[]
-  courseAssignments       CourseAssignment[]
-  webhookEndpoints        WebhookEndpoint[]
-  metaLeadFormConnections MetaLeadFormConnection[]
-  socialChannels          SocialChannel[]
-  socialPosts             SocialPost[]
-  auditLogs               AuditLog[]
-  messageTemplates        MessageTemplate[]
-  talentPools             TalentPool[]
+  users                     User[]
+  pipelines                 Pipeline[]
+  courseAssignments         CourseAssignment[]
+  webhookEndpoints          WebhookEndpoint[]
+  metaLeadFormConnections   MetaLeadFormConnection[]
+  socialChannels            SocialChannel[]
+  socialPosts               SocialPost[]
+  auditLogs                 AuditLog[]
+  messageTemplates          MessageTemplate[]
+  talentPools               TalentPool[]
   partnerPointsTransactions PartnerPointsTransaction[]
 
   createdAt DateTime @default(now())
@@ -143,8 +143,21 @@ model Organization {
 
 enum UserRole {
   AGENCY_ADMIN // Kanzlei Brands staff, full control over every client org
+  AGENCY_STAFF // Nicht-Fulfillment Kanzlei-Brands-Mitarbeiter (Vertrieb, Backoffice, ...) - nur das interne Portal, kein Zugriff auf Kunden/CRM
   CLIENT_ADMIN // Owner-level user at a client org, manages that org's staff/pipelines
   CLIENT_STAFF // Employee at a client org, access limited to assigned pipelines
+}
+
+// Abteilung eines Agentur-Mitarbeiters - bestimmt, welchen Hub er im internen
+// Portal sieht (siehe getDepartmentHubPage). Pflichtfeld für AGENCY_STAFF;
+// bei AGENCY_ADMIN optional gesetzt, um zusätzlich zur Kunden-Verwaltung
+// einen eigenen persönlichen Hub zu bekommen (z.B. Geschäftsführung).
+enum AgencyDepartment {
+  SALES // Vertrieb
+  BACKOFFICE
+  FULFILLMENT
+  MARKETING
+  EXECUTIVE // Geschäftsführung (GF/CEO/CFO)
 }
 
 model User {
@@ -153,6 +166,10 @@ model User {
   passwordHash String?
   name         String
   role         UserRole
+
+  // Nur für Agentur-Mitarbeiter (AGENCY_ADMIN/AGENCY_STAFF) relevant - siehe
+  // AgencyDepartment. Bestimmt den Hub im internen Portal (/dashboard/intern).
+  department AgencyDepartment?
 
   // Set when the user is invited via activation link instead of a password;
   // cleared once they complete activation and set their own password.
@@ -185,21 +202,22 @@ model User {
   // callback) - powers the "letzter Login" column on the Kunden-Log tab.
   lastLoginAt DateTime?
 
-  pipelineAccess           PipelineAccess[]
-  activities               Activity[]
-  emailAccounts            EmailAccount[]
-  enrollments              Enrollment[]
-  auditLogs                AuditLog[]
-  offerInterests           OfferInterest[]
-  automationRules          AutomationRule[]
-  managedOrganizations     Organization[]           @relation("AccountManagerFor")
-  backofficeContactForOrgs Organization[]           @relation("BackofficeContactFor")
-  connectedMetaLeadForms   MetaLeadFormConnection[]
-  connectedSocialChannels  SocialChannel[]
-  socialPostsResponsible   SocialPost[]
-  tasksCreated             Task[]                   @relation("TaskCreatedBy")
-  tasksAssigned            Task[]                   @relation("TaskAssignedTo")
+  pipelineAccess            PipelineAccess[]
+  activities                Activity[]
+  emailAccounts             EmailAccount[]
+  enrollments               Enrollment[]
+  auditLogs                 AuditLog[]
+  offerInterests            OfferInterest[]
+  automationRules           AutomationRule[]
+  managedOrganizations      Organization[]             @relation("AccountManagerFor")
+  backofficeContactForOrgs  Organization[]             @relation("BackofficeContactFor")
+  connectedMetaLeadForms    MetaLeadFormConnection[]
+  connectedSocialChannels   SocialChannel[]
+  socialPostsResponsible    SocialPost[]
+  tasksCreated              Task[]                     @relation("TaskCreatedBy")
+  tasksAssigned             Task[]                     @relation("TaskAssignedTo")
   partnerPointsTransactions PartnerPointsTransaction[]
+  departmentContactFor      DepartmentContact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -985,6 +1003,15 @@ enum CourseCategory {
   TRAINING // General knowledge-transfer courses
 }
 
+// Legt fest, wo ein Kurs überhaupt auftauchen kann: im Kunden-Schulungsbereich
+// (zugewiesen per CourseAssignment/Organization) oder im internen Portal
+// (zugewiesen per CourseDepartmentAssignment/AgencyDepartment) - nie in
+// beiden zugleich, damit Mitarbeiter-Schulungen nie im Kundenportal auftauchen.
+enum CourseAudience {
+  CLIENT
+  INTERNAL
+}
+
 // Courses are authored by the agency and only visible to clients they've been
 // explicitly assigned to via CourseAssignment (opt-in, no default visibility).
 model Course {
@@ -992,12 +1019,14 @@ model Course {
   title        String
   description  String?
   category     CourseCategory
+  audience     CourseAudience @default(CLIENT)
   thumbnailUrl String?
   published    Boolean        @default(false)
 
-  modules     Module[]
-  enrollments Enrollment[]
-  assignments CourseAssignment[]
+  modules               Module[]
+  enrollments           Enrollment[]
+  assignments           CourseAssignment[]
+  departmentAssignments CourseDepartmentAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1016,6 +1045,22 @@ model CourseAssignment {
 
   @@unique([courseId, organizationId])
   @@index([organizationId])
+}
+
+// Wie CourseAssignment, aber für audience=INTERNAL Kurse: Zielgruppe ist eine
+// Abteilung (AgencyDepartment) statt einer Kunden-Organisation, da es nur die
+// eine Agentur-Organisation gibt und Vertrieb/Backoffice/... sich darin nicht
+// über organizationId unterscheiden lassen.
+model CourseDepartmentAssignment {
+  id         String           @id @default(cuid())
+  courseId   String
+  course     Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  department AgencyDepartment
+
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, department])
+  @@index([department])
 }
 
 // Grouping level between Course and Lesson (e.g. "Modul 1 - Theoretische
@@ -1174,6 +1219,41 @@ model OfferInterest {
 enum DashboardPage {
   OVERVIEW
   HUB
+  // Ein Wert je AgencyDepartment - das "Mein Dashboard" jedes Mitarbeiters im
+  // internen Portal, siehe getDepartmentHubPage().
+  SALES_HUB
+  BACKOFFICE_HUB
+  FULFILLMENT_HUB
+  MARKETING_HUB
+  EXECUTIVE_HUB
+}
+
+// ---------------------------------------------------------------------------
+// Internes Portal (Intranet): Abteilungs-Hubs für Nicht-Fulfillment-
+// Mitarbeiter (Vertrieb, Backoffice, ...), siehe AgencyDepartment. Ersetzt für
+// diese Zielgruppe den Kunden-Hub - Kunden haben hierauf keinen Zugriff.
+// ---------------------------------------------------------------------------
+
+// Ansprechpartner-Kachel je Abteilung (z.B. Teamlead Vertrieb) - eine Zeile
+// pro Abteilung, analog zu Organization.accountManager fürs Kunden-Hub.
+model DepartmentContact {
+  department    AgencyDepartment @id
+  contactUserId String?
+  contact       User?            @relation(fields: [contactUserId], references: [id], onDelete: SetNull)
+}
+
+// Frei pflegbare Links/Dateien je Abteilung (z.B. Vertriebsunterlagen,
+// Pitch-Deck) - der Assets/Ressourcen-Block im Abteilungs-Hub.
+model DepartmentResourceLink {
+  id         String           @id @default(cuid())
+  department AgencyDepartment
+  label      String
+  url        String
+  order      Int              @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([department])
 }
 
 model PageLayoutBlock {
@@ -1271,9 +1351,9 @@ model FunnelStep {
   // klick-getrackte Links umgewandelt werden - bewusst kein HTML-Editor,
   // damit die Mail wie eine echte persönliche Nachricht aus dem Postfach
   // des Kunden wirkt statt wie ein Marketing-Newsletter.
-  bodyText String
-  ctaLabel String?
-  ctaUrl   String?
+  bodyText  String
+  ctaLabel  String?
+  ctaUrl    String?
 
   funnelId String
   funnel   NurtureFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
@@ -1289,7 +1369,7 @@ model FunnelStep {
 // Ein Lead in einem Funnel. nextSendAt ist der Cursor, den der Funnel-Cron
 // abfragt; currentStepOrder = 0 bedeutet "noch keine E-Mail verschickt".
 model FunnelEnrollment {
-  id     String                  @id @default(cuid())
+  id     String                 @id @default(cuid())
   status FunnelEnrollmentStatus @default(ACTIVE)
 
   funnelId  String

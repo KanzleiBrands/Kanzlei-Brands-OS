@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,10 @@ export default async function CoursesPage() {
 
   if (isAgency) {
     const courses = await prisma.course.findMany({
-      include: { _count: { select: { assignments: true, modules: true } }, modules: { select: { _count: { select: { lessons: true } } } } },
+      include: {
+        _count: { select: { assignments: true, departmentAssignments: true, modules: true } },
+        modules: { select: { _count: { select: { lessons: true } } } },
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -45,14 +49,18 @@ export default async function CoursesPage() {
                     <CardTitle className="min-w-0 flex-1 truncate" title={course.title}>
                       {course.title}
                     </CardTitle>
-                    <Badge variant="secondary" className="shrink-0">
-                      {CATEGORY_LABELS[course.category]}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant="secondary">{CATEGORY_LABELS[course.category]}</Badge>
+                      {course.audience === "INTERNAL" && <Badge variant="outline">Intern</Badge>}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">
-                    {course._count.modules} Module · {lessonCount} Lektionen · {course._count.assignments} Kunden zugewiesen
+                    {course._count.modules} Module · {lessonCount} Lektionen ·{" "}
+                    {course.audience === "INTERNAL"
+                      ? `${course._count.departmentAssignments} Abteilungen zugewiesen`
+                      : `${course._count.assignments} Kunden zugewiesen`}
                   </p>
                   <div className="flex flex-col items-start gap-2">
                     <Link href={`/dashboard/courses/${course.id}`} className="text-sm underline">
@@ -70,11 +78,21 @@ export default async function CoursesPage() {
     );
   }
 
+  const isInternalStaff = session.user.role === "AGENCY_STAFF";
+  let courseWhere: Prisma.CourseWhereInput = {
+    published: true,
+    audience: "CLIENT",
+    assignments: { some: { organizationId: session.user.organizationId } },
+  };
+  if (isInternalStaff) {
+    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
+    courseWhere = viewer?.department
+      ? { published: true, audience: "INTERNAL", departmentAssignments: { some: { department: viewer.department } } }
+      : { id: "__none__" }; // kein Fallback-Kurs ohne Abteilung anzeigen
+  }
+
   const courses = await prisma.course.findMany({
-    where: {
-      published: true,
-      assignments: { some: { organizationId: session.user.organizationId } },
-    },
+    where: courseWhere,
     include: {
       modules: { select: { lessons: { select: { id: true } } } },
       enrollments: {
