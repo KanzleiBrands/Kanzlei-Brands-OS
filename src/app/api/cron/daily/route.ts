@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email/resend";
+import { renderBrandedEmail } from "@/lib/email/template";
 import { contactDisplayName } from "@/lib/contact-display";
 import { getBaseUrl } from "@/lib/base-url";
 import { computeOverviewStats } from "@/lib/dashboard-stats";
@@ -65,9 +66,17 @@ export async function GET(request: Request) {
     if (!task.assignedTo) continue;
     const name = contactDisplayName(task.contact);
     const subject = `Wiedervorlage fällig: ${task.title}`;
-    const text = `Deine Wiedervorlage "${task.title}" zu ${name} ist fällig.\n\n${baseUrl}/dashboard/contacts/${task.contactId}?tab=tasks`;
+    const taskUrl = `${baseUrl}/dashboard/contacts/${task.contactId}?tab=tasks`;
+    const { html, text } = renderBrandedEmail({
+      baseUrl,
+      preheader: subject,
+      heading: `Moin ${task.assignedTo.name},`,
+      paragraphs: [`Deine Wiedervorlage "${task.title}" zu ${name} ist fällig.`],
+      ctaLabel: "Wiedervorlage öffnen",
+      ctaUrl: taskUrl,
+    });
 
-    const result = await sendSystemEmail({ to: task.assignedTo.email, subject, text });
+    const result = await sendSystemEmail({ to: task.assignedTo.email, subject, text, html });
     if (!result.ok) {
       errors.push(`task/${task.id}: ${result.error}`);
       continue;
@@ -111,10 +120,18 @@ export async function GET(request: Request) {
     ].filter(Boolean);
 
     const subject = `Kanzlei Brands: ${lines.join(", ")}`;
-    const text = `Guten Morgen!\n\n${lines.join("\n")}\n\n${baseUrl}/dashboard/pipelines`;
+    const pipelinesUrl = `${baseUrl}/dashboard/pipelines`;
 
     for (const user of client.users) {
-      const result = await sendSystemEmail({ to: user.email, subject, text });
+      const { html, text } = renderBrandedEmail({
+        baseUrl,
+        preheader: subject,
+        heading: `Guten Morgen ${user.name},`,
+        paragraphs: lines as string[],
+        ctaLabel: "Zu den Kampagnen",
+        ctaUrl: pipelinesUrl,
+      });
+      const result = await sendSystemEmail({ to: user.email, subject, text, html });
       if (!result.ok) {
         errors.push(`digest/${client.id}/${user.email}: ${result.error}`);
         continue;
@@ -139,18 +156,23 @@ export async function GET(request: Request) {
 
       const monthLabel = now.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
       const subject = `Dein Kanzlei Brands Report für ${monthLabel}`;
-      const text = [
+      const reportParagraphs = [
         `Dein Performance-Report für ${monthLabel}:`,
-        "",
         `${newThisMonth} neue Leads/Bewerbungen`,
         `${completedThisMonth} abgeschlossen/eingestellt`,
         `${stats.unprocessed} aktuell unbearbeitet`,
-        "",
-        `${baseUrl}/dashboard/pipelines`,
-      ].join("\n");
+      ];
 
       for (const user of client.users) {
-        const result = await sendSystemEmail({ to: user.email, subject, text });
+        const { html, text } = renderBrandedEmail({
+          baseUrl,
+          preheader: subject,
+          heading: `Moin ${user.name},`,
+          paragraphs: reportParagraphs,
+          ctaLabel: "Zu den Kampagnen",
+          ctaUrl: `${baseUrl}/dashboard/pipelines`,
+        });
+        const result = await sendSystemEmail({ to: user.email, subject, text, html });
         if (!result.ok) {
           errors.push(`report/${client.id}/${user.email}: ${result.error}`);
           continue;
