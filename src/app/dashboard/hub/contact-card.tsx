@@ -11,11 +11,14 @@ export function ContactCard({
   description,
   contact,
   teamEmail,
+  emptyLabel = "Noch nicht zugewiesen.",
 }: {
   title: string;
   description: string;
   contact: { name: string; phone: string | null; calendlyUrl: string | null; avatarUrl: string | null } | null;
   teamEmail: string;
+  /** Text, wenn kein Kontakt hinterlegt ist - z.B. für die Spitze des Organigramms statt "vergessen zuzuweisen". */
+  emptyLabel?: string;
 }) {
   const [firstName, ...rest] = contact?.name.trim().split(/\s+/) ?? [];
   const lastName = rest.at(-1) ?? null;
@@ -44,7 +47,7 @@ export function ContactCard({
             <p className="font-medium">{contact.name}</p>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Noch nicht zugewiesen.</p>
+          <p className="text-sm text-muted-foreground">{emptyLabel}</p>
         )}
 
         <div className="flex flex-wrap gap-2">

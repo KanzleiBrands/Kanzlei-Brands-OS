@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DepartmentResourcesCard } from "../department-resources-card";
-import { DepartmentContactSelect } from "../department-contact-select";
 import { CourseDepartmentToggle } from "../course-department-toggle";
 import { AGENCY_DEPARTMENTS, DEPARTMENT_LABELS } from "@/lib/agency-departments";
 
@@ -15,14 +14,13 @@ export default async function InternalPortalAdminPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard/intern");
 
-  const [agencyUsers, resourceLinks, contactRows, internalCourses] = await Promise.all([
+  const [agencyUsers, resourceLinks, internalCourses] = await Promise.all([
     prisma.user.findMany({
       where: { organizationId: session.user.organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },
       select: { id: true, name: true, role: true, department: true },
       orderBy: { name: "asc" },
     }),
     prisma.departmentResourceLink.findMany({ orderBy: { order: "asc" } }),
-    prisma.departmentContact.findMany(),
     prisma.course.findMany({
       where: { audience: "INTERNAL" },
       select: { id: true, title: true, departmentAssignments: { select: { department: true } } },
@@ -30,14 +28,15 @@ export default async function InternalPortalAdminPage() {
     }),
   ]);
 
-  const admins = agencyUsers.filter((u) => u.role === "AGENCY_ADMIN");
-  const contactByDepartment = new Map(contactRows.map((c) => [c.department, c.contactUserId]));
-
   return (
     <div className="p-4 sm:p-8">
       <h1 className="mb-2 text-2xl font-semibold">Internes Portal – Verwaltung</h1>
       <p className="mb-6 text-muted-foreground">
-        Ansprechpartner, Assets und Mitarbeiter je Abteilung pflegen. Neue Mitarbeiter lädst du in{" "}
+        Assets und Mitarbeiter je Abteilung pflegen. Wer als Ansprechpartner erscheint, ergibt sich automatisch aus dem{" "}
+        <Link href="/dashboard/intern/personal/organigramm" className="underline">
+          Organigramm
+        </Link>{" "}
+        (Vorgesetzte:r laut Manager-Zuordnung im Personal-Bereich). Neue Mitarbeiter lädst du in{" "}
         <Link href="/dashboard/settings" className="underline">
           Einstellungen → Mitarbeiter
         </Link>{" "}
@@ -53,15 +52,6 @@ export default async function InternalPortalAdminPage() {
                 <CardTitle>{DEPARTMENT_LABELS[department]}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-sm font-medium">Ansprechpartner</p>
-                  <DepartmentContactSelect
-                    department={department}
-                    contactUserId={contactByDepartment.get(department) ?? null}
-                    candidates={admins}
-                  />
-                </div>
-
                 <DepartmentResourcesCard
                   department={department}
                   links={resourceLinks.filter((l) => l.department === department)}

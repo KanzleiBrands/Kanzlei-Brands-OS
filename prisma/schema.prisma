@@ -89,6 +89,14 @@ model Organization {
   // so re-deliveries of the same Airtable record update instead of duplicate.
   airtableRecordId String? @unique
 
+  // Unternehmensdaten (Personal-Bereich -> Unternehmen) - nur auf der
+  // AGENCY-Organisation gepflegt, siehe /dashboard/intern/personal/unternehmen.
+  companyWebsite String?
+  businessNumber String? // Betriebsnummer
+  vatId          String? // Umsatzsteuer-ID
+  foundedYear    Int?
+  mission        String?
+
   parentId String?
   parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
   children Organization[] @relation("OrgHierarchy")
@@ -171,6 +179,24 @@ model User {
   // AgencyDepartment. Bestimmt den Hub im internen Portal (/dashboard/intern).
   department AgencyDepartment?
 
+  // ---------------------------------------------------------------------
+  // Personal (HR) - siehe /dashboard/intern/personal, Ersatz für Tellent HR.
+  // Gilt für alle Agentur-Mitarbeiter (AGENCY_ADMIN + AGENCY_STAFF), nicht
+  // für Kunden. Bewusst KEINE Zeiterfassung (Vertrauensarbeitszeit).
+  // ---------------------------------------------------------------------
+  managerId String?
+  manager   User?   @relation("ManagerOf", fields: [managerId], references: [id], onDelete: SetNull)
+  reports   User[]  @relation("ManagerOf")
+
+  position          String? // Job-Titel, z.B. "Online Marketing Manager" - unabhängig von department/Gruppe
+  location          String? // Standort, z.B. "Hamburg"
+  birthday          DateTime?
+  hireDate          DateTime? // "Unternehmensbeitritt"
+  // Ehemalige Mitarbeiter werden nicht gelöscht (Personalakte/Verträge/
+  // Abwesenheitshistorie bleiben erhalten), sondern hier markiert - analog
+  // zu Organization.archivedAt.
+  employmentEndedAt DateTime?
+
   // Set when the user is invited via activation link instead of a password;
   // cleared once they complete activation and set their own password.
   activationToken          String?   @unique
@@ -217,12 +243,17 @@ model User {
   tasksCreated              Task[]                     @relation("TaskCreatedBy")
   tasksAssigned             Task[]                     @relation("TaskAssignedTo")
   partnerPointsTransactions PartnerPointsTransaction[]
-  departmentContactFor      DepartmentContact[]
+  employeeDocuments         EmployeeDocument[]         @relation("EmployeeDocumentSubject")
+  employeeDocumentsUploaded EmployeeDocument[]         @relation("EmployeeDocumentUploadedBy")
+  absenceBalances           AbsenceBalance[]
+  absenceRequests           AbsenceRequest[]           @relation("AbsenceRequestUser")
+  absenceRequestsDecided    AbsenceRequest[]           @relation("AbsenceRequestDecidedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([organizationId])
+  @@index([managerId])
 }
 
 // Grants a CLIENT_STAFF user access to one pipeline (campaign).
@@ -1177,6 +1208,8 @@ enum SystemEmailType {
   PORTAL_INVITE
   NEW_LEAD_NOTIFICATION
   NEW_APPLICANT_NOTIFICATION
+  ABSENCE_REQUEST_SUBMITTED
+  ABSENCE_REQUEST_DECIDED
 }
 
 // Editable subject/heading/body/button text for an automated email (see
@@ -1233,14 +1266,6 @@ enum DashboardPage {
 // Mitarbeiter (Vertrieb, Backoffice, ...), siehe AgencyDepartment. Ersetzt für
 // diese Zielgruppe den Kunden-Hub - Kunden haben hierauf keinen Zugriff.
 // ---------------------------------------------------------------------------
-
-// Ansprechpartner-Kachel je Abteilung (z.B. Teamlead Vertrieb) - eine Zeile
-// pro Abteilung, analog zu Organization.accountManager fürs Kunden-Hub.
-model DepartmentContact {
-  department    AgencyDepartment @id
-  contactUserId String?
-  contact       User?            @relation(fields: [contactUserId], references: [id], onDelete: SetNull)
-}
 
 // Frei pflegbare Links/Dateien je Abteilung (z.B. Vertriebsunterlagen,
 // Pitch-Deck) - der Assets/Ressourcen-Block im Abteilungs-Hub.
@@ -1490,4 +1515,114 @@ model PartnerPointsTransaction {
   createdAt DateTime @default(now())
 
   @@index([organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Personal (HR) - /dashboard/intern/personal, Ersatz für Tellent HR.
+// Gilt für alle Agentur-Mitarbeiter, siehe User.managerId/position/location/
+// birthday/hireDate/employmentEndedAt. Bewusst KEINE Zeiterfassung.
+// ---------------------------------------------------------------------------
+
+enum EmployeeDocumentCategory {
+  CONTRACT // Verträge (Arbeitsvertrag, Nachträge)
+  CERTIFICATE // Zertifikate
+  OTHER // Andere Dokumente
+}
+
+// Digitale Personalakte - ein Dokument (i.d.R. hochgeladenes PDF) je Zeile,
+// mehrere pro Mitarbeiter und Kategorie möglich (z.B. Arbeitsvertrag +
+// mehrere Nachträge), analog zu Tellent HR.
+model EmployeeDocument {
+  id           String                   @id @default(cuid())
+  userId       String
+  user         User                     @relation("EmployeeDocumentSubject", fields: [userId], references: [id], onDelete: Cascade)
+  category     EmployeeDocumentCategory
+  title        String
+  fileUrl      String
+  description  String?
+  documentDate DateTime?
+
+  uploadedByUserId String?
+  uploadedBy       User?   @relation("EmployeeDocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum AbsenceAllowanceType {
+  LIMITED // konfigurierbares Jahres-Kontingent (z.B. Urlaub) - siehe AbsenceBalance
+  UNLIMITED // kein Kontingent (z.B. Krank, Homeoffice, Betriebsurlaub, Unbezahlter Urlaub)
+}
+
+// Konfigurierbare Abwesenheitsarten (von AGENCY_ADMIN gepflegt) - Vorbelegung
+// entspricht der Tellent-HR-Standardliste (Urlaub/Krank/Homeoffice/
+// Betriebsurlaub/Unbezahlter Urlaub), siehe seed/defaults.
+model AbsenceType {
+  id                String               @id @default(cuid())
+  name              String
+  icon              String // Lucide-Icon-Name fürs UI
+  color             String // Tailwind-Farbtoken fürs UI (z.B. "blue")
+  allowanceType     AbsenceAllowanceType @default(UNLIMITED)
+  defaultAnnualDays Int? // nur bei LIMITED: Default-Kontingent für neue Balances
+  weeklyCapDays     Int? // z.B. Homeoffice "bis zu 2 Tage pro Woche"
+  requiresApproval  Boolean              @default(true)
+  order             Int                  @default(0)
+  archivedAt        DateTime?
+
+  balances AbsenceBalance[]
+  requests AbsenceRequest[]
+
+  createdAt DateTime @default(now())
+
+  @@index([order])
+}
+
+// "Konten": Jahres-Kontingent eines Mitarbeiters für eine LIMITED-Abwesenheitsart.
+// "Verbraucht" wird nicht gespeichert, sondern live aus genehmigten
+// AbsenceRequest-Tagen dieses Jahres berechnet (siehe getAbsenceBalances).
+model AbsenceBalance {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  absenceTypeId String
+  absenceType   AbsenceType @relation(fields: [absenceTypeId], references: [id], onDelete: Cascade)
+  year          Int
+  totalDays     Int
+
+  @@unique([userId, absenceTypeId, year])
+  @@index([userId])
+}
+
+enum AbsenceRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+// "Anträge" - ein Mitarbeiter beantragt eine Abwesenheit, genehmigt wird von
+// AGENCY_ADMIN oder einem Manager in der Kette über ihm (siehe
+// src/lib/hr-access.ts#isInManagerChainOf).
+model AbsenceRequest {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation("AbsenceRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  absenceTypeId String
+  absenceType   AbsenceType @relation(fields: [absenceTypeId], references: [id], onDelete: Cascade)
+  startDate     DateTime
+  endDate       DateTime
+  days          Int
+  note          String?
+
+  status AbsenceRequestStatus @default(PENDING)
+
+  decidedByUserId String?
+  decidedBy       User?     @relation("AbsenceRequestDecidedBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  decidedAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
 }

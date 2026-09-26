@@ -7,7 +7,7 @@ import { CircularProgress } from "@/components/ui/circular-progress";
 import { ContactCard } from "../hub/contact-card";
 import { DepartmentResourcesCard } from "./department-resources-card";
 import { getPageLayout } from "@/lib/page-layout";
-import { DEPARTMENT_HUB_PAGE, DEPARTMENT_LABELS } from "@/lib/agency-departments";
+import { DEPARTMENT_HUB_PAGE } from "@/lib/agency-departments";
 
 const TEAM_EMAIL = "support@kanzlei-brands.de";
 
@@ -21,10 +21,10 @@ export async function DepartmentHubView({
   /** Nur wahr, wenn der Betrachter selbst AGENCY_ADMIN ist (kann Ressourcen direkt hier pflegen). */
   editableResources: boolean;
 }) {
-  const [contactRow, resourceLinks, layout, courses] = await Promise.all([
-    prisma.departmentContact.findUnique({
-      where: { department },
-      include: { contact: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } } },
+  const [viewer, resourceLinks, layout, courses] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { manager: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } } },
     }),
     prisma.departmentResourceLink.findMany({ where: { department }, orderBy: { order: "asc" } }),
     getPageLayout(DEPARTMENT_HUB_PAGE[department]),
@@ -38,12 +38,15 @@ export async function DepartmentHubView({
     }),
   ]);
 
+  const manager = viewer?.manager ?? null;
+
   const sections: Record<string, React.ReactNode> = {
     department_contact: (
       <ContactCard
         title="Ansprechpartner"
-        description={`Fragen rund um ${DEPARTMENT_LABELS[department]}?`}
-        contact={contactRow?.contact ?? null}
+        description="Deine Vorgesetzte oder dein Vorgesetzter laut Organigramm."
+        contact={manager}
+        emptyLabel="Du stehst an der Spitze der Organisation und hast keine übergeordnete Führungskraft."
         teamEmail={TEAM_EMAIL}
       />
     ),

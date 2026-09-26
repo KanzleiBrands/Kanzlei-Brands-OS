@@ -66,6 +66,37 @@ export const SYSTEM_EMAIL_DEFAULTS: Record<SystemEmailType, SystemEmailContent> 
     ctaLabel: "Bewerbung öffnen",
     footerNote: "",
   },
+  ABSENCE_REQUEST_SUBMITTED: {
+    label: "Neuer Abwesenheitsantrag",
+    description: "Geht an die zuständige Führungskraft (laut Organigramm) oder die GF, sobald ein Mitarbeiter einen Abwesenheitsantrag stellt.",
+    placeholders: [
+      { token: "{{name}}", description: "Name des Empfängers (Genehmiger*in)" },
+      { token: "{{mitarbeiter}}", description: "Name des antragstellenden Mitarbeiters" },
+      { token: "{{art}}", description: "Abwesenheitsart, z.B. Urlaub" },
+      { token: "{{zeitraum}}", description: "Zeitraum, z.B. 12.09.2026 - 19.09.2026" },
+      { token: "{{tage}}", description: "Anzahl der beantragten Werktage" },
+    ],
+    subject: "Neuer Abwesenheitsantrag von {{mitarbeiter}}",
+    heading: "Moin {{name}},",
+    body: "{{mitarbeiter}} hat einen Antrag auf \"{{art}}\" für den Zeitraum {{zeitraum}} ({{tage}} Tage) gestellt und wartet auf deine Entscheidung.",
+    ctaLabel: "Antrag prüfen",
+    footerNote: "",
+  },
+  ABSENCE_REQUEST_DECIDED: {
+    label: "Abwesenheitsantrag entschieden",
+    description: "Geht an den Mitarbeiter, sobald sein Abwesenheitsantrag genehmigt oder abgelehnt wurde.",
+    placeholders: [
+      { token: "{{name}}", description: "Name des Empfängers (Antragsteller*in)" },
+      { token: "{{art}}", description: "Abwesenheitsart, z.B. Urlaub" },
+      { token: "{{zeitraum}}", description: "Zeitraum, z.B. 12.09.2026 - 19.09.2026" },
+      { token: "{{entscheidung}}", description: "genehmigt oder abgelehnt" },
+    ],
+    subject: "Dein Abwesenheitsantrag wurde {{entscheidung}}",
+    heading: "Moin {{name}},",
+    body: "dein Antrag auf \"{{art}}\" für den Zeitraum {{zeitraum}} wurde {{entscheidung}}.",
+    ctaLabel: "Meine Abwesenheiten öffnen",
+    footerNote: "",
+  },
 };
 
 export const SYSTEM_EMAIL_TYPES = Object.keys(SYSTEM_EMAIL_DEFAULTS) as SystemEmailType[];

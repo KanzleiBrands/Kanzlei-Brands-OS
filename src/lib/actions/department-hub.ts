@@ -1,35 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { AgencyDepartment } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { isAgencyDepartment } from "@/lib/agency-departments";
 
 function requireAgencyAdmin(role: string) {
   if (role !== "AGENCY_ADMIN") throw new Error("Nur Agentur-Admins können das interne Portal verwalten.");
-}
-
-export async function updateDepartmentContact(department: string, contactUserId: string | null) {
-  const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
-  if (!isAgencyDepartment(department)) return "Ungültige Abteilung.";
-
-  if (contactUserId) {
-    const contact = await prisma.user.findUnique({ where: { id: contactUserId } });
-    if (!contact || contact.organizationId !== session.user.organizationId || contact.role !== "AGENCY_ADMIN") {
-      return "Ungültiger Ansprechpartner.";
-    }
-  }
-
-  await prisma.departmentContact.upsert({
-    where: { department },
-    create: { department: department as AgencyDepartment, contactUserId },
-    update: { contactUserId },
-  });
-
-  revalidatePath("/dashboard/intern");
-  return undefined;
 }
 
 export async function addDepartmentResourceLink(_prevState: string | undefined, formData: FormData) {

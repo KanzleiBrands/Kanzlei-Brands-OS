@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeftRightIcon, ChevronRightIcon, LayoutDashboard } from "lucide-react";
+import {
+  ArrowLeftRightIcon,
+  ChevronRightIcon,
+  GraduationCap,
+  LayoutDashboard,
+  Settings2Icon,
+  UsersIcon,
+} from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 
@@ -101,17 +108,65 @@ export function SidebarNav({
 
   const inInternalPortal = pathname.startsWith("/dashboard/intern");
 
+  const portalSwitch = showPortalSwitch && (
+    <Link
+      href={inInternalPortal ? "/dashboard/clients" : "/dashboard/intern"}
+      className="mb-4 flex items-center gap-2 rounded-md border border-dashed border-foreground/15 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      <ArrowLeftRightIcon className="size-4 flex-shrink-0" />
+      {inInternalPortal ? "Zurück zum Kundenportal" : "Internes Portal"}
+    </Link>
+  );
+
+  // Internes Portal ist eine komplett eigene Welt, losgelöst vom
+  // Kundenportal - unabhängig von der Rolle (auch AGENCY_ADMIN sieht hier
+  // nie Kunden/Posteingang/Wiedervorlagen/Angebote/Partnerprogramm/Audit-Log).
+  if (inInternalPortal) {
+    const internalLinks: NavLink[] = [
+      { href: "/dashboard/intern", label: "Mein Dashboard", icon: <LayoutDashboard className="size-4 flex-shrink-0" /> },
+      { href: "/dashboard/intern/personal", label: "Personal", icon: <UsersIcon className="size-4 flex-shrink-0" /> },
+      { href: "/dashboard/courses", label: "Schulung", icon: <GraduationCap className="size-4 flex-shrink-0" /> },
+    ];
+
+    return (
+      <nav className="flex flex-1 flex-col">
+        {portalSwitch}
+        <div className="flex flex-col gap-1">
+          {internalLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                isActive(link.href) ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {link.icon}
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {role === "AGENCY_ADMIN" && (
+          <div className="mt-5 flex flex-col gap-1">
+            <p className="mb-1 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Verwaltung</p>
+            <Link
+              href="/dashboard/intern/verwaltung"
+              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                isActive("/dashboard/intern/verwaltung") ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Settings2Icon className="size-4 flex-shrink-0" />
+              Abteilungen &amp; Mitarbeiter
+            </Link>
+          </div>
+        )}
+      </nav>
+    );
+  }
+
   return (
     <nav className="flex flex-1 flex-col">
-      {showPortalSwitch && (
-        <Link
-          href={inInternalPortal ? "/dashboard/clients" : "/dashboard/intern"}
-          className="mb-4 flex items-center gap-2 rounded-md border border-dashed border-foreground/15 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <ArrowLeftRightIcon className="size-4 flex-shrink-0" />
-          {inInternalPortal ? "Zurück zum Kundenportal" : "Internes Portal"}
-        </Link>
-      )}
+      {portalSwitch}
       <div className="flex flex-col gap-1">
         {role !== "AGENCY_ADMIN" && role !== "AGENCY_STAFF" && (
           <Link
