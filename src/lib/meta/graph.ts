@@ -34,12 +34,34 @@ const SOCIAL_SCOPES = [
   "business_management",
 ].join(",");
 
+// WhatsApp Business Platform (Cloud API) - fürs interne Marketing-Center.
+// Erfordert ein bei Meta bereits verifiziertes Business-Konto samt
+// registrierter WhatsApp-Business-Telefonnummer; die App Review für diese
+// Scopes läuft wie bei SOCIAL_SCOPES separat über Meta.
+const WHATSAPP_SCOPES = ["whatsapp_business_management", "whatsapp_business_messaging", "business_management"].join(
+  ",",
+);
+
 function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/meta/callback`;
 }
 
 function socialRedirectUri(baseUrl: string) {
   return `${baseUrl}/api/meta/social/callback`;
+}
+
+function whatsappRedirectUri(baseUrl: string) {
+  return `${baseUrl}/api/meta/whatsapp/callback`;
+}
+
+export function buildMetaWhatsAppAuthUrl(baseUrl: string, state: string): string {
+  const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
+  url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
+  url.searchParams.set("redirect_uri", whatsappRedirectUri(baseUrl));
+  url.searchParams.set("state", state);
+  url.searchParams.set("scope", WHATSAPP_SCOPES);
+  url.searchParams.set("response_type", "code");
+  return url.toString();
 }
 
 export function buildMetaAuthUrl(baseUrl: string, state: string): string {
@@ -108,6 +130,18 @@ export async function exchangeMetaSocialCode(
   url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
   url.searchParams.set("client_secret", process.env.META_APP_SECRET ?? "");
   url.searchParams.set("redirect_uri", socialRedirectUri(baseUrl));
+  url.searchParams.set("code", code);
+  return graphFetch(url.toString());
+}
+
+export async function exchangeMetaWhatsAppCode(
+  baseUrl: string,
+  code: string,
+): Promise<{ access_token: string; token_type: string; expires_in?: number }> {
+  const url = new URL(`${GRAPH_BASE}/oauth/access_token`);
+  url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
+  url.searchParams.set("client_secret", process.env.META_APP_SECRET ?? "");
+  url.searchParams.set("redirect_uri", whatsappRedirectUri(baseUrl));
   url.searchParams.set("code", code);
   return graphFetch(url.toString());
 }
@@ -634,4 +668,87 @@ export async function subscribePageToFeedWebhook(pageId: string, pageAccessToken
   url.searchParams.set("subscribed_fields", "feed");
   url.searchParams.set("access_token", pageAccessToken);
   await graphFetch(url.toString(), { method: "POST" });
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp Business Platform (Cloud API)
+// ---------------------------------------------------------------------------
+
+export type WhatsAppBusinessAccount = { id: string; name: string };
+
+/** Every WhatsApp Business Account (WABA) reachable through any Business Manager the user belongs to - owned or shared as a client, same "owned_X/client_X" pattern as listPagesForBusiness. */
+export async function listAllWhatsAppBusinessAccounts(userAccessToken: string): Promise<WhatsAppBusinessAccount[]> {
+  const businesses = await listMetaBusinesses(userAccessToken);
+  const edges = ["owned_whatsapp_business_accounts", "client_whatsapp_business_accounts"];
+  const results = await Promise.all(
+    businesses.flatMap((business) =>
+      edges.map(async (edge) => {
+        const url = new URL(`${GRAPH_BASE}/${business.id}/${edge}`);
+        url.searchParams.set("access_token", userAccessToken);
+        url.searchParams.set("fields", "id,name");
+        url.searchParams.set("limit", "100");
+        try {
+          return await paginate<WhatsAppBusinessAccount>(url.toString());
+        } catch (error) {
+          console.error(`[whatsapp] failed to list ${edge} for business ${business.id}:`, error);
+          return [];
+        }
+      }),
+    ),
+  );
+  const seen = new Map<string, WhatsAppBusinessAccount>();
+  for (const waba of results.flat()) seen.set(waba.id, waba);
+  return [...seen.values()];
+}
+
+export type WhatsAppPhoneNumber = { id: string; display_phone_number: string; verified_name: string };
+
+export async function listWhatsAppPhoneNumbers(wabaId: string, userAccessToken: string): Promise<WhatsAppPhoneNumber[]> {
+  const url = new URL(`${GRAPH_BASE}/${wabaId}/phone_numbers`);
+  url.searchParams.set("access_token", userAccessToken);
+  url.searchParams.set("fields", "id,display_phone_number,verified_name");
+  url.searchParams.set("limit", "100");
+  return paginate<WhatsAppPhoneNumber>(url.toString());
+}
+
+export type WhatsAppTemplate = {
+  name: string;
+  status: string;
+  language: string;
+  category: string;
+};
+
+/** Only Meta-approved templates can send a marketing message outside the 24h customer-service window - status is always echoed back so the UI can filter to "APPROVED". */
+export async function listWhatsAppTemplates(wabaId: string, userAccessToken: string): Promise<WhatsAppTemplate[]> {
+  const url = new URL(`${GRAPH_BASE}/${wabaId}/message_templates`);
+  url.searchParams.set("access_token", userAccessToken);
+  url.searchParams.set("fields", "name,status,language,category");
+  url.searchParams.set("limit", "200");
+  return paginate<WhatsAppTemplate>(url.toString());
+}
+
+/**
+ * Sends one template message to one recipient. WhatsApp requires JSON (not
+ * form/query params like the rest of this file) and Bearer auth in the
+ * header - the phone-number-scoped access token, never a user token.
+ */
+export async function sendWhatsAppTemplateMessage(params: {
+  phoneNumberId: string;
+  accessToken: string;
+  to: string;
+  templateName: string;
+  languageCode: string;
+}): Promise<{ id: string }> {
+  const { phoneNumberId, accessToken, to, templateName, languageCode } = params;
+  const result = await graphFetch<{ messages: { id: string }[] }>(`${GRAPH_BASE}/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: { name: templateName, language: { code: languageCode } },
+    }),
+  });
+  return { id: result.messages[0]?.id ?? "" };
 }

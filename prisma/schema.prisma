@@ -134,6 +134,7 @@ model Organization {
   metaLeadFormConnections   MetaLeadFormConnection[]
   socialChannels            SocialChannel[]
   socialPosts               SocialPost[]
+  whatsAppChannels          WhatsAppChannel[]
   auditLogs                 AuditLog[]
   messageTemplates          MessageTemplate[]
   talentPools               TalentPool[]
@@ -240,6 +241,8 @@ model User {
   connectedMetaLeadForms    MetaLeadFormConnection[]
   connectedSocialChannels   SocialChannel[]
   socialPostsResponsible    SocialPost[]
+  connectedWhatsAppChannels WhatsAppChannel[]
+  whatsAppTemplateSends     WhatsAppTemplateSend[]
   tasksCreated              Task[]                     @relation("TaskCreatedBy")
   tasksAssigned             Task[]                     @relation("TaskAssignedTo")
   partnerPointsTransactions PartnerPointsTransaction[]
@@ -738,6 +741,65 @@ model SocialChannel {
 
   @@unique([organizationId, platform, externalId])
   @@index([organizationId])
+}
+
+// WhatsApp Business Platform (Cloud API) - fürs interne Marketing-Center, um
+// von Meta genehmigte Vorlagen-Nachrichten an eine Empfängerliste zu
+// verschicken. Setzt ein bei Meta verifiziertes Business-Konto plus eine
+// registrierte WhatsApp-Business-Telefonnummer voraus (das kann die App
+// selbst nicht herstellen, nur die anschließende OAuth-Verbindung dazu).
+model WhatsAppChannel {
+  id                 String @id @default(cuid())
+  businessAccountId  String // WABA-ID
+  phoneNumberId      String
+  displayPhoneNumber String
+  displayName        String
+
+  // Verschlüsselt wie SocialChannel.accessTokenEnc.
+  accessTokenEnc String
+  active         Boolean @default(true)
+  lastError      String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  connectedByUserId String?
+  connectedBy       User?   @relation(fields: [connectedByUserId], references: [id], onDelete: SetNull)
+
+  sends WhatsAppTemplateSend[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, phoneNumberId])
+  @@index([organizationId])
+}
+
+enum WhatsAppSendStatus {
+  SENT
+  FAILED
+}
+
+// Protokoll jedes einzelnen Versands (ein Empfänger = eine Zeile), inklusive
+// Meta-Nachrichten-ID zum Nachverfolgen - kein Broadcast verschwindet
+// stillschweigend "ins Leere".
+model WhatsAppTemplateSend {
+  id                String          @id @default(cuid())
+  channelId         String
+  channel           WhatsAppChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  templateName      String
+  languageCode      String
+  recipientPhone    String
+  status            WhatsAppSendStatus
+  externalMessageId String?
+  error             String?
+
+  sentByUserId String?
+  sentBy       User?   @relation(fields: [sentByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([channelId])
 }
 
 enum SocialPostStatus {
