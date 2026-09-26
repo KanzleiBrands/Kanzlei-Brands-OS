@@ -13,6 +13,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         where: { trackingToken },
         data: { clickCount: { increment: 1 }, clickedAt: send.clickedAt ?? new Date() },
       });
+    } else {
+      const marketingSend = await prisma.marketingFunnelSend.findUnique({ where: { trackingToken }, select: { clickedAt: true } });
+      if (marketingSend) {
+        await prisma.marketingFunnelSend.update({
+          where: { trackingToken },
+          data: { clickCount: { increment: 1 }, clickedAt: marketingSend.clickedAt ?? new Date() },
+        });
+      }
     }
   } catch (error) {
     console.error("[track/click] failed to record click", error);

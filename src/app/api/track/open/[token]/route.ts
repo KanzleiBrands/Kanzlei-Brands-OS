@@ -19,6 +19,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
         where: { trackingToken },
         data: { openCount: { increment: 1 }, openedAt: send.openedAt ?? new Date() },
       });
+    } else {
+      const marketingSend = await prisma.marketingFunnelSend.findUnique({ where: { trackingToken }, select: { openedAt: true } });
+      if (marketingSend) {
+        await prisma.marketingFunnelSend.update({
+          where: { trackingToken },
+          data: { openCount: { increment: 1 }, openedAt: marketingSend.openedAt ?? new Date() },
+        });
+      }
     }
   } catch (error) {
     console.error("[track/open] failed to record open", error);

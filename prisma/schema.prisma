@@ -139,6 +139,10 @@ model Organization {
   messageTemplates          MessageTemplate[]
   talentPools               TalentPool[]
   partnerPointsTransactions PartnerPointsTransaction[]
+  marketingTags             MarketingTag[]
+  marketingSubscribers      MarketingSubscriber[]
+  marketingListWebhooks     MarketingListWebhook[]
+  marketingFunnels          MarketingFunnel[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1051,8 +1055,9 @@ model EmailAccount {
   refreshTokenEnc String
   expiresAt       DateTime
 
-  messages       EmailMessage[]
-  nurtureFunnels NurtureFunnel[]
+  messages         EmailMessage[]
+  nurtureFunnels   NurtureFunnel[]
+  marketingFunnels MarketingFunnel[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1488,6 +1493,188 @@ model FunnelStepSend {
   enrollment   FunnelEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   stepId       String
   step         FunnelStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  sentAt     DateTime  @default(now())
+  openedAt   DateTime?
+  openCount  Int       @default(0)
+  clickedAt  DateTime?
+  clickCount Int       @default(0)
+
+  @@index([stepId])
+  @@index([enrollmentId])
+}
+
+// ---------------------------------------------------------------------------
+// Internes Marketing-Center: eigenständiges E-Mail-Marketing-Tool für die
+// Agentur selbst (wie ActiveCampaign/KlickTipp) - bewusst komplett getrennt
+// von Pipeline/Contact/NurtureFunnel (dem Kunden-CRM-Feature), damit sich
+// Interessenten, die über eigene Ads/Landingpages eintragen, nicht mit
+// Kunden-Kampagnen vermischen und "Internes Portal" nie ins Kunden-CRM
+// springt. Kein Double-Opt-in: ein Kontakt ist ab Eintrag sofort aktiv.
+// ---------------------------------------------------------------------------
+
+model MarketingTag {
+  id             String       @id @default(cuid())
+  name           String
+  color          String       @default("blue") // Tailwind-Farbtoken, wie AbsenceType.color
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  subscribers      MarketingSubscriberTag[]
+  listWebhooks     MarketingListWebhook[]
+  triggeredFunnels MarketingFunnel[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+enum MarketingSubscriberStatus {
+  ACTIVE
+  SUPPRESSED // hat z.B. einen Calendly-Termin gebucht - raus aus allen aktiven Funnels, bekommt keine weiteren Mails
+}
+
+// Ein E-Mail-Abonnent der Agentur selbst (potenzieller Kunde/Bewerber, über
+// eine Ad/Landingpage eingetragen) - unabhängig von Contact (Kunden-CRM).
+model MarketingSubscriber {
+  id             String       @id @default(cuid())
+  email          String
+  firstName      String?
+  lastName       String?
+  phone          String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  status           MarketingSubscriberStatus @default(ACTIVE)
+  suppressedAt     DateTime?
+  suppressedReason String? // z.B. "calendly_booking"
+
+  // Nach erstem erfolgreichen Sync gesetzt (Close.io-Lead-ID) - siehe
+  // src/lib/close/client.ts. Bleibt null, solange kein passender Lead
+  // gefunden wurde oder CLOSE_API_KEY nicht konfiguriert ist.
+  closeLeadId String?
+
+  tags        MarketingSubscriberTag[]
+  enrollments MarketingEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+}
+
+model MarketingSubscriberTag {
+  id           String              @id @default(cuid())
+  subscriberId String
+  subscriber   MarketingSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  tagId        String
+  tag          MarketingTag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([subscriberId, tagId])
+  @@index([tagId])
+}
+
+// Ein Webhook pro Tag - das externe Landingpage-/Formular-Tool ruft diese URL
+// beim Absenden auf. Legt den Subscriber an (oder reaktiviert ihn) und hängt
+// automatisch den Tag an, was wiederum verknüpfte MarketingFunnel auslöst.
+model MarketingListWebhook {
+  id             String       @id @default(cuid())
+  token          String       @unique @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tagId          String
+  tag            MarketingTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+}
+
+// Ein E-Mail-Funnel, ausgelöst durch das Setzen eines Tags (statt durch
+// Zugehörigkeit zu einer Kampagne/Pipeline wie bei NurtureFunnel).
+model MarketingFunnel {
+  id     String  @id @default(cuid())
+  name   String
+  active Boolean @default(false)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // null = nur manuell einschreibbar, kein automatischer Trigger.
+  triggerTagId String?
+  triggerTag   MarketingTag? @relation(fields: [triggerTagId], references: [id], onDelete: SetNull)
+
+  senderAccountId String?
+  senderAccount   EmailAccount? @relation(fields: [senderAccountId], references: [id], onDelete: SetNull)
+
+  steps       MarketingFunnelStep[]
+  enrollments MarketingEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([triggerTagId])
+}
+
+model MarketingFunnelStep {
+  id        String @id @default(cuid())
+  order     Int
+  delayDays Int    @default(0)
+
+  subject   String
+  preheader String?
+  bodyText  String
+  ctaLabel  String?
+  ctaUrl    String?
+
+  funnelId String
+  funnel   MarketingFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+
+  sends MarketingFunnelSend[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([funnelId, order])
+}
+
+// Ein Subscriber in einem Funnel - Semantik identisch zu FunnelEnrollment,
+// nur auf MarketingSubscriber statt Contact bezogen.
+model MarketingEnrollment {
+  id     String                 @id @default(cuid())
+  status FunnelEnrollmentStatus @default(ACTIVE)
+
+  funnelId     String
+  funnel       MarketingFunnel     @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  subscriberId String
+  subscriber   MarketingSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  currentStepOrder Int       @default(0)
+  nextSendAt       DateTime?
+
+  enrolledAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sends MarketingFunnelSend[]
+
+  @@unique([funnelId, subscriberId])
+  @@index([funnelId])
+  @@index([nextSendAt])
+}
+
+model MarketingFunnelSend {
+  id            String @id @default(cuid())
+  trackingToken String @unique @default(cuid())
+
+  enrollmentId String
+  enrollment   MarketingEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stepId       String
+  step         MarketingFunnelStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
 
   sentAt     DateTime  @default(now())
   openedAt   DateTime?
