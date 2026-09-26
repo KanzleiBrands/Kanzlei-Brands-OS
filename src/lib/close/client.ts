@@ -127,82 +127,184 @@ async function closeFetchAll<T>(path: string, params: Record<string, string>, ap
   return results;
 }
 
-type CloseOpportunity = {
-  id: string;
-  value: number | null; // Close speichert Beträge in Cent
-  date_won: string | null;
-  user_id: string;
-  user_name: string | null;
+// ---------------------------------------------------------------------------
+// Sales Cockpit: Opener/Setter/Closer - komplett aus Close Custom Activities
+// abgeleitet, kein manuelles End-of-Day mehr. Activity-Type-IDs gegen den
+// echten Account geprüft (mcp__Close__find_custom_activities):
+//   1.0 Outbound Call         -> Opener
+//   1.2 Quali / Erstgespräch  -> Setter
+//   1.3 Sales Call            -> Closer
+//   2.3 After Sales Formular  -> Abschlüsse (Opener+Setter+Closer je Deal)
+// Raw-REST-Shape von /activity/{custom_activity_type_id}/ gegen echte Daten
+// verifiziert: Objekte tragen user_id (wer die Aktivität geloggt hat) und ein
+// custom_fields-Array aus {id, name, value} - anders als bei den fest
+// eingebauten Activity-Typen wird "value" hier per Feldname statt Feld-ID
+// gelesen (siehe fieldValue).
+// ---------------------------------------------------------------------------
+
+const ACTIVITY_TYPE_OUTBOUND_CALL = "actitype_5nA75KbOpKFg3iTt4cRGI7"; // 1.0 Outbound Call
+const ACTIVITY_TYPE_QUALI_CALL = "actitype_7OKkLYA2kNte8rlsMn5eCj"; // 1.2 Quali / Erstgespräch
+const ACTIVITY_TYPE_SALES_CALL = "actitype_72gloM4XFzyVoFAaRRB8hb"; // 1.3 Sales Call
+const ACTIVITY_TYPE_AFTER_SALES = "actitype_7lvHog63HgPrkPsKH9W2nY"; // 2.3 After Sales Formular
+
+type CloseCustomField = { id: string; name: string; value: string | null };
+type CloseCustomActivityInstance = { id: string; user_id: string; activity_at: string; custom_fields: CloseCustomField[] };
+
+function fieldValue(fields: CloseCustomField[], name: string): string | null {
+  return fields.find((f) => f.name === name)?.value ?? null;
+}
+
+async function listCustomActivitiesForYear(
+  activityTypeId: string,
+  year: number,
+  apiKey: string,
+): Promise<CloseCustomActivityInstance[]> {
+  return closeFetchAll<CloseCustomActivityInstance>(
+    `/activity/${activityTypeId}/`,
+    { activity_at__gte: `${year}-01-01T00:00:00`, activity_at__lte: `${year}-12-31T23:59:59` },
+    apiKey,
+  );
+}
+
+export type OpenerStats = {
+  userId: string;
+  userName: string;
+  calls: number;
+  reached: number;
+  decisionMakerReached: number;
+  appointmentsSet: number;
 };
 
-export type MonthlyDealVolume = { month: number; userId: string; userName: string; valueNet: number };
-
-/** Gewonnene Opportunities eines Jahres, je Close-User und Monat aufsummiert (Wert in €, netto laut Close-Eintrag). */
-export async function listWonOpportunitiesByMonth(year: number): Promise<CloseResult<MonthlyDealVolume>> {
+/** Opener-Kennzahlen aus "1.0 Outbound Call" - je Close-User über das ganze Jahr aufsummiert. */
+export async function listOpenerStats(year: number): Promise<CloseResult<OpenerStats>> {
   const apiKey = process.env.CLOSE_API_KEY;
   if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
 
   try {
-    const [opportunities, userNames] = await Promise.all([
-      closeFetchAll<CloseOpportunity>(
-        "/opportunity/",
-        { status_type: "won", date_won__gte: `${year}-01-01`, date_won__lte: `${year}-12-31` },
-        apiKey,
-      ),
+    const [instances, userNames] = await Promise.all([
+      listCustomActivitiesForYear(ACTIVITY_TYPE_OUTBOUND_CALL, year, apiKey),
       resolveCloseUserNames(apiKey),
     ]);
 
-    const byKey = new Map<string, MonthlyDealVolume>();
-    for (const opp of opportunities) {
-      if (!opp.date_won || opp.value == null) continue;
-      const month = new Date(opp.date_won).getMonth() + 1;
-      const key = `${opp.user_id}:${month}`;
-      const valueNet = opp.value / 100;
-      const userName = userNames.get(opp.user_id) ?? opp.user_name ?? "Unbekannt";
-      const existing = byKey.get(key);
-      if (existing) existing.valueNet += valueNet;
-      else byKey.set(key, { month, userId: opp.user_id, userName, valueNet });
+    const byUser = new Map<string, OpenerStats>();
+    for (const inst of instances) {
+      const stats = byUser.get(inst.user_id) ?? {
+        userId: inst.user_id,
+        userName: userNames.get(inst.user_id) ?? "Unbekannt",
+        calls: 0,
+        reached: 0,
+        decisionMakerReached: 0,
+        appointmentsSet: 0,
+      };
+      stats.calls += 1;
+      if (fieldValue(inst.custom_fields, "Erreicht") === "Ja") stats.reached += 1;
+      if (fieldValue(inst.custom_fields, "Mit Entscheider gesprochen?") === "Ja") stats.decisionMakerReached += 1;
+      if (fieldValue(inst.custom_fields, "Termin gesetzt?") === "Ja") stats.appointmentsSet += 1;
+      byUser.set(inst.user_id, stats);
     }
-    return { ok: true, rows: Array.from(byKey.values()) };
+    return { ok: true, rows: Array.from(byUser.values()) };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
   }
 }
 
-type CloseCallActivity = {
-  id: string;
-  direction: string;
-  user_id: string;
-  date_created: string;
+export type SetterStats = {
+  userId: string;
+  userName: string;
+  qualiCalls: number;
+  shown: number;
+  qualified: number;
+  consultationOffered: number;
 };
 
-export type MonthlyCallCount = { month: number; userId: string; userName: string; callCount: number };
-
-/** Ausgehende Telefonate eines Jahres, je Close-User und Monat gezählt. */
-export async function listOutboundCallsByMonth(year: number): Promise<CloseResult<MonthlyCallCount>> {
+/** Setter-Kennzahlen aus "1.2 Quali / Erstgespräch". */
+export async function listSetterStats(year: number): Promise<CloseResult<SetterStats>> {
   const apiKey = process.env.CLOSE_API_KEY;
   if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
 
   try {
-    const [calls, userNames] = await Promise.all([
-      closeFetchAll<CloseCallActivity>(
-        "/activity/call/",
-        { direction: "outbound", date_created__gte: `${year}-01-01T00:00:00`, date_created__lte: `${year}-12-31T23:59:59` },
-        apiKey,
-      ),
+    const [instances, userNames] = await Promise.all([
+      listCustomActivitiesForYear(ACTIVITY_TYPE_QUALI_CALL, year, apiKey),
       resolveCloseUserNames(apiKey),
     ]);
 
-    const byKey = new Map<string, MonthlyCallCount>();
-    for (const call of calls) {
-      const month = new Date(call.date_created).getMonth() + 1;
-      const key = `${call.user_id}:${month}`;
-      const userName = userNames.get(call.user_id) ?? "Unbekannt";
-      const existing = byKey.get(key);
-      if (existing) existing.callCount += 1;
-      else byKey.set(key, { month, userId: call.user_id, userName, callCount: 1 });
+    const byUser = new Map<string, SetterStats>();
+    for (const inst of instances) {
+      const stats = byUser.get(inst.user_id) ?? {
+        userId: inst.user_id,
+        userName: userNames.get(inst.user_id) ?? "Unbekannt",
+        qualiCalls: 0,
+        shown: 0,
+        qualified: 0,
+        consultationOffered: 0,
+      };
+      stats.qualiCalls += 1;
+      if (fieldValue(inst.custom_fields, "Erschienen") === "Ja") stats.shown += 1;
+      if (fieldValue(inst.custom_fields, "Lead qualifiziert?") === "Ja") stats.qualified += 1;
+      if (fieldValue(inst.custom_fields, "Beratungstermin angeboten") === "Ja") stats.consultationOffered += 1;
+      byUser.set(inst.user_id, stats);
     }
-    return { ok: true, rows: Array.from(byKey.values()) };
+    return { ok: true, rows: Array.from(byUser.values()) };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
+
+export type CloserStats = {
+  userId: string;
+  userName: string;
+  salesCalls: number;
+  shown: number;
+  offersMade: number;
+};
+
+/** Closer-Kennzahlen aus "1.3 Sales Call". */
+export async function listCloserStats(year: number): Promise<CloseResult<CloserStats>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+
+  try {
+    const [instances, userNames] = await Promise.all([
+      listCustomActivitiesForYear(ACTIVITY_TYPE_SALES_CALL, year, apiKey),
+      resolveCloseUserNames(apiKey),
+    ]);
+
+    const byUser = new Map<string, CloserStats>();
+    for (const inst of instances) {
+      const stats = byUser.get(inst.user_id) ?? {
+        userId: inst.user_id,
+        userName: userNames.get(inst.user_id) ?? "Unbekannt",
+        salesCalls: 0,
+        shown: 0,
+        offersMade: 0,
+      };
+      stats.salesCalls += 1;
+      if (fieldValue(inst.custom_fields, "Erschienen?") === "Ja") stats.shown += 1;
+      if (fieldValue(inst.custom_fields, "Angebot gemacht?") === "Ja") stats.offersMade += 1;
+      byUser.set(inst.user_id, stats);
+    }
+    return { ok: true, rows: Array.from(byUser.values()) };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
+
+export type ClosedDeal = { openerUserId: string | null; setterUserId: string | null; closerUserId: string | null; amountNet: number };
+
+/** Abschlüsse eines Jahres aus "2.3 After Sales Formular" - trägt Opener/Setter/Closer als eigene Felder. */
+export async function listClosedDeals(year: number): Promise<CloseResult<ClosedDeal>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+
+  try {
+    const instances = await listCustomActivitiesForYear(ACTIVITY_TYPE_AFTER_SALES, year, apiKey);
+    const rows: ClosedDeal[] = instances.map((inst) => ({
+      openerUserId: fieldValue(inst.custom_fields, "Opener"),
+      setterUserId: fieldValue(inst.custom_fields, "Setter"),
+      closerUserId: fieldValue(inst.custom_fields, "Closer"),
+      amountNet: Number(fieldValue(inst.custom_fields, "Abgeschlossene Summe (Netto)") ?? 0) || 0,
+    }));
+    return { ok: true, rows };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
   }
