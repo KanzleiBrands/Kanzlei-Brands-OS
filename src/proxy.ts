@@ -18,7 +18,18 @@ const PUBLIC_PREFIXES = [
 // AGENCY_STAFF (Vertrieb, Backoffice, ... - siehe AgencyDepartment) hat keinen
 // CRM-Zugriff, nur das interne Portal. Diese Pfade bleiben trotzdem erreichbar,
 // weil sie geteilt sind (Schulung) oder das interne Portal selbst darstellen.
-const AGENCY_STAFF_ALLOWED_PREFIXES = ["/dashboard/intern", "/dashboard/courses", "/dashboard/settings"];
+// /dashboard/pipelines und /dashboard/contacts gehören eigentlich zum
+// Kundenportal, werden aber auch fürs interne Marketing-Center gebraucht
+// (Kampagne + Kontakte fürs eigene E-Mail-Marketing) - assertPipelineAccess/
+// accessiblePipelineIds (src/lib/access.ts) lassen Marketing-Mitarbeiter dort
+// ausschließlich auf die eigene Organisation (nie einen Kunden) zu.
+const AGENCY_STAFF_ALLOWED_PREFIXES = [
+  "/dashboard/intern",
+  "/dashboard/courses",
+  "/dashboard/settings",
+  "/dashboard/pipelines",
+  "/dashboard/contacts",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

@@ -624,6 +624,7 @@ export function EmailMarketingTab({
   booked,
   funnels,
   senderAccounts,
+  isOwnOrganization = false,
 }: {
   pipelineId: string;
   organizationId: string;
@@ -632,6 +633,8 @@ export function EmailMarketingTab({
   booked: boolean;
   funnels: FunnelData[];
   senderAccounts: SenderAccountOption[];
+  /** True fürs interne Marketing-Center: die Kampagne gehört der Agentur selbst, nicht einem Kunden. */
+  isOwnOrganization?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(funnels.length === 1 ? funnels[0].id : null);
   const [creating, setCreating] = useState(false);
@@ -653,7 +656,8 @@ export function EmailMarketingTab({
           <h2 className="text-lg font-semibold">E-Mail Marketing</h2>
           <p className="text-sm text-muted-foreground">
             Nurture-Funnels für die Leads dieser Kampagne - Versand über das verbundene Postfach{" "}
-            {canManage ? "des Kunden" : "eures Ansprechpartners bei Kanzlei Brands"}, Antworten landen direkt im echten Postfach.
+            {isOwnOrganization ? "des zuständigen Mitarbeiters" : canManage ? "des Kunden" : "eures Ansprechpartners bei Kanzlei Brands"}, Antworten
+            landen direkt im echten Postfach.
           </p>
         </div>
         {canManage && !creating && !locked && (

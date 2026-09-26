@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
+import { requireSession, assertPipelineAccess, isAgencyMarketingStaffFor, AccessDeniedError } from "@/lib/access";
 import { getBaseUrl } from "@/lib/base-url";
 import { PipelineView } from "./pipeline-view";
 import { WebhookPanel } from "./webhook-panel";
@@ -81,7 +81,7 @@ export default async function PipelineDetailPage({
       },
       automationRules: true,
       jobPosting: true,
-      organization: { select: { name: true, bookedProductTags: true } },
+      organization: { select: { name: true, type: true, bookedProductTags: true } },
     },
   });
   if (!pipeline) notFound();
@@ -90,8 +90,13 @@ export default async function PipelineDetailPage({
   if (tab === "multiposting" && !canManageMultiposting) tab = "leads";
 
   const canViewEmailMarketing = pipeline.kind === "LEADS";
-  const canManageEmailMarketing = canManageSettings && canViewEmailMarketing;
-  const emailMarketingBooked = pipeline.organization.bookedProductTags.includes(EMAIL_MARKETING_PRODUCT_TAG);
+  // Fürs interne Marketing-Center (die Agentur als "Kunde" ihrer selbst):
+  // Marketing-Mitarbeiter dürfen das E-Mail-Marketing der eigenen
+  // Organisation verwalten, und dort gibt es keine Buchungs-Paywall.
+  const isAgencyOwnPipeline = pipeline.organization.type === "AGENCY";
+  const canManageEmailMarketing =
+    canViewEmailMarketing && (canManageSettings || (isAgencyOwnPipeline && (await isAgencyMarketingStaffFor(session, pipeline.organizationId))));
+  const emailMarketingBooked = isAgencyOwnPipeline || pipeline.organization.bookedProductTags.includes(EMAIL_MARKETING_PRODUCT_TAG);
   if (tab === "email-marketing" && !canViewEmailMarketing) tab = "leads";
 
   const baseUrl = await getBaseUrl();
@@ -383,6 +388,7 @@ export default async function PipelineDetailPage({
           booked={emailMarketingBooked}
           funnels={funnelsData}
           senderAccounts={senderAccounts}
+          isOwnOrganization={isAgencyOwnPipeline}
         />
       )}
     </div>
