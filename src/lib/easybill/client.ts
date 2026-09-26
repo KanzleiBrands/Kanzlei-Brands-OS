@@ -23,7 +23,10 @@ async function easybillFetchAll<T>(path: string, params: Record<string, string>,
     url.searchParams.set("limit", "1000");
     url.searchParams.set("page", String(page));
     const res = await fetch(url.toString(), { headers: { Authorization: easybillAuthHeader(apiKey) } });
-    if (!res.ok) throw new Error(`EasyBill-Abfrage fehlgeschlagen (${res.status}) - ${path}`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`EasyBill-Abfrage fehlgeschlagen (${res.status}) - ${path}${body ? `: ${body.slice(0, 300)}` : ""}`);
+    }
     const data = (await res.json()) as EasybillListResponse<T>;
     results.push(...data.items);
     if (page >= data.pages || data.items.length === 0) break;
