@@ -10,6 +10,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   INFRASTRUCTURE: "Infrastruktur & Software",
   VARIABLE: "Variable Kosten",
   AD_BUDGET: "Werbebudget Auslage",
+  TAXES: "Steuern",
 };
 
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });

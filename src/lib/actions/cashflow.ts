@@ -27,7 +27,7 @@ async function requireExecutiveAccess(organizationId: string) {
 }
 
 const TAX_RATES = [0, 7, 19];
-const COST_CATEGORIES = ["PERSONNEL", "MARKETING", "INFRASTRUCTURE", "VARIABLE", "AD_BUDGET"];
+const COST_CATEGORIES = ["PERSONNEL", "MARKETING", "INFRASTRUCTURE", "VARIABLE", "AD_BUDGET", "TAXES"];
 
 export async function addCashflowTransaction(formData: FormData): Promise<string | undefined> {
   const organizationId = String(formData.get("organizationId") ?? "");

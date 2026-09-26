@@ -13,6 +13,7 @@ const CATEGORIES = [
   { value: "INFRASTRUCTURE", label: "Infrastruktur & Software" },
   { value: "VARIABLE", label: "Variable Kosten" },
   { value: "AD_BUDGET", label: "Werbebudget Auslage" },
+  { value: "TAXES", label: "Steuern" },
 ] as const;
 
 export function AddTransactionForm({ organizationId }: { organizationId: string }) {
