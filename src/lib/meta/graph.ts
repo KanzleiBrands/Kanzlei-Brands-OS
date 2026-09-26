@@ -343,10 +343,16 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Polls a video media container until Instagram finishes transcoding it (or times out after ~2 minutes). */
+/**
+ * Polls a media container until Instagram finishes processing it (or times
+ * out after ~2 minutes). Required before media_publish for every container -
+ * not just video: Instagram still has to fetch and validate an image_url
+ * asynchronously, so calling media_publish immediately after creation can
+ * fail with "Media ID is not available" even for plain images.
+ */
 async function waitForInstagramContainerReady(containerId: string, pageAccessToken: string): Promise<void> {
-  const POLL_INTERVAL_MS = 5000;
-  const MAX_ATTEMPTS = 24;
+  const POLL_INTERVAL_MS = 3000;
+  const MAX_ATTEMPTS = 40;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const url = new URL(`${GRAPH_BASE}/${containerId}`);
@@ -354,10 +360,10 @@ async function waitForInstagramContainerReady(containerId: string, pageAccessTok
     url.searchParams.set("fields", "status_code");
     const { status_code } = await graphFetch<{ status_code?: string }>(url.toString());
     if (status_code === "FINISHED") return;
-    if (status_code === "ERROR") throw new MetaGraphError("Instagram-Video konnte nicht verarbeitet werden.");
+    if (status_code === "ERROR") throw new MetaGraphError("Instagram-Medien konnten nicht verarbeitet werden.");
     await sleep(POLL_INTERVAL_MS);
   }
-  throw new MetaGraphError("Instagram-Video-Verarbeitung hat zu lange gedauert.");
+  throw new MetaGraphError("Instagram-Medien-Verarbeitung hat zu lange gedauert.");
 }
 
 /**
@@ -426,12 +432,10 @@ export async function publishInstagramPost(params: {
   }
   const created = await graphFetch<{ id: string }>(createUrl.toString(), { method: "POST" });
 
-  // Video containers process asynchronously - media_publish fails with "media
-  // not ready" if called before Instagram finishes transcoding, so poll
-  // status_code first (images are ready immediately, no container status).
-  if (mediaType === "VIDEO") {
-    await waitForInstagramContainerReady(created.id, pageAccessToken);
-  }
+  // Containers process asynchronously (video transcoding, but also just
+  // Instagram fetching/validating the image_url) - media_publish fails with
+  // "media not ready" if called too early, so always poll status_code first.
+  await waitForInstagramContainerReady(created.id, pageAccessToken);
 
   const publishUrl = new URL(`${GRAPH_BASE}/${igUserId}/media_publish`);
   publishUrl.searchParams.set("access_token", pageAccessToken);
@@ -512,6 +516,8 @@ export async function publishInstagramCarousel(params: {
   createUrl.searchParams.set("media_type", "CAROUSEL");
   createUrl.searchParams.set("children", childIds.join(","));
   const created = await graphFetch<{ id: string }>(createUrl.toString(), { method: "POST" });
+
+  await waitForInstagramContainerReady(created.id, pageAccessToken);
 
   const publishUrl = new URL(`${GRAPH_BASE}/${igUserId}/media_publish`);
   publishUrl.searchParams.set("access_token", pageAccessToken);
