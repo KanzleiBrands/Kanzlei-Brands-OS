@@ -35,26 +35,39 @@ function DisconnectButton({ channelId }: { channelId: string }) {
   );
 }
 
-export function SocialChannelList({ organizationId, channels }: { organizationId: string; channels: Channel[] }) {
+export function SocialChannelList({
+  organizationId,
+  channels,
+  canManage = true,
+}: {
+  organizationId: string;
+  channels: Channel[];
+  /** Kanäle verbinden/trennen bleibt Admin-Sache (z.B. im internen Marketing-Center für Marketing-Mitarbeiter). */
+  canManage?: boolean;
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Kanäle</p>
-        <div className="flex flex-wrap gap-1.5">
-          <a href={`/api/meta/social/connect?organizationId=${organizationId}`}>
-            <Button type="button" size="sm" variant="outline">
-              Facebook/Instagram verbinden
-            </Button>
-          </a>
-          <a href={`/api/linkedin/connect?organizationId=${organizationId}`}>
-            <Button type="button" size="sm" variant="outline">
-              LinkedIn verbinden
-            </Button>
-          </a>
-        </div>
+        {canManage && (
+          <div className="flex flex-wrap gap-1.5">
+            <a href={`/api/meta/social/connect?organizationId=${organizationId}`}>
+              <Button type="button" size="sm" variant="outline">
+                Facebook/Instagram verbinden
+              </Button>
+            </a>
+            <a href={`/api/linkedin/connect?organizationId=${organizationId}`}>
+              <Button type="button" size="sm" variant="outline">
+                LinkedIn verbinden
+              </Button>
+            </a>
+          </div>
+        )}
       </div>
       {channels.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Noch kein Kanal verbunden.</p>
+        <p className="text-sm text-muted-foreground">
+          {canManage ? "Noch kein Kanal verbunden." : "Noch kein Kanal verbunden - ein Agentur-Admin kann das oben einrichten."}
+        </p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {channels.map((channel) => {
@@ -70,7 +83,7 @@ export function SocialChannelList({ organizationId, channels }: { organizationId
                     <TriangleAlertIcon className="size-4 shrink-0 text-destructive" />
                   </span>
                 )}
-                <DisconnectButton channelId={channel.id} />
+                {canManage && <DisconnectButton channelId={channel.id} />}
               </div>
             );
           })}

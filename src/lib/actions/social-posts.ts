@@ -2,20 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSession, assertOrganizationAccess } from "@/lib/access";
+import { requireSession, assertOrganizationAccess, assertCanManageSocialContentFor } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { csvToObjects } from "@/lib/csv";
 import { normalizeFieldKey } from "@/lib/webhook-ingest";
 
-function requireAgencyAdmin(role: string) {
-  if (role !== "AGENCY_ADMIN") throw new Error("Nur Agentur-Admins können Beiträge bearbeiten.");
+/** Extra Revalidierung fürs interne Marketing-Center - ein No-Op, wenn der Pfad gar nicht gecacht war. */
+function revalidateInternalMarketing() {
+  revalidatePath("/dashboard/intern/marketing/social");
 }
 
 export async function uploadSocialPostImage(formData: FormData): Promise<{ url: string } | { error: string }> {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return { error: "Nur Agentur-Admins können Bilder hochladen." };
+  try {
+    await assertCanManageSocialContentFor(session, session.user.organizationId);
+  } catch {
+    return { error: "Nur Agentur-Admins oder Marketing-Mitarbeiter können Bilder hochladen." };
+  }
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) return { error: "Keine Datei ausgewählt." };
   if (file.size > MAX_UPLOAD_BYTES) return { error: `Bild ist zu groß. Maximal ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` };
@@ -45,9 +50,15 @@ function isValidMediaType(value: string): value is "IMAGE" | "VIDEO" | "CAROUSEL
 
 export async function createSocialPost(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const organizationId = String(formData.get("organizationId") ?? "");
+  if (!organizationId) return "Kunde ist erforderlich.";
+  try {
+    await assertCanManageSocialContentFor(session, organizationId);
+  } catch {
+    return "Nur Agentur-Admins oder Marketing-Mitarbeiter können Beiträge bearbeiten.";
+  }
+
   const platform = String(formData.get("platform") ?? "");
   const caption = String(formData.get("caption") ?? "").trim();
   const mediaUrl = String(formData.get("mediaUrl") ?? "").trim();
@@ -59,7 +70,6 @@ export async function createSocialPost(_prevState: string | undefined, formData:
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
   const scheduledAt = parseScheduledAt(formData.get("scheduledAt"));
 
-  if (!organizationId) return "Kunde ist erforderlich.";
   if (platform !== "FACEBOOK" && platform !== "INSTAGRAM" && platform !== "LINKEDIN") return "Plattform ist erforderlich.";
   if (!caption) return "Text ist erforderlich.";
   if (mediaType === "CAROUSEL" && mediaUrls.length < 2) return "Karussell benötigt mindestens 2 Bilder.";
@@ -82,11 +92,11 @@ export async function createSocialPost(_prevState: string | undefined, formData:
 
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidateInternalMarketing();
 }
 
 export async function updateSocialPost(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const postId = String(formData.get("postId") ?? "");
   const platform = String(formData.get("platform") ?? "");
@@ -106,6 +116,11 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
 
   const post = await prisma.socialPost.findUnique({ where: { id: postId } });
   if (!post) return "Beitrag nicht gefunden.";
+  try {
+    await assertCanManageSocialContentFor(session, post.organizationId);
+  } catch {
+    return "Nur Agentur-Admins oder Marketing-Mitarbeiter können Beiträge bearbeiten.";
+  }
 
   await prisma.socialPost.update({
     where: { id: postId },
@@ -125,19 +140,21 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
 
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${post.organizationId}`);
+  revalidateInternalMarketing();
 }
 
 export async function deleteSocialPost(formData: FormData) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const postId = String(formData.get("postId") ?? "");
   const post = await prisma.socialPost.findUnique({ where: { id: postId } });
   if (!post) return;
+  await assertCanManageSocialContentFor(session, post.organizationId);
 
   await prisma.socialPost.delete({ where: { id: postId } });
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${post.organizationId}`);
+  revalidateInternalMarketing();
 }
 
 const AGENCY_SETTABLE_STATUSES = ["IDEA", "IN_PRODUCTION", "CLIENT_REVIEW", "SCHEDULED"] as const;
@@ -150,7 +167,6 @@ function isAgencySettableStatus(value: string): value is AgencySettableStatus {
 /** Quick status change from the board (drag between columns) - agency only. */
 export async function moveSocialPostStatus(formData: FormData) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const postId = String(formData.get("postId") ?? "");
   const status = String(formData.get("status") ?? "");
@@ -158,12 +174,14 @@ export async function moveSocialPostStatus(formData: FormData) {
 
   const post = await prisma.socialPost.findUnique({ where: { id: postId } });
   if (!post) return;
+  await assertCanManageSocialContentFor(session, post.organizationId);
   if (status === "SCHEDULED" && !post.scheduledAt) {
     throw new Error("Bitte zuerst ein Veröffentlichungsdatum festlegen.");
   }
 
   await prisma.socialPost.update({ where: { id: postId }, data: { status } });
   revalidatePath("/dashboard/social");
+  revalidateInternalMarketing();
   revalidatePath(`/dashboard/clients/${post.organizationId}`);
 }
 
@@ -254,10 +272,14 @@ function parseCsvScheduledAt(raw: string): Date | null {
  */
 export async function importSocialPostsCsv(_prevState: string | undefined, formData: FormData): Promise<string> {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const organizationId = String(formData.get("organizationId") ?? "");
   if (!organizationId) return "Kunde ist erforderlich.";
+  try {
+    await assertCanManageSocialContentFor(session, organizationId);
+  } catch {
+    return "Nur Agentur-Admins oder Marketing-Mitarbeiter können Beiträge importieren.";
+  }
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return "Keine Datei ausgewählt.";
@@ -325,5 +347,6 @@ export async function importSocialPostsCsv(_prevState: string | undefined, formD
 
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidateInternalMarketing();
   return `${imported} Beitrag/Beiträge importiert${skipped > 0 ? `, ${skipped} Zeile(n) übersprungen (fehlende Plattform/Text)` : ""}.`;
 }

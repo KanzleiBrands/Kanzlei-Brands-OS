@@ -106,6 +106,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { main: mainLinks, admin: adminLinks } = navFor(session.user.role, campaignKinds);
 
+  const department =
+    session.user.role === "AGENCY_ADMIN" || session.user.role === "AGENCY_STAFF"
+      ? (await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } }))?.department ?? null
+      : null;
+
   const clients =
     session.user.role === "AGENCY_ADMIN"
       ? await prisma.organization.findMany({
@@ -141,6 +146,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </div>
       <SidebarNav
         role={session.user.role}
+        department={department}
         links={mainLinks}
         adminLinks={adminLinks}
         clients={clients}

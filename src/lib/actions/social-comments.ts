@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/access";
+import { requireSession, assertCanManageSocialContentFor } from "@/lib/access";
 import { decryptToken } from "@/lib/auth-encryption";
 import {
   replyToFacebookComment,
@@ -12,10 +12,6 @@ import {
   deleteMetaComment,
 } from "@/lib/meta/graph";
 import { replyToLinkedInComment, deleteLinkedInComment } from "@/lib/linkedin/client";
-
-function requireAgencyAdmin(role: string) {
-  if (role !== "AGENCY_ADMIN") throw new Error("Nur Agentur-Admins können Kommentare bearbeiten.");
-}
 
 async function loadCommentWithChannel(commentId: string) {
   const comment = await prisma.socialComment.findUnique({
@@ -29,7 +25,6 @@ async function loadCommentWithChannel(commentId: string) {
 
 export async function replySocialComment(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const commentId = String(formData.get("commentId") ?? "");
   const message = String(formData.get("message") ?? "").trim();
@@ -37,6 +32,7 @@ export async function replySocialComment(_prevState: string | undefined, formDat
 
   try {
     const { comment, post, channel } = await loadCommentWithChannel(commentId);
+    await assertCanManageSocialContentFor(session, post.organizationId);
     const accessToken = decryptToken(channel.accessTokenEnc);
 
     let externalId: string;
@@ -64,14 +60,15 @@ export async function replySocialComment(_prevState: string | undefined, formDat
   }
 
   revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/intern/marketing/social");
   return undefined;
 }
 
 async function setCommentHidden(commentId: string, hidden: boolean) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const { comment, post, channel } = await loadCommentWithChannel(commentId);
+  await assertCanManageSocialContentFor(session, post.organizationId);
   const accessToken = decryptToken(channel.accessTokenEnc);
 
   if (post.platform === "FACEBOOK") {
@@ -84,6 +81,7 @@ async function setCommentHidden(commentId: string, hidden: boolean) {
 
   await prisma.socialComment.update({ where: { id: commentId }, data: { isHidden: hidden } });
   revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/intern/marketing/social");
 }
 
 export async function hideSocialComment(formData: FormData) {
@@ -96,10 +94,10 @@ export async function unhideSocialComment(formData: FormData) {
 
 export async function deleteSocialComment(formData: FormData) {
   const session = await requireSession();
-  requireAgencyAdmin(session.user.role);
 
   const commentId = String(formData.get("commentId") ?? "");
   const { comment, post, channel } = await loadCommentWithChannel(commentId);
+  await assertCanManageSocialContentFor(session, post.organizationId);
   const accessToken = decryptToken(channel.accessTokenEnc);
 
   if (post.platform === "FACEBOOK" || post.platform === "INSTAGRAM") {
@@ -110,4 +108,5 @@ export async function deleteSocialComment(formData: FormData) {
 
   await prisma.socialComment.delete({ where: { id: commentId } });
   revalidatePath("/dashboard/social");
+  revalidatePath("/dashboard/intern/marketing/social");
 }

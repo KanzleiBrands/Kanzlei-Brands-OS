@@ -25,6 +25,24 @@ export function assertOrganizationAccess(session: Session, organizationId: strin
 }
 
 /**
+ * Gate for Social-Media-Beiträge/Kommentare: AGENCY_ADMIN always, for any
+ * organization (client or the agency's own). AGENCY_STAFF only for the
+ * agency's own organization (never a client's) and only when their
+ * department is MARKETING - this is what lets the internal Marketing-Center
+ * (src/app/dashboard/intern/marketing) reuse the exact same actions and UI
+ * as the client-facing Social Media Content feature, with the agency acting
+ * as its own "client".
+ */
+export async function assertCanManageSocialContentFor(session: Session, organizationId: string) {
+  if (session.user.role === "AGENCY_ADMIN") return;
+  if (session.user.role === "AGENCY_STAFF" && organizationId === session.user.organizationId) {
+    const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
+    if (me?.department === "MARKETING") return;
+  }
+  throw new AccessDeniedError("Nur Agentur-Admins oder Marketing-Mitarbeiter können Beiträge bearbeiten.");
+}
+
+/**
  * AGENCY_ADMIN and CLIENT_ADMIN see every pipeline in their organization.
  * CLIENT_STAFF only sees pipelines explicitly granted via PipelineAccess.
  */

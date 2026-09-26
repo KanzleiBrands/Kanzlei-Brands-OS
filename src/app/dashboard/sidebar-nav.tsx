@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   GraduationCap,
   LayoutDashboard,
+  MegaphoneIcon,
   Settings2Icon,
   UsersIcon,
 } from "lucide-react";
@@ -18,12 +19,15 @@ type NavLink = { href: string; label: string; icon?: React.ReactNode };
 
 export function SidebarNav({
   role,
+  department,
   links,
   adminLinks = [],
   clients,
   showPortalSwitch = false,
 }: {
   role: string;
+  /** Nur für AGENCY_ADMIN/AGENCY_STAFF relevant - steuert z.B. den Marketing-Center-Link im internen Portal. */
+  department?: string | null;
   links: NavLink[];
   adminLinks?: NavLink[];
   clients: ClientOrg[];
@@ -127,6 +131,13 @@ export function SidebarNav({
       { href: "/dashboard/intern/personal", label: "Personal", icon: <UsersIcon className="size-4 flex-shrink-0" /> },
       { href: "/dashboard/courses", label: "Schulung", icon: <GraduationCap className="size-4 flex-shrink-0" /> },
     ];
+    if (role === "AGENCY_ADMIN" || department === "MARKETING") {
+      internalLinks.splice(2, 0, {
+        href: "/dashboard/intern/marketing",
+        label: "Marketing-Center",
+        icon: <MegaphoneIcon className="size-4 flex-shrink-0" />,
+      });
+    }
 
     return (
       <nav className="flex flex-1 flex-col">
