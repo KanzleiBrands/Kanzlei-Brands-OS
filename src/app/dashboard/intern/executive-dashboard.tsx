@@ -206,19 +206,6 @@ export async function ExecutiveDashboard({
 
       <Card>
         <CardHeader>
-          <CardTitle>Team nach Abteilung</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {employeesByDepartment.map((d) => (
-            <span key={d.department ?? "none"} className="rounded-full bg-muted px-3 py-1 text-sm">
-              {d.department ?? "Ohne Abteilung"}: {d._count._all}
-            </span>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Schnellzugriff</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
