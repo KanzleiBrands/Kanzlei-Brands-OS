@@ -159,6 +159,7 @@ model Organization {
   marketingListWebhooks     MarketingListWebhook[]
   marketingFunnels          MarketingFunnel[]
   cashflowCostEntries       CashflowCostEntry[]
+  salesActivityLogs         SalesActivityLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1747,6 +1748,36 @@ model CashflowCostEntry {
   updatedAt DateTime @updatedAt
 
   @@index([organizationId, transactionDate])
+}
+
+// Historisches Aktivitäten-Log aus dem "Sales Tracking Cockpit"-Sheet
+// (Setting/Closing/Outbound Call etc.) - ein Datensatz pro Person und Tag.
+// metrics haelt die rohen Zaehlwerte je Aktivitaetstyp (Spaltennamen wie im
+// Original-Sheet), da jeder Typ eigene Kennzahlen hat; Quoten/Raten lassen
+// sich daraus jederzeit neu berechnen statt sie zusaetzlich zu speichern.
+enum SalesActivityType {
+  SETTING
+  CLOSING
+  UPSELL
+  OUTBOUND_CALL
+  OUTBOUND_DM
+  COLD_EMAIL
+  LOOM_SALES_LETTER
+}
+
+model SalesActivityLog {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activityType   SalesActivityType
+  personName     String
+  activityDate   DateTime
+  metrics        Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, activityType, activityDate])
 }
 
 // ---------------------------------------------------------------------------
