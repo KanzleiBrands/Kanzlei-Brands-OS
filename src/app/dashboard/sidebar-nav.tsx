@@ -8,7 +8,9 @@ import {
   LayoutDashboard,
   MegaphoneIcon,
   Settings2Icon,
+  TrendingUpIcon,
   UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
@@ -136,6 +138,20 @@ export function SidebarNav({
         href: "/dashboard/intern/marketing",
         label: "Marketing-Center",
         icon: <MegaphoneIcon className="size-4 flex-shrink-0" />,
+      });
+    }
+    if (role === "AGENCY_ADMIN" || department === "EXECUTIVE") {
+      internalLinks.splice(2, 0, {
+        href: "/dashboard/intern/cashflow",
+        label: "Cashflow Cockpit",
+        icon: <WalletIcon className="size-4 flex-shrink-0" />,
+      });
+    }
+    if (role === "AGENCY_ADMIN" || department === "SALES" || department === "EXECUTIVE") {
+      internalLinks.splice(2, 0, {
+        href: "/dashboard/intern/sales-cockpit",
+        label: "Sales Cockpit",
+        icon: <TrendingUpIcon className="size-4 flex-shrink-0" />,
       });
     }
 

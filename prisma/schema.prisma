@@ -42,6 +42,11 @@ model Organization {
   leadsQuota      Int? @default(0)
   applicantsQuota Int? @default(0)
 
+  // Cashflow Cockpit (nur intern, Geschäftsführung) - Jahresziel für den
+  // Fortschrittsbalken, Cash-In kommt live aus Close.io, siehe
+  // src/lib/close/client.ts und CashflowCostEntry für den Cash-Out-Teil.
+  profitGoalAnnual Int?
+
   // Kundenspezifische Jotform-URLs (Stellenformular / Mandatsakquise-Briefing,
   // an Airtable gekoppelt) - der Kunde nutzt diese selbst, um im Rahmen
   // seines Kontingents eine weitere Kampagne einzureichen.
@@ -143,6 +148,7 @@ model Organization {
   marketingSubscribers      MarketingSubscriber[]
   marketingListWebhooks     MarketingListWebhook[]
   marketingFunnels          MarketingFunnel[]
+  cashflowCostEntries       CashflowCostEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1684,6 +1690,37 @@ model MarketingFunnelSend {
 
   @@index([stepId])
   @@index([enrollmentId])
+}
+
+// ---------------------------------------------------------------------------
+// Cashflow Cockpit (nur intern, Geschäftsführung) - Cash-In kommt live aus
+// Close.io (gewonnene Opportunities, siehe src/lib/close/client.ts), nur der
+// Cash-Out-Teil (Kosten) hat keine Datenquelle und wird hier manuell je
+// Kategorie/Monat gepflegt, analog zu AbsenceBalance.
+// ---------------------------------------------------------------------------
+
+enum CashflowCostCategory {
+  PERSONNEL // Mitarbeiter & Freelancer
+  MARKETING
+  INFRASTRUCTURE // Infrastruktur & Software
+  VARIABLE // Variable Kosten
+  AD_BUDGET // Werbebudget
+}
+
+model CashflowCostEntry {
+  id             String               @id @default(cuid())
+  organizationId String
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category       CashflowCostCategory
+  year           Int
+  month          Int // 1-12
+  amountNet      Float                @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, category, year, month])
+  @@index([organizationId, year])
 }
 
 // ---------------------------------------------------------------------------

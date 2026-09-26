@@ -64,3 +64,107 @@ export async function syncFunnelSendToClose(subscriberId: string, subject: strin
     console.error("[close] syncFunnelSendToClose failed", error);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Cashflow-/Sales-Cockpit: Live-Auswertungen direkt aus Close.io, nichts wird
+// bei uns gespiegelt/gespeichert. Nutzt Close.ios klassische List-Endpoints
+// mit Django-Style-Filtersuffixen (__gte/__lte) und _skip/_limit-Pagination -
+// Feldnamen sind nach Close.io-API-Dokumentationsstand, aber ohne echten
+// CLOSE_API_KEY in dieser Sandbox nicht gegen die echte API testbar. Bei
+// Abweichungen (z.B. andere Feldnamen) hier zuerst nachjustieren.
+// ---------------------------------------------------------------------------
+
+export type CloseResult<T> = { ok: true; rows: T[] } | { ok: false; error: string };
+
+async function closeFetchAll<T>(path: string, params: Record<string, string>, apiKey: string): Promise<T[]> {
+  const results: T[] = [];
+  const limit = 100;
+  let skip = 0;
+  for (;;) {
+    const url = new URL(`${CLOSE_API_BASE}${path}`);
+    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+    url.searchParams.set("_limit", String(limit));
+    url.searchParams.set("_skip", String(skip));
+    const res = await fetch(url.toString(), { headers: { Authorization: closeAuthHeader(apiKey) } });
+    if (!res.ok) throw new Error(`Close.io-Abfrage fehlgeschlagen (${res.status}) - ${path}`);
+    const data = (await res.json()) as { data: T[]; has_more: boolean };
+    results.push(...data.data);
+    if (!data.has_more || data.data.length === 0) break;
+    skip += limit;
+  }
+  return results;
+}
+
+type CloseOpportunity = {
+  id: string;
+  value: number | null; // Close speichert Beträge in Cent
+  date_won: string | null;
+  user_id: string;
+  user_name: string | null;
+};
+
+export type MonthlyDealVolume = { month: number; userId: string; userName: string; valueNet: number };
+
+/** Gewonnene Opportunities eines Jahres, je Close-User und Monat aufsummiert (Wert in €, netto laut Close-Eintrag). */
+export async function listWonOpportunitiesByMonth(year: number): Promise<CloseResult<MonthlyDealVolume>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+
+  try {
+    const opportunities = await closeFetchAll<CloseOpportunity>(
+      "/opportunity/",
+      { status_type: "won", date_won__gte: `${year}-01-01`, date_won__lte: `${year}-12-31` },
+      apiKey,
+    );
+
+    const byKey = new Map<string, MonthlyDealVolume>();
+    for (const opp of opportunities) {
+      if (!opp.date_won || opp.value == null) continue;
+      const month = new Date(opp.date_won).getMonth() + 1;
+      const key = `${opp.user_id}:${month}`;
+      const valueNet = opp.value / 100;
+      const existing = byKey.get(key);
+      if (existing) existing.valueNet += valueNet;
+      else byKey.set(key, { month, userId: opp.user_id, userName: opp.user_name ?? "Unbekannt", valueNet });
+    }
+    return { ok: true, rows: Array.from(byKey.values()) };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
+
+type CloseCallActivity = {
+  id: string;
+  direction: string;
+  user_id: string;
+  user_name: string | null;
+  date_created: string;
+};
+
+export type MonthlyCallCount = { month: number; userId: string; userName: string; callCount: number };
+
+/** Ausgehende Telefonate eines Jahres, je Close-User und Monat gezählt. */
+export async function listOutboundCallsByMonth(year: number): Promise<CloseResult<MonthlyCallCount>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+
+  try {
+    const calls = await closeFetchAll<CloseCallActivity>(
+      "/activity/call/",
+      { direction: "outbound", date_created__gte: `${year}-01-01T00:00:00`, date_created__lte: `${year}-12-31T23:59:59` },
+      apiKey,
+    );
+
+    const byKey = new Map<string, MonthlyCallCount>();
+    for (const call of calls) {
+      const month = new Date(call.date_created).getMonth() + 1;
+      const key = `${call.user_id}:${month}`;
+      const existing = byKey.get(key);
+      if (existing) existing.callCount += 1;
+      else byKey.set(key, { month, userId: call.user_id, userName: call.user_name ?? "Unbekannt", callCount: 1 });
+    }
+    return { ok: true, rows: Array.from(byKey.values()) };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
