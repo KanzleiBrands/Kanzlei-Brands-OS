@@ -9,7 +9,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   MARKETING: "Marketing",
   INFRASTRUCTURE: "Infrastruktur & Software",
   VARIABLE: "Variable Kosten",
-  AD_BUDGET: "Werbebudget",
+  AD_BUDGET: "Werbebudget Auslage",
 };
 
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });

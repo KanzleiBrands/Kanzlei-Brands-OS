@@ -12,7 +12,7 @@ const CATEGORIES = [
   { value: "MARKETING", label: "Marketing" },
   { value: "INFRASTRUCTURE", label: "Infrastruktur & Software" },
   { value: "VARIABLE", label: "Variable Kosten" },
-  { value: "AD_BUDGET", label: "Werbebudget" },
+  { value: "AD_BUDGET", label: "Werbebudget Auslage" },
 ] as const;
 
 type Source = "VOLKSBANK" | "AMEX";
