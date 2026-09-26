@@ -43,9 +43,19 @@ model Organization {
   applicantsQuota Int? @default(0)
 
   // Cashflow Cockpit (nur intern, Geschäftsführung) - Jahresziel für den
-  // Fortschrittsbalken, Cash-In kommt live aus Close.io, siehe
-  // src/lib/close/client.ts und CashflowCostEntry für den Cash-Out-Teil.
-  profitGoalAnnual Int?
+  // Fortschrittsbalken. Cash-In kommt live aus EasyBill (siehe
+  // src/lib/easybill/client.ts), Cash-Out ist ein Transaktions-Ledger
+  // (CashflowCostEntry). cashflowTaxReservePercent ist der Anteil vom
+  // Operating Cashflow, der als Steuerrücklage abgezogen wird ("Cashflow BIT").
+  profitGoalAnnual          Int?
+  cashflowTaxReservePercent Float?
+
+  // EasyBill-Kunden-ID dieser Organisation (nur bei CLIENT-Orgs gesetzt) -
+  // ordnet EasyBill-Rechnungen im Cashflow Cockpit einem echten Kunden aus
+  // dem Kundenportal zu. Nicht jede EasyBill-Rechnung hat zwangsläufig eine
+  // passende Organisation hier (z.B. Kunde nutzt das Portal nicht) - ohne
+  // Mapping wird einfach der EasyBill-Firmenname angezeigt.
+  easybillCustomerId Int? @unique
 
   // Kundenspezifische Jotform-URLs (Stellenformular / Mandatsakquise-Briefing,
   // an Airtable gekoppelt) - der Kunde nutzt diese selbst, um im Rahmen
@@ -189,6 +199,11 @@ model User {
   // Nur für Agentur-Mitarbeiter (AGENCY_ADMIN/AGENCY_STAFF) relevant - siehe
   // AgencyDepartment. Bestimmt den Hub im internen Portal (/dashboard/intern).
   department AgencyDepartment?
+
+  // Cashflow Cockpit ist grundsätzlich nur für department=EXECUTIVE sichtbar -
+  // dieser Schalter erlaubt der Geschäftsführung, es gezielt auch anderen
+  // Mitarbeiter:innen freizugeben (z.B. Backoffice), ohne deren Abteilung zu ändern.
+  hasCashflowAccess Boolean @default(false)
 
   // ---------------------------------------------------------------------
   // Personal (HR) - siehe /dashboard/intern/personal, Ersatz für Tellent HR.
@@ -1693,10 +1708,13 @@ model MarketingFunnelSend {
 }
 
 // ---------------------------------------------------------------------------
-// Cashflow Cockpit (nur intern, Geschäftsführung) - Cash-In kommt live aus
-// Close.io (gewonnene Opportunities, siehe src/lib/close/client.ts), nur der
-// Cash-Out-Teil (Kosten) hat keine Datenquelle und wird hier manuell je
-// Kategorie/Monat gepflegt, analog zu AbsenceBalance.
+// Cashflow Cockpit (nur intern, Geschäftsführung) - exakter Nachbau der
+// geteilten Google-Sheet-Vorlage ("Cashflow Cockpit 2026"), bewusst OHNE
+// Close.io: Cash-In basiert auf tatsächlich gestellten/geplanten Rechnungen
+// (live aus EasyBill, siehe src/lib/easybill/client.ts - nicht gespiegelt),
+// Cash-Out auf dem tatsächlichen Bankabgang. Cash-Out wird hier als
+// Transaktions-Ledger gepflegt (eine Zeile = eine Buchung, wie im
+// "🔥 Cash-Out"-Tab der Vorlage), nicht als Monats-Aggregat.
 // ---------------------------------------------------------------------------
 
 enum CashflowCostCategory {
@@ -1711,16 +1729,17 @@ model CashflowCostEntry {
   id             String               @id @default(cuid())
   organizationId String
   organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactionDate DateTime // Datum des Bankabgangs
+  counterparty   String // Gegenpartei laut Kontoauszug
   category       CashflowCostCategory
-  year           Int
-  month          Int // 1-12
-  amountNet      Float                @default(0)
+  amountNet      Float
+  taxRatePercent Float                @default(19) // 0 / 7 / 19 %
+  note           String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([organizationId, category, year, month])
-  @@index([organizationId, year])
+  @@index([organizationId, transactionDate])
 }
 
 // ---------------------------------------------------------------------------
