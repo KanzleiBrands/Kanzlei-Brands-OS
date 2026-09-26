@@ -22,6 +22,7 @@ type NavLink = { href: string; label: string; icon?: React.ReactNode };
 export function SidebarNav({
   role,
   department,
+  hasCashflowAccess = false,
   links,
   adminLinks = [],
   clients,
@@ -30,6 +31,8 @@ export function SidebarNav({
   role: string;
   /** Nur für AGENCY_ADMIN/AGENCY_STAFF relevant - steuert z.B. den Marketing-Center-Link im internen Portal. */
   department?: string | null;
+  /** Von der GF gezielt freigeschalteter Cashflow-Cockpit-Zugriff über department=EXECUTIVE hinaus. */
+  hasCashflowAccess?: boolean;
   links: NavLink[];
   adminLinks?: NavLink[];
   clients: ClientOrg[];
@@ -140,7 +143,7 @@ export function SidebarNav({
         icon: <MegaphoneIcon className="size-4 flex-shrink-0" />,
       });
     }
-    if (role === "AGENCY_ADMIN" || department === "EXECUTIVE") {
+    if (role === "AGENCY_ADMIN" || department === "EXECUTIVE" || hasCashflowAccess) {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/cashflow",
         label: "Cashflow Cockpit",

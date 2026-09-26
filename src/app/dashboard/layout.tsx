@@ -106,10 +106,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { main: mainLinks, admin: adminLinks } = navFor(session.user.role, campaignKinds);
 
-  const department =
+  const internalUser =
     session.user.role === "AGENCY_ADMIN" || session.user.role === "AGENCY_STAFF"
-      ? (await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } }))?.department ?? null
+      ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } })
       : null;
+  const department = internalUser?.department ?? null;
+  const hasCashflowAccess = internalUser?.hasCashflowAccess ?? false;
 
   const clients =
     session.user.role === "AGENCY_ADMIN"
@@ -147,6 +149,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <SidebarNav
         role={session.user.role}
         department={department}
+        hasCashflowAccess={hasCashflowAccess}
         links={mainLinks}
         adminLinks={adminLinks}
         clients={clients}

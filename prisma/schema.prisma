@@ -1736,6 +1736,12 @@ model CashflowCostEntry {
   taxRatePercent Float                @default(19) // 0 / 7 / 19 %
   note           String?
 
+  // Woher die Buchung stammt (z.B. "Volksbank HH", "Amex") - wichtig, weil
+  // eine Amex-Kartenabrechnung als Sammelbuchung im Bankkonto-Export auftaucht,
+  // aber die Einzelbuchungen separat aus einem Amex-CSV-Export importiert
+  // werden - ohne dieses Feld würde es zur Doppelbuchung kommen.
+  bankSource String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
