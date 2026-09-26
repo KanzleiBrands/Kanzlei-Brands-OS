@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
-import { canApproveAbsenceFor } from "@/lib/hr-access";
+import { canApproveAbsenceFor, probationEndDate } from "@/lib/hr-access";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
@@ -96,6 +96,8 @@ export default async function EmployeeProfilePage({
   }
   const nextBirthday = nextOccurrence(employee.birthday);
   const nextAnniversary = nextOccurrence(employee.hireDate);
+  const probationEnd = probationEndDate(employee.hireDate);
+  const probationEndsSoon = !!(probationEnd && probationEnd >= now && probationEnd.getTime() - now.getTime() <= 30 * 24 * 60 * 60 * 1000);
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,6 +156,20 @@ export default async function EmployeeProfilePage({
                 <span className="text-muted-foreground">Unternehmensbeitritt:</span>{" "}
                 {employee.hireDate ? employee.hireDate.toLocaleDateString("de-DE", FULL_DATE_FMT) : "—"}
               </p>
+              {probationEnd && (
+                <p>
+                  <span className="text-muted-foreground">Probezeit endet:</span>{" "}
+                  {probationEnd.toLocaleDateString("de-DE", FULL_DATE_FMT)}
+                  {probationEndsSoon && (
+                    <Badge variant="outline" className="ml-2">
+                      bald
+                    </Badge>
+                  )}
+                  {probationEnd < now && (
+                    <span className="ml-2 text-xs text-muted-foreground">(beendet)</span>
+                  )}
+                </p>
+              )}
             </CardContent>
           </Card>
 

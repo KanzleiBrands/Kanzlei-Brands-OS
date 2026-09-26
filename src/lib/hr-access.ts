@@ -96,13 +96,41 @@ export type AbsenceBalanceView = {
 };
 
 /**
+ * Anteiliges Jahres-Kontingent im Eintrittsjahr (§ 5 BUrlG: 1/12 des
+ * Jahresanspruchs pro vollem Beschäftigungsmonat, aufgerundet). Eintritt bis
+ * einschließlich dem 15. eines Monats zählt dieser Monat noch mit, sonst erst
+ * der Folgemonat. Vor dem Eintrittsjahr besteht kein Anspruch, danach der
+ * volle Jahresanspruch.
+ */
+export function proratedAnnualDays(defaultAnnualDays: number, hireDate: Date | null, year: number): number {
+  if (!hireDate) return defaultAnnualDays;
+  const hireYear = hireDate.getFullYear();
+  if (hireYear > year) return 0;
+  if (hireYear < year) return defaultAnnualDays;
+  const firstFullMonth = hireDate.getDate() <= 15 ? hireDate.getMonth() : hireDate.getMonth() + 1;
+  const monthsRemaining = 12 - firstFullMonth;
+  if (monthsRemaining <= 0) return 0;
+  return Math.ceil((defaultAnnualDays * monthsRemaining) / 12);
+}
+
+/** Ende der gesetzlichen Probezeit (6 Monate nach Eintritt, § 622 Abs. 3 BGB). */
+export function probationEndDate(hireDate: Date | null): Date | null {
+  if (!hireDate) return null;
+  const end = new Date(hireDate);
+  end.setMonth(end.getMonth() + 6);
+  return end;
+}
+
+/**
  * "Konten" für `userId`/`year`: je aktiver Abwesenheitsart das Jahres-Kontingent
- * (LIMITED, aus AbsenceBalance oder AbsenceType.defaultAnnualDays) minus die
- * bereits genehmigten Tage dieses Jahres - UNLIMITED-Arten haben kein
- * Kontingent, nur einen Verbrauchszähler zur Information.
+ * (LIMITED, aus AbsenceBalance oder anteilig aus AbsenceType.defaultAnnualDays
+ * im Eintrittsjahr - siehe proratedAnnualDays) minus die bereits genehmigten
+ * Tage dieses Jahres - UNLIMITED-Arten haben kein Kontingent, nur einen
+ * Verbrauchszähler zur Information.
  */
 export async function getAbsenceBalances(userId: string, year: number): Promise<AbsenceBalanceView[]> {
-  const [types, balances, approvedRequests] = await Promise.all([
+  const [user, types, balances, approvedRequests] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { hireDate: true } }),
     prisma.absenceType.findMany({ where: { archivedAt: null }, orderBy: { order: "asc" } }),
     prisma.absenceBalance.findMany({ where: { userId, year } }),
     prisma.absenceRequest.findMany({
@@ -123,7 +151,9 @@ export async function getAbsenceBalances(userId: string, year: number): Promise<
   return types.map((type) => {
     const usedDays = usedByType.get(type.id) ?? 0;
     const totalDays =
-      type.allowanceType === "LIMITED" ? (balanceByType.get(type.id) ?? type.defaultAnnualDays ?? 0) : null;
+      type.allowanceType === "LIMITED"
+        ? (balanceByType.get(type.id) ?? proratedAnnualDays(type.defaultAnnualDays ?? 0, user?.hireDate ?? null, year))
+        : null;
     return {
       type: { id: type.id, name: type.name, icon: type.icon, color: type.color, allowanceType: type.allowanceType, weeklyCapDays: type.weeklyCapDays },
       totalDays,

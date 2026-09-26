@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
-import { ArrowRightIcon, CakeIcon, PartyPopperIcon, MegaphoneIcon, UsersIcon } from "lucide-react";
+import { probationEndDate } from "@/lib/hr-access";
+import { ArrowRightIcon, CakeIcon, PartyPopperIcon, MegaphoneIcon, UsersIcon, GraduationCapIcon } from "lucide-react";
 import { AbsenceTypeIcon } from "./personal/abwesenheit/absence-type-icon";
 
 const SHORT_DATE: Intl.DateTimeFormatOptions = { day: "2-digit", month: "long" };
@@ -73,6 +74,7 @@ export async function ExecutiveDashboard({
   ]);
 
   const events: { userId: string; name: string; avatarUrl: string | null; date: Date; kind: "birthday" | "anniversary" }[] = [];
+  const probationEndingSoon: { userId: string; name: string; avatarUrl: string | null; date: Date }[] = [];
   for (const person of peopleWithEvents) {
     if (person.birthday) {
       const date = nextOccurrence(person.birthday, today);
@@ -82,8 +84,13 @@ export async function ExecutiveDashboard({
       const date = nextOccurrence(person.hireDate, today);
       if (date <= in30Days) events.push({ userId: person.id, name: person.name, avatarUrl: person.avatarUrl, date, kind: "anniversary" });
     }
+    const probationEnd = probationEndDate(person.hireDate);
+    if (probationEnd && probationEnd >= today && probationEnd <= in30Days) {
+      probationEndingSoon.push({ userId: person.id, name: person.name, avatarUrl: person.avatarUrl, date: probationEnd });
+    }
   }
   events.sort((a, b) => a.date.getTime() - b.date.getTime());
+  probationEndingSoon.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   const totalEmployees = employeesByDepartment.reduce((sum, d) => sum + d._count._all, 0);
 
@@ -156,6 +163,18 @@ export async function ExecutiveDashboard({
                     )}
                     <span className="flex-1">{event.name}</span>
                     <span className="text-xs text-muted-foreground">{event.date.toLocaleDateString("de-DE", SHORT_DATE)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {probationEndingSoon.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Probezeit endet bald</p>
+                {probationEndingSoon.map((entry) => (
+                  <div key={entry.userId} className="flex items-center gap-2 py-0.5 text-sm">
+                    <GraduationCapIcon className="size-3.5 text-muted-foreground" />
+                    <span className="flex-1">{entry.name}</span>
+                    <span className="text-xs text-muted-foreground">{entry.date.toLocaleDateString("de-DE", SHORT_DATE)}</span>
                   </div>
                 ))}
               </div>

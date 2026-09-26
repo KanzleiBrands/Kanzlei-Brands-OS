@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { proratedAnnualDays } from "@/lib/hr-access";
 import { BalanceCell } from "./balance-cell";
 
 export async function KontenTabelle({ organizationId }: { organizationId: string }) {
@@ -8,7 +9,7 @@ export async function KontenTabelle({ organizationId }: { organizationId: string
   const [employees, types, balances] = await Promise.all([
     prisma.user.findMany({
       where: { organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] }, employmentEndedAt: null },
-      select: { id: true, name: true },
+      select: { id: true, name: true, hireDate: true },
       orderBy: { name: "asc" },
     }),
     prisma.absenceType.findMany({ where: { archivedAt: null, allowanceType: "LIMITED" }, orderBy: { order: "asc" } }),
@@ -50,7 +51,10 @@ export async function KontenTabelle({ organizationId }: { organizationId: string
                           userId={employee.id}
                           absenceTypeId={type.id}
                           year={year}
-                          totalDays={balanceByKey.get(`${employee.id}:${type.id}`) ?? type.defaultAnnualDays ?? 0}
+                          totalDays={
+                            balanceByKey.get(`${employee.id}:${type.id}`) ??
+                            proratedAnnualDays(type.defaultAnnualDays ?? 0, employee.hireDate, year)
+                          }
                         />
                       </td>
                     ))}
