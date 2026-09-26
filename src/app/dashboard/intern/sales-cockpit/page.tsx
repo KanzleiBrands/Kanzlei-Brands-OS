@@ -3,8 +3,67 @@ import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { listOpenerStats, listSetterStats, listCloserStats, listClosedDeals } from "@/lib/close/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { SalesActivityType } from "@prisma/client";
 
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+const ACTIVITY_TABLES: { type: SalesActivityType; title: string; columns: { key: string; label: string }[] }[] = [
+  {
+    type: "SETTING",
+    title: "Setting (importiert)",
+    columns: [
+      { key: "qcTerminiert", label: "QC terminiert" },
+      { key: "qcStattgefunden", label: "QC stattgefunden" },
+      { key: "cc1TerminOfferCount", label: "CC1-Termin-Offer" },
+      { key: "vereinbarteCcTermine", label: "Vereinbarte CC-Termine" },
+      { key: "geplanteTermine", label: "Geplante Termine" },
+    ],
+  },
+  {
+    type: "CLOSING",
+    title: "Closing (importiert)",
+    columns: [
+      { key: "terminiert", label: "Terminiert" },
+      { key: "stattgefunden", label: "Stattgefunden" },
+      { key: "terminierteFUs", label: "Terminierte FUs" },
+      { key: "stattgefundeneFUs", label: "Stattgef. FUs" },
+      { key: "offerCount", label: "Offer" },
+      { key: "abschluesse", label: "Abschlüsse" },
+    ],
+  },
+  {
+    type: "OUTBOUND_CALL",
+    title: "Outbound Call (importiert)",
+    columns: [
+      { key: "waehlversuche", label: "Wählversuche" },
+      { key: "kontaktierteLeads", label: "Kontaktierte Leads" },
+      { key: "outboundZeitMin", label: "Outbound-Zeit (min)" },
+      { key: "entscheiderErreicht", label: "Entscheider erreicht" },
+      { key: "terminOffer", label: "Termin-Offer" },
+      { key: "gesetzteTermine", label: "Gesetzte Termine" },
+    ],
+  },
+];
+
+type MonthlyAggregate = { month: number; people: Set<string>; sums: Record<string, number> };
+
+function aggregateByMonth(
+  logs: { activityDate: Date; personName: string; metrics: unknown }[],
+): MonthlyAggregate[] {
+  const byMonth = new Map<number, MonthlyAggregate>();
+  for (const log of logs) {
+    const month = log.activityDate.getMonth();
+    const entry = byMonth.get(month) ?? { month, people: new Set(), sums: {} };
+    entry.people.add(log.personName);
+    const metrics = (log.metrics ?? {}) as Record<string, number>;
+    for (const [key, value] of Object.entries(metrics)) {
+      if (typeof value === "number") entry.sums[key] = (entry.sums[key] ?? 0) + value;
+    }
+    byMonth.set(month, entry);
+  }
+  return Array.from(byMonth.values()).sort((a, b) => a.month - b.month);
+}
 
 function pct(part: number, total: number): string {
   return total > 0 ? `${((part / total) * 100).toFixed(0)}%` : "–";
@@ -49,11 +108,18 @@ export default async function SalesCockpitPage({
   const { year: yearParam } = await searchParams;
   const year = Number(yearParam) || new Date().getFullYear();
 
-  const [openerResult, setterResult, closerResult, dealsResult] = await Promise.all([
+  const [openerResult, setterResult, closerResult, dealsResult, activityLogs] = await Promise.all([
     listOpenerStats(year),
     listSetterStats(year),
     listCloserStats(year),
     listClosedDeals(year),
+    prisma.salesActivityLog.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        activityDate: { gte: new Date(`${year}-01-01`), lt: new Date(`${year + 1}-01-01`) },
+      },
+      select: { activityType: true, activityDate: true, personName: true, metrics: true },
+    }),
   ]);
 
   const notConnected = !openerResult.ok || !setterResult.ok || !closerResult.ok || !dealsResult.ok;
@@ -257,6 +323,51 @@ export default async function SalesCockpitPage({
           </table>
         </CardContent>
       </Card>
+
+      {activityLogs.length > 0 && (
+        <>
+          <div>
+            <h2 className="text-lg font-semibold">Sales Tracking Verlauf</h2>
+            <p className="text-sm text-muted-foreground">
+              Historische Rohzahlen aus dem alten Sales-Tracking-Sheet, monatlich summiert - Ergänzung zu den
+              live aus Close berechneten Kennzahlen oben.
+            </p>
+          </div>
+          {ACTIVITY_TABLES.map(({ type, title, columns }) => {
+            const monthly = aggregateByMonth(activityLogs.filter((l) => l.activityType === type));
+            if (monthly.length === 0) return null;
+            return (
+              <Card key={type}>
+                <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="p-2 text-left font-medium text-muted-foreground">Monat</th>
+                        <th className="p-2 text-left font-medium text-muted-foreground">Person(en)</th>
+                        {columns.map((c) => (
+                          <th key={c.key} className="p-2 text-right font-medium text-muted-foreground">{c.label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthly.map((m) => (
+                        <tr key={m.month} className="border-b last:border-0">
+                          <td className="p-2">{MONTH_NAMES[m.month]}</td>
+                          <td className="p-2">{Array.from(m.people).join(", ")}</td>
+                          {columns.map((c) => (
+                            <td key={c.key} className="p-2 text-right tabular-nums">{m.sums[c.key] ?? 0}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }
