@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { assistSocialCaption, type SocialAiMode } from "@/lib/actions/social-ai";
+import { assistEmailContent, type EmailAiMode } from "@/lib/actions/email-ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,40 +10,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const TONES = ["Locker", "Professionell", "Enthusiastisch", "Sachlich"] as const;
 
 /**
- * KI-Schreibassistent im Post-Editor (Claude-gestützt, wie SocialPilots "AI
- * Pilot"): Text generieren/umschreiben/kürzen/verlängern, Ton ändern,
- * übersetzen, Hashtags vorschlagen - siehe src/lib/actions/social-ai.ts.
+ * KI-Schreibassistent im E-Mail-Marketing-Schritt-Editor (Claude-gestützt,
+ * analog zum Social-Media-Assistenten) - E-Mail generieren/umschreiben/
+ * kürzen/verlängern, Ton ändern, Betreffzeilen vorschlagen. Antworten sind
+ * immer auf Deutsch - siehe src/lib/actions/email-ai.ts.
  */
-export function AiCaptionAssistant({
-  caption,
-  platform,
-  onInsert,
+export function EmailAiAssistant({
+  bodyText,
+  onInsertSubject,
+  onInsertBody,
 }: {
-  caption: string;
-  platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
-  onInsert: (text: string) => void;
+  bodyText: string;
+  onInsertSubject: (text: string) => void;
+  onInsertBody: (text: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [pendingMode, setPendingMode] = useState<SocialAiMode | null>(null);
+  const [pendingMode, setPendingMode] = useState<EmailAiMode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("");
+  const [subjectIdeas, setSubjectIdeas] = useState<string[] | null>(null);
 
-  function run(mode: SocialAiMode, instruction?: string) {
+  function run(mode: EmailAiMode, instruction?: string) {
     setError(null);
+    setSubjectIdeas(null);
     setPendingMode(mode);
     startTransition(async () => {
-      const result = await assistSocialCaption({ mode, caption, platform, instruction });
+      const result = await assistEmailContent({ mode, bodyText, instruction });
       setPendingMode(null);
       if ("error" in result) {
         setError(result.error);
         return;
       }
-      if (mode === "hashtags") {
-        onInsert(caption.trim() ? `${caption.trim()}\n\n${result.text}` : result.text);
-      } else {
-        onInsert(result.text);
+      if ("subjects" in result) {
+        setSubjectIdeas(result.subjects);
+        return;
       }
+      if ("subject" in result) {
+        onInsertSubject(result.subject);
+        onInsertBody(result.bodyText);
+        return;
+      }
+      onInsertBody(result.text);
     });
   }
 
@@ -67,11 +75,32 @@ export function AiCaptionAssistant({
           {isPending && pendingMode === "lengthen" ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
           Verlängern
         </Button>
-        <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={() => run("hashtags")}>
-          {isPending && pendingMode === "hashtags" ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
-          Hashtags vorschlagen
+        <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={() => run("subjectIdeas")}>
+          {isPending && pendingMode === "subjectIdeas" ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
+          Betreffvorschläge
         </Button>
       </div>
+
+      {subjectIdeas && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Vorschlag übernehmen:</span>
+          <div className="flex flex-wrap gap-1.5">
+            {subjectIdeas.map((idea, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => {
+                  onInsertSubject(idea);
+                  setSubjectIdeas(null);
+                }}
+                className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {idea}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-1.5">
         <Select value={tone} onValueChange={(v) => setTone(v ?? "")}>
@@ -94,7 +123,7 @@ export function AiCaptionAssistant({
 
       <div className="flex gap-1.5">
         <Input
-          placeholder="Thema für neuen Text..."
+          placeholder="Thema für neue E-Mail..."
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           className="h-8"

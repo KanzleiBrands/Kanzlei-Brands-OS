@@ -57,18 +57,12 @@ function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
     <div
       ref={setNodeRef}
       style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined, opacity: isDragging ? 0.4 : 1 }}
-      className="flex flex-col gap-2 rounded-lg border bg-card p-2.5 text-sm"
+      className="flex cursor-grab touch-none flex-col gap-2 rounded-lg border bg-card p-2.5 text-sm active:cursor-grabbing"
+      {...attributes}
+      {...listeners}
     >
       <div className="flex items-start gap-2">
-        <button
-          type="button"
-          aria-label="Verschieben"
-          className="mt-0.5 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
-        >
-          <PlatformIcon platform={post.platform} />
-        </button>
+        <PlatformIcon platform={post.platform} className="mt-0.5 size-4 shrink-0" />
         <p className="min-w-0 flex-1 line-clamp-3 whitespace-pre-line">{post.caption}</p>
       </div>
       {post.mediaType === "CAROUSEL" && post.mediaUrls[0] ? (
@@ -110,7 +104,7 @@ function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
             {post.responsibleName}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <SocialPostFormDialog organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} post={post} />
           <button
             type="button"

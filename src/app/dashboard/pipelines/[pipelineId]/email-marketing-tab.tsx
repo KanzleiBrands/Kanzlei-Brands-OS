@@ -33,21 +33,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { EmailAiAssistant } from "./email-ai-assistant";
 
 const BODY_VARIABLES = [
   { token: "{{firstName}}", label: "Vorname" },
   { token: "{{lastName}}", label: "Nachname" },
   { token: "{{companyName}}", label: "Firma" },
 ] as const;
-
-function insertAtCursor(textarea: HTMLTextAreaElement, text: string) {
-  const start = textarea.selectionStart ?? textarea.value.length;
-  const end = textarea.selectionEnd ?? textarea.value.length;
-  textarea.value = `${textarea.value.slice(0, start)}${text}${textarea.value.slice(end)}`;
-  const cursor = start + text.length;
-  textarea.focus();
-  textarea.setSelectionRange(cursor, cursor);
-}
 
 export type FunnelStepData = {
   id: string;
@@ -168,11 +160,25 @@ function StepForm({
   useSaveToast(error, isPending, step ? "Schritt gespeichert." : "Schritt hinzugefügt.");
   const wasPending = useRef(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const [subject, setSubject] = useState(step?.subject ?? "");
+  const [bodyText, setBodyText] = useState(step?.bodyText ?? "");
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) onDone();
     wasPending.current = isPending;
   }, [isPending, error, onDone]);
+
+  function insertVariable(token: string) {
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? bodyText.length;
+    const end = el?.selectionEnd ?? bodyText.length;
+    const next = `${bodyText.slice(0, start)}${token}${bodyText.slice(end)}`;
+    setBodyText(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + token.length, start + token.length);
+    });
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
@@ -182,7 +188,7 @@ function StepForm({
         <label className="text-xs text-muted-foreground whitespace-nowrap">Warten (Tage)</label>
         <Input name="delayDays" type="number" min={0} defaultValue={step?.delayDays ?? 0} className="w-20" />
       </div>
-      <Input name="subject" placeholder="Betreff" defaultValue={step?.subject ?? ""} required />
+      <Input name="subject" placeholder="Betreff" value={subject} onChange={(e) => setSubject(e.target.value)} required />
       <Input name="preheader" placeholder="Preheader (optional)" defaultValue={step?.preheader ?? ""} />
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted-foreground">Variable einfügen:</span>
@@ -190,7 +196,7 @@ function StepForm({
           <button
             key={v.token}
             type="button"
-            onClick={() => bodyRef.current && insertAtCursor(bodyRef.current, v.token)}
+            onClick={() => insertVariable(v.token)}
             className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
           >
             {v.label}
@@ -202,9 +208,11 @@ function StepForm({
         name="bodyText"
         placeholder={"Text der E-Mail. Links: [Linktext](https://...)"}
         rows={6}
-        defaultValue={step?.bodyText ?? ""}
+        value={bodyText}
+        onChange={(e) => setBodyText(e.target.value)}
         required
       />
+      <EmailAiAssistant bodyText={bodyText} onInsertSubject={setSubject} onInsertBody={setBodyText} />
       <div className="flex gap-2">
         <Input name="ctaLabel" placeholder="Button-Text (optional)" defaultValue={step?.ctaLabel ?? ""} />
         <Input name="ctaUrl" type="url" placeholder="Button-Link (optional)" defaultValue={step?.ctaUrl ?? ""} />

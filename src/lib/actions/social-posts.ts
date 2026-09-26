@@ -48,6 +48,28 @@ function isValidMediaType(value: string): value is "IMAGE" | "VIDEO" | "CAROUSEL
   return value === "IMAGE" || value === "VIDEO" || value === "CAROUSEL";
 }
 
+function isValidPlatform(value: string): value is "FACEBOOK" | "INSTAGRAM" | "LINKEDIN" {
+  return value === "FACEBOOK" || value === "INSTAGRAM" || value === "LINKEDIN";
+}
+
+/** {platform, channelId}[] fürs gleichzeitige Anlegen eines Beitrags auf mehreren Plattformen (Beitrag-anlegen-Dialog). */
+function parseSelections(raw: FormDataEntryValue | null): { platform: string; channelId: string }[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((v): v is { platform: unknown; channelId: unknown } => typeof v === "object" && v !== null)
+      .map((v) => ({
+        platform: typeof v.platform === "string" ? v.platform : "",
+        channelId: typeof v.channelId === "string" ? v.channelId : "",
+      }))
+      .filter((v) => v.platform);
+  } catch {
+    return [];
+  }
+}
+
 export async function createSocialPost(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
 
@@ -59,35 +81,49 @@ export async function createSocialPost(_prevState: string | undefined, formData:
     return "Nur Agentur-Admins oder Marketing-Mitarbeiter können Beiträge bearbeiten.";
   }
 
-  const platform = String(formData.get("platform") ?? "");
   const caption = String(formData.get("caption") ?? "").trim();
   const mediaUrl = String(formData.get("mediaUrl") ?? "").trim();
   const mediaType = String(formData.get("mediaType") ?? "").trim();
   const mediaUrls = parseMediaUrls(formData.get("mediaUrls"));
   const utmCampaign = String(formData.get("utmCampaign") ?? "").trim();
-  const channelId = String(formData.get("channelId") ?? "").trim();
   const pipelineId = String(formData.get("pipelineId") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
   const scheduledAt = parseScheduledAt(formData.get("scheduledAt"));
 
-  if (platform !== "FACEBOOK" && platform !== "INSTAGRAM" && platform !== "LINKEDIN") return "Plattform ist erforderlich.";
+  // "selections" trägt eine oder mehrere {platform, channelId} - ein Beitrag
+  // wird pro ausgewählter Plattform angelegt (gleicher Text/Medien/Termin),
+  // damit ein Beitrag mit einem Klick gleichzeitig auf Facebook, Instagram
+  // und LinkedIn geplant werden kann. Fällt auf die alten Einzelfelder
+  // zurück, falls "selections" fehlt (Abwärtskompatibilität).
+  const parsedSelections = parseSelections(formData.get("selections"));
+  const selections =
+    parsedSelections.length > 0
+      ? parsedSelections
+      : [{ platform: String(formData.get("platform") ?? ""), channelId: String(formData.get("channelId") ?? "").trim() }];
+
+  if (selections.length === 0) return "Mindestens eine Plattform ist erforderlich.";
+  const validSelections: { platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; channelId: string }[] = [];
+  for (const sel of selections) {
+    if (!isValidPlatform(sel.platform)) return "Plattform ist erforderlich.";
+    validSelections.push({ platform: sel.platform, channelId: sel.channelId });
+  }
   if (!caption) return "Text ist erforderlich.";
   if (mediaType === "CAROUSEL" && mediaUrls.length < 2) return "Karussell benötigt mindestens 2 Bilder.";
 
-  await prisma.socialPost.create({
-    data: {
+  await prisma.socialPost.createMany({
+    data: validSelections.map((sel) => ({
       organizationId,
-      platform,
+      platform: sel.platform,
       caption,
       mediaUrl: mediaType === "CAROUSEL" ? null : mediaUrl || null,
       mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
       mediaType: isValidMediaType(mediaType) ? mediaType : null,
       utmCampaign: utmCampaign || null,
-      channelId: channelId || null,
+      channelId: sel.channelId || null,
       pipelineId: pipelineId || null,
       responsibleUserId: responsibleUserId || null,
       scheduledAt,
-    },
+    })),
   });
 
   revalidatePath("/dashboard/social");

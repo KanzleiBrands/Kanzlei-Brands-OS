@@ -62,6 +62,58 @@ function newId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+const IMAGE_ASPECTS = [
+  { value: "1:1", label: "1:1 (quadratisch)", ratio: 1 },
+  { value: "4:5", label: "4:5 (Hochformat)", ratio: 4 / 5 },
+] as const;
+type ImageAspect = (typeof IMAGE_ASPECTS)[number]["value"];
+
+const VIDEO_ASPECTS = [
+  { value: "16:9", label: "16:9 (Feed-Video)", ratio: 16 / 9 },
+  { value: "9:16", label: "9:16 (Reel / Story)", ratio: 9 / 16 },
+] as const;
+type VideoAspect = (typeof VIDEO_ASPECTS)[number]["value"];
+
+const ASPECT_TOLERANCE = 0.04;
+
+function matchesAspect(width: number, height: number, target: number): boolean {
+  const actual = width / height;
+  return Math.abs(actual - target) / target <= ASPECT_TOLERANCE;
+}
+
+function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Bild konnte nicht gelesen werden."));
+    };
+    img.src = url;
+  });
+}
+
+function readVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      resolve({ width: video.videoWidth, height: video.videoHeight });
+      URL.revokeObjectURL(url);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Video konnte nicht gelesen werden."));
+    };
+    video.src = url;
+  });
+}
+
 function SortableCarouselImage({ url, onRemove }: { url: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: url });
   return (
@@ -136,11 +188,19 @@ export function SocialPostFormDialog({
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
+  // Edit-Modus: ein Beitrag bleibt bei genau einer Plattform/Kanal (nachträglich
+  // die Plattform wechseln würde einen anderen Beitrag daraus machen).
   const [platform, setPlatform] = useState<Channel["platform"]>(post?.platform ?? "FACEBOOK");
   const [channelId, setChannelId] = useState(post?.channelId ?? "");
+  // Create-Modus: mehrere Plattformen gleichzeitig auswählbar, ein Kanal pro
+  // ausgewählter Plattform - legt beim Absenden einen Beitrag pro Plattform an.
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Channel["platform"][]>(["FACEBOOK"]);
+  const [channelByPlatform, setChannelByPlatform] = useState<Record<string, string>>({});
   const [caption, setCaption] = useState(post?.caption ?? "");
   const [mediaUrl, setMediaUrl] = useState(post?.mediaUrl ?? "");
   const [mediaType, setMediaType] = useState<SocialMediaTypeValue | "">(post?.mediaType ?? "");
+  const [imageAspect, setImageAspect] = useState<ImageAspect>("1:1");
+  const [videoAspect, setVideoAspect] = useState<VideoAspect>("16:9");
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaProgress, setMediaProgress] = useState(0);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -159,6 +219,17 @@ export function SocialPostFormDialog({
     wasPending.current = isPending;
   }, [isPending, error]);
 
+  function togglePlatform(p: Channel["platform"]) {
+    setSelectedPlatforms((prev) => {
+      if (prev.includes(p)) {
+        // Mindestens eine Plattform muss ausgewählt bleiben.
+        if (prev.length === 1) return prev;
+        return prev.filter((x) => x !== p);
+      }
+      return [...prev, p];
+    });
+  }
+
   function handleOpenChange(next: boolean) {
     if (next && !isEdit) {
       // Reset a create dialog's fields each time it's reopened, so a
@@ -167,18 +238,36 @@ export function SocialPostFormDialog({
       setCaption("");
       setMediaUrl("");
       setMediaType("");
+      setImageAspect("1:1");
+      setVideoAspect("16:9");
       setMediaError(null);
       setCarousel([]);
       setChannelId("");
       setPlatform("FACEBOOK");
+      setSelectedPlatforms(["FACEBOOK"]);
+      setChannelByPlatform({});
     }
     setOpen(next);
   }
 
   async function handleCarouselFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    setMediaError(null);
+    const target = IMAGE_ASPECTS.find((a) => a.value === imageAspect)!;
     setCarouselUploading(true);
     for (const file of Array.from(files)) {
+      try {
+        const { width, height } = await readImageDimensions(file);
+        if (!matchesAspect(width, height, target.ratio)) {
+          setMediaError(
+            `"${file.name}" hat ${width}×${height}px - erwartet wird ${target.label}. Bitte im gewählten Format zuschneiden und erneut hochladen.`,
+          );
+          continue;
+        }
+      } catch {
+        setMediaError(`"${file.name}" konnte nicht gelesen werden.`);
+        continue;
+      }
       const fd = new FormData();
       fd.set("image", file);
       const result = await uploadSocialPostImage(fd);
@@ -203,8 +292,21 @@ export function SocialPostFormDialog({
 
   async function handleImageFile(file: File | undefined) {
     if (!file) return;
-    setMediaUploading(true);
     setMediaError(null);
+    const target = IMAGE_ASPECTS.find((a) => a.value === imageAspect)!;
+    try {
+      const { width, height } = await readImageDimensions(file);
+      if (!matchesAspect(width, height, target.ratio)) {
+        setMediaError(
+          `Bild hat ${width}×${height}px - erwartet wird ${target.label}. Bitte im gewählten Format zuschneiden und erneut hochladen.`,
+        );
+        return;
+      }
+    } catch {
+      setMediaError("Bild konnte nicht gelesen werden.");
+      return;
+    }
+    setMediaUploading(true);
     const fd = new FormData();
     fd.set("image", file);
     const result = await uploadSocialPostImage(fd);
@@ -219,9 +321,22 @@ export function SocialPostFormDialog({
 
   async function handleVideoFile(file: File | undefined) {
     if (!file) return;
+    setMediaError(null);
+    const target = VIDEO_ASPECTS.find((a) => a.value === videoAspect)!;
+    try {
+      const { width, height } = await readVideoDimensions(file);
+      if (!matchesAspect(width, height, target.ratio)) {
+        setMediaError(
+          `Video hat ${width}×${height}px - erwartet wird ${target.label}. Bitte im gewählten Format zuschneiden und erneut hochladen.`,
+        );
+        return;
+      }
+    } catch {
+      setMediaError("Video konnte nicht gelesen werden.");
+      return;
+    }
     setMediaUploading(true);
     setMediaProgress(0);
-    setMediaError(null);
     try {
       const blob = await upload(file.name, file, {
         access: "public",
@@ -281,52 +396,117 @@ export function SocialPostFormDialog({
         <form ref={formRef} action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="organizationId" value={organizationId} />
           {isEdit && <input type="hidden" name="postId" value={post.id} />}
-          <input type="hidden" name="platform" value={platform} />
+          {isEdit && <input type="hidden" name="platform" value={platform} />}
+          {!isEdit && (
+            <input
+              type="hidden"
+              name="selections"
+              value={JSON.stringify(selectedPlatforms.map((p) => ({ platform: p, channelId: channelByPlatform[p] ?? "" })))}
+            />
+          )}
           <input type="hidden" name="mediaUrl" value={mediaUrl} />
           <input type="hidden" name="mediaType" value={mediaType} />
           <input type="hidden" name="mediaUrls" value={JSON.stringify(carousel.map((c) => c.url))} />
 
-          <div className="flex flex-col gap-1">
-            <Label>Plattform</Label>
-            <div className="flex gap-1.5">
-              {(["FACEBOOK", "INSTAGRAM", "LINKEDIN"] as const).map((p) => (
-                <Button
-                  key={p}
-                  type="button"
-                  size="sm"
-                  variant={platform === p ? "default" : "outline"}
-                  onClick={() => {
-                    setPlatform(p);
-                    setChannelId("");
-                  }}
-                >
-                  {PLATFORM_LABELS[p]}
-                </Button>
-              ))}
-            </div>
-          </div>
+          {isEdit ? (
+            <>
+              <div className="flex flex-col gap-1">
+                <Label>Plattform</Label>
+                <div className="flex gap-1.5">
+                  {(["FACEBOOK", "INSTAGRAM", "LINKEDIN"] as const).map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      size="sm"
+                      variant={platform === p ? "default" : "outline"}
+                      onClick={() => {
+                        setPlatform(p);
+                        setChannelId("");
+                      }}
+                    >
+                      {PLATFORM_LABELS[p]}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="social-post-channel">Kanal</Label>
-            <Select name="channelId" value={channelId} onValueChange={(value) => setChannelId(value ?? "")}>
-              <SelectTrigger id="social-post-channel">
-                <SelectValue>{() => channelsForPlatform.find((c) => c.id === channelId)?.displayName ?? "Kanal wählen"}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {channelsForPlatform.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.displayName}
-                    {!c.active ? " (Verbindung abgelaufen)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {channelsForPlatform.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Noch kein {PLATFORM_LABELS[platform]}-Kanal verbunden - unten unter &bdquo;Kanäle&ldquo; verbinden.
-              </p>
-            )}
-          </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="social-post-channel">Kanal</Label>
+                <Select name="channelId" value={channelId} onValueChange={(value) => setChannelId(value ?? "")}>
+                  <SelectTrigger id="social-post-channel">
+                    <SelectValue>{() => channelsForPlatform.find((c) => c.id === channelId)?.displayName ?? "Kanal wählen"}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {channelsForPlatform.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.displayName}
+                        {!c.active ? " (Verbindung abgelaufen)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {channelsForPlatform.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Noch kein {PLATFORM_LABELS[platform]}-Kanal verbunden - unten unter &bdquo;Kanäle&ldquo; verbinden.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1">
+                <Label>Plattform (mehrere gleichzeitig möglich)</Label>
+                <div className="flex gap-1.5">
+                  {(["FACEBOOK", "INSTAGRAM", "LINKEDIN"] as const).map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      size="sm"
+                      variant={selectedPlatforms.includes(p) ? "default" : "outline"}
+                      onClick={() => togglePlatform(p)}
+                    >
+                      {PLATFORM_LABELS[p]}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Legt beim Speichern einen Beitrag pro ausgewählter Plattform an (gleicher Text/Medien/Termin).
+                </p>
+              </div>
+
+              {selectedPlatforms.map((p) => {
+                const channelsForP = channels.filter((c) => c.platform === p);
+                return (
+                  <div key={p} className="flex flex-col gap-1">
+                    <Label>Kanal ({PLATFORM_LABELS[p]})</Label>
+                    <Select
+                      value={channelByPlatform[p] ?? ""}
+                      onValueChange={(value) => setChannelByPlatform((prev) => ({ ...prev, [p]: value ?? "" }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue>
+                          {() => channelsForP.find((c) => c.id === channelByPlatform[p])?.displayName ?? "Kanal wählen"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {channelsForP.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.displayName}
+                            {!c.active ? " (Verbindung abgelaufen)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {channelsForP.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Noch kein {PLATFORM_LABELS[p]}-Kanal verbunden - unten unter &bdquo;Kanäle&ldquo; verbinden.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           <Textarea
             name="caption"
@@ -336,7 +516,7 @@ export function SocialPostFormDialog({
             onChange={(e) => setCaption(e.target.value)}
             required
           />
-          <AiCaptionAssistant caption={caption} platform={platform} onInsert={(text) => setCaption(text)} />
+          <AiCaptionAssistant caption={caption} platform={isEdit ? platform : selectedPlatforms[0]} onInsert={(text) => setCaption(text)} />
 
           <div className="flex flex-col gap-1">
             <Label htmlFor="social-post-utm">UTM-Kampagne (optional)</Label>
@@ -347,7 +527,8 @@ export function SocialPostFormDialog({
               defaultValue={post?.utmCampaign ?? ""}
             />
             <p className="text-xs text-muted-foreground">
-              Wird an jeden Link in der Caption angehängt (utm_source={PLATFORM_LABELS[platform].toLowerCase()}, utm_medium=social).
+              Wird an jeden Link in der Caption angehängt (utm_source=
+              {PLATFORM_LABELS[isEdit ? platform : selectedPlatforms[0]].toLowerCase()}, utm_medium=social).
             </p>
           </div>
 
@@ -381,6 +562,45 @@ export function SocialPostFormDialog({
               ))}
             </div>
           </div>
+
+          {(mediaType === "IMAGE" || mediaType === "CAROUSEL") && (
+            <div className="flex flex-col gap-1">
+              <Label>Seitenverhältnis</Label>
+              <div className="flex gap-1.5">
+                {IMAGE_ASPECTS.map((a) => (
+                  <Button
+                    key={a.value}
+                    type="button"
+                    size="sm"
+                    variant={imageAspect === a.value ? "default" : "outline"}
+                    onClick={() => setImageAspect(a.value)}
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mediaType === "VIDEO" && (
+            <div className="flex flex-col gap-1">
+              <Label>Seitenverhältnis</Label>
+              <div className="flex gap-1.5">
+                {VIDEO_ASPECTS.map((a) => (
+                  <Button
+                    key={a.value}
+                    type="button"
+                    size="sm"
+                    variant={videoAspect === a.value ? "default" : "outline"}
+                    onClick={() => setVideoAspect(a.value)}
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Reels/Stories im Hochformat (9:16), normale Feed-Videos im 16:9-Format.</p>
+            </div>
+          )}
 
           {mediaType === "CAROUSEL" ? (
             <div className="flex flex-col gap-1.5">
