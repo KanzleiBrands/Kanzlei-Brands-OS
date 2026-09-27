@@ -2,17 +2,14 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { hasCourseAccess } from "@/lib/courses-access";
-import { LessonPlayerView } from "../../../../../lesson-player-view";
+import { LessonPlayerView } from "@/app/dashboard/courses/lesson-player-view";
 
-export default async function LessonPlayerPage({
+export default async function InternalLessonPlayerPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ courseId: string; moduleId: string; lessonId: string }>;
-  searchParams: Promise<{ preview?: string }>;
 }) {
   const { courseId, moduleId, lessonId } = await params;
-  const { preview } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
@@ -20,16 +17,9 @@ export default async function LessonPlayerPage({
     where: { id: courseId },
     include: { modules: { orderBy: { order: "asc" }, include: { lessons: { orderBy: { order: "asc" } } } } },
   });
-  if (!course) notFound();
-
-  const isAgency = session.user.role === "AGENCY_ADMIN";
-  // Siehe module/[moduleId]/page.tsx - gleiche CLIENT-vs-INTERNAL-Logik.
-  const isInternalCourse = course.audience === "INTERNAL";
-  const isPreview = isAgency && !isInternalCourse && preview === "1";
-  if (isAgency && !isInternalCourse && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
-  if (!course.published && !isPreview) notFound();
-
-  if (!isPreview && !(await hasCourseAccess(session, course))) notFound();
+  if (!course || course.audience !== "INTERNAL") notFound();
+  if (session.user.role !== "AGENCY_ADMIN" && !course.published) notFound();
+  if (!(await hasCourseAccess(session, course))) notFound();
 
   const currentModule = course.modules.find((m) => m.id === moduleId);
   const lesson = currentModule?.lessons.find((l) => l.id === lessonId);
@@ -54,8 +44,7 @@ export default async function LessonPlayerPage({
       lesson={lesson}
       nextLesson={nextLesson}
       completedLessonIds={completedLessonIds}
-      basePath="/dashboard/courses"
-      isPreview={isPreview}
+      basePath="/dashboard/intern/schulung"
     />
   );
 }

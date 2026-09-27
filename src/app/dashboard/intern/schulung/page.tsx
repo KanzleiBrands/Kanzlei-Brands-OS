@@ -57,7 +57,7 @@ export default async function InternalSchulungPage() {
           const completed = course.enrollments[0]?.progress.filter((p) => p.completedAt).length ?? 0;
           const percent = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
           return (
-            <Link key={course.id} href={`/dashboard/courses/${course.id}`} className="block">
+            <Link key={course.id} href={`/dashboard/intern/schulung/${course.id}`} className="block">
               <Card className="overflow-hidden transition-colors hover:border-primary">
                 <div className="px-(--card-spacing)">
                   <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-full rounded-lg" />
