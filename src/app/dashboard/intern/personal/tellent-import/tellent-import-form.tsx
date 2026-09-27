@@ -88,6 +88,40 @@ export function TellentImportForm() {
             </div>
           </div>
 
+          {result.balances.length > 0 && (
+            <div>
+              <p className="mb-2 font-medium">
+                {result.balances.length} Urlaubskonten (Jahres-Kontingent &quot;Urlaub&quot; wird angelegt/aktualisiert)
+              </p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Tellent liefert keine einzelnen datierten Anträge, nur Jahres-Salden - &quot;Bereits genutzt (Tellent)&quot;
+                ist daher nur zur Info und wird nicht als Antrag übernommen.
+              </p>
+              <div className="max-h-64 overflow-y-auto overflow-x-auto rounded-md border">
+                <table className="w-full border-collapse text-xs">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left">Name</th>
+                      <th className="p-2 text-right">Jahr</th>
+                      <th className="p-2 text-right">Kontingent (Tage)</th>
+                      <th className="p-2 text-right">Bereits genutzt (Tellent)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.balances.map((b) => (
+                      <tr key={`${b.ourEmail}-${b.year}`} className="border-b last:border-0">
+                        <td className="p-2">{b.ourName}</td>
+                        <td className="p-2 text-right tabular-nums">{b.year}</td>
+                        <td className="p-2 text-right tabular-nums">{b.totalDays}</td>
+                        <td className="p-2 text-right tabular-nums">{b.usedInTellent}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {result.unmatchedTellent.length > 0 && (
             <div>
               <p className="mb-1 font-medium">Tellent-Nutzer ohne Treffer bei uns</p>

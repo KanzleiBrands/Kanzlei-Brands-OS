@@ -42,10 +42,15 @@ type PlannedChange = {
   managerEmail: string | null;
 };
 
+type VacationBalanceRow = { email: string; year: number; allowance: number; used: number };
+
+type PlannedBalance = { ourName: string; ourEmail: string; year: number; totalDays: number; usedInTellent: number };
+
 export type TellentImportResult = {
   matched: PlannedChange[];
   unmatchedTellent: { name: string; email: string }[];
   unmatchedOurs: { name: string; email: string }[];
+  balances: PlannedBalance[];
   applied: boolean;
 };
 
@@ -104,13 +109,58 @@ async function fetchAllTellentUsers(apiKey: string): Promise<TellentUser[]> {
   return all;
 }
 
+/**
+ * Tellent hat keine Query für einzelne, datierte Urlaubsanträge (geprüft
+ * per Schema-Introspektion) - nur jährliche Kontingent-Salden. Wir
+ * übernehmen deshalb "allowance" (Jahres-Kontingent inkl. Übertrag) als
+ * AbsenceBalance.totalDays; die einzelnen genehmigten Tage ("used" in
+ * Tellent) lassen sich ohne datierte Anträge nicht als AbsenceRequest
+ * nachbilden - "used" wird hier nur zur Info mit zurückgegeben.
+ */
+async function fetchVacationBalances(apiKey: string): Promise<VacationBalanceRow[]> {
+  const query = `query {
+    timeOffBalances {
+      items {
+        __typename
+        ... on VacationTimeOffBalance {
+          user { email }
+          periodStartDate
+          allowance
+          used
+        }
+      }
+    }
+  }`;
+  const res = await fetch(TELLENT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error(`Tellent-Urlaubskonten-Abfrage fehlgeschlagen (${res.status}): ${await res.text()}`);
+  const json = await res.json();
+  if (json.errors) throw new Error(`Tellent GraphQL-Fehler (Urlaubskonten): ${JSON.stringify(json.errors)}`);
+  type RawItem = { __typename: string; user?: { email: string }; periodStartDate?: string; allowance?: number; used?: number };
+  const items: RawItem[] = json.data.timeOffBalances.items;
+  return items
+    .filter((it) => it.__typename === "VacationTimeOffBalance" && it.user && it.periodStartDate)
+    .map((it) => ({
+      email: it.user!.email,
+      year: Number(it.periodStartDate!.slice(0, 4)),
+      allowance: it.allowance ?? 0,
+      used: it.used ?? 0,
+    }));
+}
+
 export async function runTellentImport(formData: FormData): Promise<TellentImportResult> {
   const session = await requireAgencyAdmin();
   const apiKey = String(formData.get("apiKey") ?? "").trim();
   const apply = formData.get("apply") === "true";
   if (!apiKey) throw new Error("Kein Tellent-API-Key angegeben.");
 
-  const tellentUsers = await fetchAllTellentUsers(apiKey);
+  const [tellentUsers, vacationBalances] = await Promise.all([
+    fetchAllTellentUsers(apiKey),
+    fetchVacationBalances(apiKey),
+  ]);
 
   const ourUsers = await prisma.user.findMany({
     where: { organizationId: session.user.organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },
@@ -139,6 +189,15 @@ export async function runTellentImport(formData: FormData): Promise<TellentImpor
     managerEmail: t.manager?.email ?? null,
   }));
 
+  const plannedBalances: PlannedBalance[] = vacationBalances
+    .map((b) => {
+      const ours = byEmail.get(normalizeEmail(b.email));
+      if (!ours) return null;
+      return { ourName: ours.name, ourEmail: ours.email, year: b.year, totalDays: Math.round(b.allowance), usedInTellent: b.used };
+    })
+    .filter((b): b is PlannedBalance => b !== null)
+    .sort((a, b) => a.ourName.localeCompare(b.ourName) || a.year - b.year);
+
   if (apply) {
     for (const { tellent: t, ours } of matched) {
       const data: Record<string, unknown> = {};
@@ -159,12 +218,33 @@ export async function runTellentImport(formData: FormData): Promise<TellentImpor
         await prisma.user.update({ where: { id: ours.id }, data: { managerId: manager.id } });
       }
     }
+
+    if (plannedBalances.length > 0) {
+      let vacationType = await prisma.absenceType.findFirst({
+        where: { name: { equals: "Urlaub", mode: "insensitive" } },
+      });
+      if (!vacationType) {
+        vacationType = await prisma.absenceType.create({
+          data: { name: "Urlaub", icon: "Palmtree", color: "amber", allowanceType: "LIMITED", defaultAnnualDays: 30, requiresApproval: true, order: 0 },
+        });
+      }
+      for (const { ourEmail, year, totalDays } of plannedBalances) {
+        const ours = byEmail.get(normalizeEmail(ourEmail));
+        if (!ours) continue;
+        await prisma.absenceBalance.upsert({
+          where: { userId_absenceTypeId_year: { userId: ours.id, absenceTypeId: vacationType.id, year } },
+          create: { userId: ours.id, absenceTypeId: vacationType.id, year, totalDays },
+          update: { totalDays },
+        });
+      }
+    }
   }
 
   return {
     matched: plannedChanges,
     unmatchedTellent: unmatchedTellent.map((t) => ({ name: `${t.firstName} ${t.lastName}`, email: t.email })),
     unmatchedOurs: unmatchedOurs.map((u) => ({ name: u.name, email: u.email })),
+    balances: plannedBalances,
     applied: apply,
   };
 }
