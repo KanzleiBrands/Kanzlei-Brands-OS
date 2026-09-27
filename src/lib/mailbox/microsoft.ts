@@ -1,4 +1,8 @@
-const MICROSOFT_SCOPES = ["openid", "email", "offline_access", "Mail.Send", "Mail.Read"].join(" ");
+// User.Read wird für den anschließenden Graph-/me-Aufruf gebraucht
+// (fetchMicrosoftEmail) - ohne diesen Scope im Token schlägt der mit
+// "Authorization_RequestDenied - Insufficient privileges" fehl, auch wenn
+// User.Read in der App-Registrierung als API-Berechtigung hinterlegt ist.
+const MICROSOFT_SCOPES = ["openid", "email", "offline_access", "User.Read", "Mail.Send", "Mail.Read"].join(" ");
 
 function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/mailbox/microsoft/callback`;
