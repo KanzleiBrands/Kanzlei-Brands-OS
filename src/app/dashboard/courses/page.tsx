@@ -40,7 +40,7 @@ export default async function CoursesPage() {
             return (
               <Card key={course.id} className="overflow-hidden">
                 <div className="px-(--card-spacing)">
-                  <Link href={`/dashboard/courses/${course.id}`} className="block">
+                  <Link href={`/dashboard/courses/${course.id}?manage=1`} className="block">
                     <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-full rounded-lg" />
                   </Link>
                 </div>
@@ -63,7 +63,7 @@ export default async function CoursesPage() {
                       : `${course._count.assignments} Kunden zugewiesen`}
                   </p>
                   <div className="flex flex-col items-start gap-2">
-                    <Link href={`/dashboard/courses/${course.id}`} className="text-sm underline">
+                    <Link href={`/dashboard/courses/${course.id}?manage=1`} className="text-sm underline">
                       Kurs verwalten
                     </Link>
                     <PublishToggle courseId={course.id} published={course.published} className="w-full" />

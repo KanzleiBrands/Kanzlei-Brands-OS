@@ -9,6 +9,7 @@ import { CourseBanner } from "../../../../../course-banner";
 import { formatLessonMeta } from "../../../../../course-format";
 import { parseLessonBlocks } from "@/lib/lesson-blocks";
 import { LessonCompleteButton } from "./lesson-complete-button";
+import { hasCourseAccess } from "@/lib/courses-access";
 
 export default async function LessonPlayerPage({
   params,
@@ -21,21 +22,21 @@ export default async function LessonPlayerPage({
   const { preview } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
-  const isPreview = session.user.role === "AGENCY_ADMIN" && preview === "1";
-  if (session.user.role === "AGENCY_ADMIN" && !isPreview) redirect(`/dashboard/courses/${courseId}`);
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     include: { modules: { orderBy: { order: "asc" }, include: { lessons: { orderBy: { order: "asc" } } } } },
   });
-  if (!course || (!course.published && !isPreview)) notFound();
+  if (!course) notFound();
 
-  if (!isPreview) {
-    const assigned = await prisma.courseAssignment.findFirst({
-      where: { courseId, organizationId: session.user.organizationId },
-    });
-    if (!assigned) notFound();
-  }
+  const isAgency = session.user.role === "AGENCY_ADMIN";
+  // Siehe module/[moduleId]/page.tsx - gleiche CLIENT-vs-INTERNAL-Logik.
+  const isInternalCourse = course.audience === "INTERNAL";
+  const isPreview = isAgency && !isInternalCourse && preview === "1";
+  if (isAgency && !isInternalCourse && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
+  if (!course.published && !isPreview) notFound();
+
+  if (!isPreview && !(await hasCourseAccess(session, course))) notFound();
 
   const currentModule = course.modules.find((m) => m.id === moduleId);
   const lesson = currentModule?.lessons.find((l) => l.id === lessonId);

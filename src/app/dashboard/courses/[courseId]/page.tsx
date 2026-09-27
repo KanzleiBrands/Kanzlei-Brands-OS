@@ -19,21 +19,27 @@ import { LessonRowActions } from "./lesson-row-actions";
 import { EditCourseDialog } from "./edit-course-dialog";
 import { DeleteCourseButton } from "./delete-course-button";
 import { PublishToggle } from "../publish-toggle";
+import { hasCourseAccess } from "@/lib/courses-access";
 
 export default async function CourseDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams: Promise<{ preview?: string }>;
+  searchParams: Promise<{ preview?: string; manage?: string }>;
 }) {
   const { courseId } = await params;
-  const { preview } = await searchParams;
+  const { preview, manage } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
   const isAgency = session.user.role === "AGENCY_ADMIN";
   const isPreview = isAgency && preview === "1";
+  // manage=1 kommt explizit aus der Kursverwaltung (/dashboard/courses) - ohne
+  // das lädt diese Seite immer die Lerner-Ansicht, auch für Admins, damit sie
+  // im internen Portal ihre eigenen Schulungen konsumieren können (siehe
+  // /dashboard/intern/schulung), statt zwangsweise im Builder zu landen.
+  const showBuilder = isAgency && manage === "1" && !isPreview;
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
@@ -48,8 +54,9 @@ export default async function CourseDetailPage({
   });
   if (!course) notFound();
   if (!isAgency && !course.published) notFound();
+  if (!showBuilder && !isPreview && !(await hasCourseAccess(session, course))) notFound();
 
-  if (isAgency && !isPreview) {
+  if (showBuilder) {
     const assignmentCount = course._count.assignments;
     return (
       <div className="p-4 sm:p-8">
@@ -217,13 +224,14 @@ export default async function CourseDetailPage({
   const nextLessonModule = nextLesson ? course.modules.find((m) => m.id === nextLesson.moduleId) : null;
 
   const previewQuery = isPreview ? "?preview=1" : "";
+  const courseListHref = course.audience === "INTERNAL" ? "/dashboard/intern/schulung" : "/dashboard/courses";
 
   return (
     <div className="p-4 sm:p-8">
       {isPreview ? (
-        <BackLink href={`/dashboard/courses/${course.id}`}>Zurück zum Builder</BackLink>
+        <BackLink href={`/dashboard/courses/${course.id}?manage=1`}>Zurück zum Builder</BackLink>
       ) : (
-        <BackLink href="/dashboard/courses">Zurück zu meinen Kursen</BackLink>
+        <BackLink href={courseListHref}>Zurück zu meinen Kursen</BackLink>
       )}
 
       {isPreview && (

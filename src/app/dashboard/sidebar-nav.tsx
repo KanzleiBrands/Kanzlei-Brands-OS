@@ -134,7 +134,7 @@ export function SidebarNav({
     const internalLinks: NavLink[] = [
       { href: "/dashboard/intern", label: "Mein Dashboard", icon: <LayoutDashboard className="size-4 flex-shrink-0" /> },
       { href: "/dashboard/intern/personal", label: "Personal", icon: <UsersIcon className="size-4 flex-shrink-0" /> },
-      { href: "/dashboard/courses", label: "Schulung", icon: <GraduationCap className="size-4 flex-shrink-0" /> },
+      { href: "/dashboard/intern/schulung", label: "Schulung", icon: <GraduationCap className="size-4 flex-shrink-0" /> },
     ];
     if (role === "AGENCY_ADMIN" || department === "MARKETING") {
       internalLinks.splice(2, 0, {

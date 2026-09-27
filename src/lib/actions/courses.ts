@@ -479,4 +479,5 @@ export async function toggleLessonComplete(formData: FormData) {
   });
 
   revalidatePath(`/dashboard/courses/${courseId}`);
+  revalidatePath("/dashboard/intern/schulung");
 }

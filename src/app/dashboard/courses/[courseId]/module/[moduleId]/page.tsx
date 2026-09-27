@@ -8,6 +8,7 @@ import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "../../../course-thumbnail";
 import { CourseBanner } from "../../../course-banner";
 import { formatLessonMeta } from "../../../course-format";
+import { hasCourseAccess } from "@/lib/courses-access";
 
 export default async function ModuleDetailPage({
   params,
@@ -20,8 +21,6 @@ export default async function ModuleDetailPage({
   const { preview } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
-  const isPreview = session.user.role === "AGENCY_ADMIN" && preview === "1";
-  if (session.user.role === "AGENCY_ADMIN" && !isPreview) redirect(`/dashboard/courses/${courseId}`);
 
   const courseModule = await prisma.module.findUnique({
     where: { id: moduleId },
@@ -30,14 +29,19 @@ export default async function ModuleDetailPage({
       lessons: { orderBy: { order: "asc" } },
     },
   });
-  if (!courseModule || courseModule.courseId !== courseId || (!courseModule.course.published && !isPreview)) notFound();
+  if (!courseModule || courseModule.courseId !== courseId) notFound();
 
-  if (!isPreview) {
-    const assigned = await prisma.courseAssignment.findFirst({
-      where: { courseId, organizationId: session.user.organizationId },
-    });
-    if (!assigned) notFound();
-  }
+  const isAgency = session.user.role === "AGENCY_ADMIN";
+  // CLIENT-Kurse: Admins landen im Builder statt hier (Vorschau via ?preview=1
+  // ausgenommen). INTERNAL-Kurse: Admins konsumieren wie jeder Mitarbeiter
+  // direkt hier - sie haben keinen separaten Builder-Redirect für ihre
+  // eigenen Schulungen (siehe /dashboard/intern/schulung).
+  const isInternalCourse = courseModule.course.audience === "INTERNAL";
+  const isPreview = isAgency && !isInternalCourse && preview === "1";
+  if (isAgency && !isInternalCourse && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
+  if (!courseModule.course.published && !isPreview) notFound();
+
+  if (!isPreview && !(await hasCourseAccess(session, courseModule.course))) notFound();
 
   const enrollment = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.user.id, courseId } },
