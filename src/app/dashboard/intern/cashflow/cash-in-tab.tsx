@@ -2,6 +2,7 @@ import { listCashInForecast, type CashInEntry, type CashInStatus } from "@/lib/e
 import { getCashInForYear } from "@/lib/cashflow/cash-in-fallback";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MONTHS } from "@/lib/cashflow/constants";
 import { CustomerMappingRow } from "./customer-mapping-row";
 
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
@@ -52,7 +53,7 @@ function InvoiceTable({ rows, emptyLabel }: { rows: CashInEntry[]; emptyLabel: s
   );
 }
 
-export async function CashInTab({ organizationId, year }: { organizationId: string; year: number }) {
+export async function CashInTab({ organizationId, year, month }: { organizationId: string; year: number; month?: number }) {
   const [invoicesResult, forecastResult, clients] = await Promise.all([
     getCashInForYear(organizationId, year),
     listCashInForecast(6),
@@ -63,7 +64,10 @@ export async function CashInTab({ organizationId, year }: { organizationId: stri
     }),
   ]);
 
-  const invoices = [...invoicesResult.rows].sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate));
+  const invoices = [...invoicesResult.rows]
+    .filter((row) => !month || new Date(row.invoiceDate).getMonth() + 1 === month)
+    .sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate));
+  const periodLabel = month ? `${MONTHS[month - 1]} ${year}` : `${year}`;
   const forecast = forecastResult.ok ? [...forecastResult.rows].sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate)) : [];
   const notConnected = !invoicesResult.ok || !forecastResult.ok;
 
@@ -80,10 +84,28 @@ export async function CashInTab({ organizationId, year }: { organizationId: stri
         {[year - 1, year, year + 1].map((y) => (
           <a
             key={y}
-            href={`/dashboard/intern/cashflow?tab=cashin&year=${y}`}
+            href={`/dashboard/intern/cashflow?tab=cashin&year=${y}${month ? `&month=${month}` : ""}`}
             className={`rounded-md px-3 py-1.5 text-sm ${y === year ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-muted"}`}
           >
             {y}
+          </a>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-1">
+        <a
+          href={`/dashboard/intern/cashflow?tab=cashin&year=${year}`}
+          className={`rounded-md px-3 py-1.5 text-sm ${!month ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-muted"}`}
+        >
+          Ganzes Jahr
+        </a>
+        {MONTHS.map((label, i) => (
+          <a
+            key={label}
+            href={`/dashboard/intern/cashflow?tab=cashin&year=${year}&month=${i + 1}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${month === i + 1 ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-muted"}`}
+          >
+            {label}
           </a>
         ))}
       </div>
@@ -121,9 +143,9 @@ export async function CashInTab({ organizationId, year }: { organizationId: stri
       )}
 
       <Card>
-        <CardHeader><CardTitle>Rechnungen {year}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Rechnungen {periodLabel}</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">
-          <InvoiceTable rows={invoices} emptyLabel="Keine Rechnungen für dieses Jahr gefunden." />
+          <InvoiceTable rows={invoices} emptyLabel={`Keine Rechnungen für ${periodLabel} gefunden.`} />
         </CardContent>
       </Card>
 

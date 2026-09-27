@@ -41,7 +41,9 @@ export default async function CashflowCockpitPage({
   const { tab: tabParam, year: yearParam, month: monthParam } = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : "jahr";
   const year = Number(yearParam) || new Date().getFullYear();
-  const month = Math.min(12, Math.max(1, Number(monthParam) || new Date().getMonth() + 1));
+  const rawMonth = Number(monthParam);
+  const monthFilter = rawMonth >= 1 && rawMonth <= 12 ? rawMonth : undefined;
+  const month = monthFilter ?? new Date().getMonth() + 1;
   const organizationId = session.user.organizationId;
 
   return (
@@ -67,8 +69,8 @@ export default async function CashflowCockpitPage({
 
       {tab === "jahr" && <AnnualTab organizationId={organizationId} year={year} />}
       {tab === "monat" && <MonthlyTab organizationId={organizationId} year={year} month={month} />}
-      {tab === "cashin" && <CashInTab organizationId={organizationId} year={year} />}
-      {tab === "cashout" && <CashOutTab organizationId={organizationId} year={year} />}
+      {tab === "cashin" && <CashInTab organizationId={organizationId} year={year} month={monthFilter} />}
+      {tab === "cashout" && <CashOutTab organizationId={organizationId} year={year} month={monthFilter} />}
     </div>
   );
 }

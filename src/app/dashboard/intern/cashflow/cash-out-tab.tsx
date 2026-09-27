@@ -1,17 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CATEGORY_LABELS, MONTHS } from "@/lib/cashflow/constants";
 import { AddTransactionForm } from "./add-transaction-form";
 import { BankCsvImport } from "./bank-csv-import";
 import { TransactionRow } from "./transaction-row";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  PERSONNEL: "Mitarbeiter & Freelancer",
-  MARKETING: "Marketing",
-  INFRASTRUCTURE: "Infrastruktur & Software",
-  VARIABLE: "Variable Kosten",
-  AD_BUDGET: "Werbebudget Auslage",
-  TAXES: "Steuern",
-};
 
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -22,15 +14,18 @@ const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-dig
  * CSV-Import mit Spalten-Zuordnung folgt, sobald ein Beispiel-Export
  * vorliegt (siehe Chat).
  */
-export async function CashOutTab({ organizationId, year }: { organizationId: string; year: number }) {
+export async function CashOutTab({ organizationId, year, month }: { organizationId: string; year: number; month?: number }) {
+  const rangeStart = month ? new Date(year, month - 1, 1) : new Date(`${year}-01-01`);
+  const rangeEnd = month ? new Date(year, month, 1) : new Date(`${year + 1}-01-01`);
   const entries = await prisma.cashflowCostEntry.findMany({
-    where: { organizationId, transactionDate: { gte: new Date(`${year}-01-01`), lt: new Date(`${year + 1}-01-01`) } },
+    where: { organizationId, transactionDate: { gte: rangeStart, lt: rangeEnd } },
     orderBy: { transactionDate: "desc" },
   });
 
   const total = entries.reduce((sum, e) => sum + e.amountNet, 0);
   const byCategory = new Map<string, number>();
   for (const entry of entries) byCategory.set(entry.category, (byCategory.get(entry.category) ?? 0) + entry.amountNet);
+  const periodLabel = month ? `${MONTHS[month - 1]} ${year}` : `${year}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -38,10 +33,28 @@ export async function CashOutTab({ organizationId, year }: { organizationId: str
         {[year - 1, year, year + 1].map((y) => (
           <a
             key={y}
-            href={`/dashboard/intern/cashflow?tab=cashout&year=${y}`}
+            href={`/dashboard/intern/cashflow?tab=cashout&year=${y}${month ? `&month=${month}` : ""}`}
             className={`rounded-md px-3 py-1.5 text-sm ${y === year ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-muted"}`}
           >
             {y}
+          </a>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-1">
+        <a
+          href={`/dashboard/intern/cashflow?tab=cashout&year=${year}`}
+          className={`rounded-md px-3 py-1.5 text-sm ${!month ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-muted"}`}
+        >
+          Ganzes Jahr
+        </a>
+        {MONTHS.map((label, i) => (
+          <a
+            key={label}
+            href={`/dashboard/intern/cashflow?tab=cashout&year=${year}&month=${i + 1}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${month === i + 1 ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-muted"}`}
+          >
+            {label}
           </a>
         ))}
       </div>
@@ -63,6 +76,7 @@ export async function CashOutTab({ organizationId, year }: { organizationId: str
       </div>
 
       <Card>
+        <CardHeader><CardTitle>Buchungen {periodLabel}</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto pt-6">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -92,7 +106,7 @@ export async function CashOutTab({ organizationId, year }: { organizationId: str
                 />
               ))}
               {entries.length === 0 && (
-                <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">Noch keine Buchungen für {year}.</td></tr>
+                <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">Noch keine Buchungen für {periodLabel}.</td></tr>
               )}
             </tbody>
           </table>
