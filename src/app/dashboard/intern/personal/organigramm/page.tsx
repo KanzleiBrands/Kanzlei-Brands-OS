@@ -54,9 +54,16 @@ function OrgNode({ node, byManager }: { node: EmployeeNode; byManager: Map<strin
       {reports.length > 0 && (
         <>
           <div className="h-6 w-px bg-foreground/15" />
-          <div className="flex flex-wrap justify-center gap-6">
-            {reports.map((report) => (
-              <div key={report.id} className="flex flex-col items-center">
+          <div className="flex">
+            {reports.map((report, index) => (
+              <div key={report.id} className="relative flex flex-col items-center px-6">
+                {/* Horizontalbalken, der die Geschwister-Knoten verbindet - je Spalte nur bis
+                    zur eigenen Mitte gezeichnet, wenn sie der erste/letzte Report ist, damit
+                    der Balken exakt vom ersten bis zum letzten Kind reicht, nicht darüber hinaus. */}
+                <div
+                  className="absolute top-0 h-px bg-foreground/15"
+                  style={{ left: index === 0 ? "50%" : "0", right: index === reports.length - 1 ? "50%" : "0" }}
+                />
                 <div className="h-6 w-px bg-foreground/15" />
                 <OrgNode node={report} byManager={byManager} />
               </div>
