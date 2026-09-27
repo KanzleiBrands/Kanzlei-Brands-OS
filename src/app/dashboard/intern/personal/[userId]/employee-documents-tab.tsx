@@ -28,13 +28,13 @@ export function EmployeeDocumentsTab({ userId, documents, editable }: { userId: 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-1 border-b border-foreground/10">
+      <div className="flex gap-1 overflow-x-auto border-b border-foreground/10">
         {(Object.keys(CATEGORY_LABELS) as Doc["category"][]).map((category) => (
           <button
             key={category}
             type="button"
             onClick={() => setActiveCategory(category)}
-            className={`px-3 py-2 text-sm transition-colors ${
+            className={`flex-shrink-0 px-3 py-2 text-sm whitespace-nowrap transition-colors ${
               activeCategory === category
                 ? "border-b-2 border-primary font-medium text-foreground"
                 : "text-muted-foreground hover:text-foreground"

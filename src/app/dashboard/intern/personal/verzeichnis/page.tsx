@@ -38,8 +38,8 @@ export default async function MitarbeiterverzeichnisPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl bg-card ring-1 ring-foreground/10">
+        <table className="w-full min-w-[560px] text-sm">
           <thead>
             <tr className="border-b border-foreground/10 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
               <th className="px-4 py-3">Mitarbeiter*in</th>

@@ -123,7 +123,7 @@ export default async function EmployeeProfilePage({
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-foreground/10">
+      <div className="flex gap-1 overflow-x-auto border-b border-foreground/10">
         {[
           { key: "uebersicht", label: "Übersicht" },
           { key: "profildaten", label: "Profildaten" },
@@ -132,7 +132,7 @@ export default async function EmployeeProfilePage({
           <Link
             key={t.key}
             href={`/dashboard/intern/personal/${userId}?tab=${t.key}`}
-            className={`px-3 py-2 text-sm transition-colors ${
+            className={`flex-shrink-0 px-3 py-2 text-sm whitespace-nowrap transition-colors ${
               tab === t.key ? "border-b-2 border-primary font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
