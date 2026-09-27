@@ -31,7 +31,7 @@ export function SyncButton() {
     <div className="flex flex-col gap-1">
       <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={run}>
         <RefreshCwIcon className={`size-4 ${isPending ? "animate-spin" : ""}`} />
-        Close.io synchronisieren
+        Jetzt sofort aktualisieren (läuft sonst automatisch alle 15 Min.)
       </Button>
       {lastResult && <p className="text-xs text-muted-foreground">{lastResult}</p>}
     </div>

@@ -10,6 +10,7 @@ import { SyncButton } from "./sync-button";
 import { CampaignTable } from "./campaign-table";
 import { AdSpendForm } from "./ad-spend-form";
 import { AccountList } from "./account-list";
+import { AdsStatusCard } from "./ads-status-card";
 
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
@@ -77,9 +78,15 @@ export default async function CampaignsPage() {
 
       <TrackingSnippetCard baseUrl={baseUrl} organizationId={organizationId} />
 
+      <AdsStatusCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Kampagnen-Performance</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Läuft automatisch (Close.io alle 15 Minuten, Werbekosten nachts) - der Button unten ist nur für einen
+            sofortigen manuellen Refresh, kein Pflichtklick.
+          </p>
           <SyncButton />
         </CardHeader>
         <CardContent>
@@ -89,8 +96,11 @@ export default async function CampaignsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Werbekosten erfassen</CardTitle>
-          <p className="text-sm text-muted-foreground">Manuell, solange keine Ads-API live angebunden ist (Meta/Google/LinkedIn Insights).</p>
+          <CardTitle>Werbekosten manuell nachtragen</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Nur als Fallback für Plattformen ohne API-Zugang (siehe oben) oder für Ausgaben außerhalb von Meta/Google/
+            LinkedIn - sobald eine Plattform verbunden ist, läuft ihr Spend automatisch, keine Eingabe mehr nötig.
+          </p>
         </CardHeader>
         <CardContent>
           <AdSpendForm campaigns={campaignOptions} />
