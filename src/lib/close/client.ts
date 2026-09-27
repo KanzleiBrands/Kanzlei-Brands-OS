@@ -118,7 +118,10 @@ async function closeFetchAll<T>(path: string, params: Record<string, string>, ap
     url.searchParams.set("_limit", String(limit));
     url.searchParams.set("_skip", String(skip));
     const res = await fetch(url.toString(), { headers: { Authorization: closeAuthHeader(apiKey) } });
-    if (!res.ok) throw new Error(`Close.io-Abfrage fehlgeschlagen (${res.status}) - ${path}`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Close.io-Abfrage fehlgeschlagen (${res.status}) - ${path}${body ? `: ${body.slice(0, 300)}` : ""}`);
+    }
     const data = (await res.json()) as { data: T[]; has_more: boolean };
     results.push(...data.data);
     if (!data.has_more || data.data.length === 0) break;
@@ -162,12 +165,16 @@ async function listCustomActivitiesForYear(
   year: number,
   apiKey: string,
 ): Promise<CloseCustomActivityInstance[]> {
+  // Zeitzone explizit angeben (Z) - ein Datetime-String ohne Zeitzonen-Suffix
+  // ist kein gültiges ISO-8601 und wird von Close ggf. als ungültiger
+  // Filterwert abgelehnt (400), anders als beim vorherigen 404 (da schlug die
+  // Anfrage schon am falschen Pfad fehl, bevor Parameter geprüft wurden).
   return closeFetchAll<CloseCustomActivityInstance>(
     `/activity/custom/`,
     {
       custom_activity_type_id: activityTypeId,
-      activity_at__gte: `${year}-01-01T00:00:00`,
-      activity_at__lte: `${year}-12-31T23:59:59`,
+      activity_at__gte: `${year}-01-01T00:00:00Z`,
+      activity_at__lte: `${year}-12-31T23:59:59Z`,
     },
     apiKey,
   );
