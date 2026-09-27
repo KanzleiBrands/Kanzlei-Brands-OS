@@ -94,8 +94,8 @@ export function TellentImportForm() {
                 {result.balances.length} Urlaubskonten (Jahres-Kontingent &quot;Urlaub&quot; wird angelegt/aktualisiert)
               </p>
               <p className="mb-2 text-xs text-muted-foreground">
-                Tellent liefert keine einzelnen datierten Anträge, nur Jahres-Salden - &quot;Bereits genutzt (Tellent)&quot;
-                ist daher nur zur Info und wird nicht als Antrag übernommen.
+                Tellent liefert keine einzelnen datierten Anträge, nur Jahres-Salden. Das Kontingent wird als
+                Urlaubskonto übernommen, die genutzten Tage zusätzlich als Sammel-Antrag (siehe unten).
               </p>
               <div className="max-h-64 overflow-y-auto overflow-x-auto rounded-md border">
                 <table className="w-full border-collapse text-xs">
@@ -114,6 +114,42 @@ export function TellentImportForm() {
                         <td className="p-2 text-right tabular-nums">{b.year}</td>
                         <td className="p-2 text-right tabular-nums">{b.totalDays}</td>
                         <td className="p-2 text-right tabular-nums">{b.usedInTellent}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {result.absenceSummaries.length > 0 && (
+            <div>
+              <p className="mb-2 font-medium">
+                {result.absenceSummaries.length} Abwesenheits-Sammelanträge (Urlaub, Krank, Homeoffice, Sonstige)
+              </p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Tellent liefert pro Person/Art/Jahr nur eine Summe, keine einzelnen datierten Anträge. Diese Zeilen
+                werden je Person/Art/Jahr als EIN genehmigter Sammel-Antrag mit der Jahressumme angelegt (Datum
+                1.1. des Jahres als Platzhalter, im Antrag klar als &quot;[Tellent-Import]&quot; markiert). Bei
+                erneutem Übernehmen werden bestehende Sammelanträge ersetzt, es entstehen keine Duplikate.
+              </p>
+              <div className="max-h-64 overflow-y-auto overflow-x-auto rounded-md border">
+                <table className="w-full border-collapse text-xs">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left">Name</th>
+                      <th className="p-2 text-left">Abwesenheitsart</th>
+                      <th className="p-2 text-right">Jahr</th>
+                      <th className="p-2 text-right">Tage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.absenceSummaries.map((s) => (
+                      <tr key={`${s.ourEmail}-${s.absenceTypeName}-${s.year}`} className="border-b last:border-0">
+                        <td className="p-2">{s.ourName}</td>
+                        <td className="p-2">{s.absenceTypeName}</td>
+                        <td className="p-2 text-right tabular-nums">{s.year}</td>
+                        <td className="p-2 text-right tabular-nums">{s.days}</td>
                       </tr>
                     ))}
                   </tbody>
