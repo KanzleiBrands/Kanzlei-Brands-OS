@@ -14,6 +14,34 @@ function easybillAuthHeader(apiKey: string): string {
 
 type EasybillListResponse<T> = { page: number; pages: number; limit: number; total: number; items: T[] };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * EasyBill hat ein striktes Rate-Limit - das Cashflow Cockpit ruft pro
+ * Tab-Aufruf mehrere Endpoints parallel ab (z.B. /documents + /customers für
+ * Cash-In UND für den Forecast gleichzeitig), und schnelles Durchklicken
+ * mehrerer Monate/Tabs vervielfacht das zusätzlich. Zwei Gegenmaßnahmen:
+ * 1. next.revalidate cached identische Anfragen (gleiche URL) 60 Sekunden -
+ *    deckt sowohl die parallelen Duplikate innerhalb eines Aufrufs als auch
+ *    schnelles Hin- und Herklicken ab, ohne dem "live, nicht gespiegelt"-
+ *    Prinzip zu widersprechen (60s Aktualität reicht für Cashflow-Daten).
+ * 2. Bei einem 429 trotzdem noch (z.B. beim allerersten Laden nach einer
+ *    Weile) kurzer Retry mit Backoff statt sofortigem Fehler.
+ */
+async function easybillFetch(url: string, apiKey: string): Promise<Response> {
+  const maxAttempts = 3;
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(url, {
+      headers: { Authorization: easybillAuthHeader(apiKey) },
+      next: { revalidate: 60 },
+    });
+    if (res.status !== 429 || attempt >= maxAttempts) return res;
+    await sleep(attempt * 1500);
+  }
+}
+
 async function easybillFetchAll<T>(path: string, params: Record<string, string>, apiKey: string): Promise<T[]> {
   const results: T[] = [];
   let page = 1;
@@ -22,7 +50,7 @@ async function easybillFetchAll<T>(path: string, params: Record<string, string>,
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
     url.searchParams.set("limit", "1000");
     url.searchParams.set("page", String(page));
-    const res = await fetch(url.toString(), { headers: { Authorization: easybillAuthHeader(apiKey) } });
+    const res = await easybillFetch(url.toString(), apiKey);
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new Error(`EasyBill-Abfrage fehlgeschlagen (${res.status}) - ${path}${body ? `: ${body.slice(0, 300)}` : ""}`);
