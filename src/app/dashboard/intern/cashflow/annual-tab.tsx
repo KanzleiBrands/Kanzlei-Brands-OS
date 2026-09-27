@@ -15,7 +15,9 @@ export async function AnnualTab({ organizationId, year }: { organizationId: stri
     }),
   ]);
 
-  const cashIn = cashInResult.rows.reduce((sum, r) => sum + r.amountNet, 0);
+  // "Cash-In, netto" ist tatsächlicher Cashflow, nicht Rechnungsvolumen - nur
+  // bezahlte Rechnungen zählen (Geplant/Überfällig ist noch kein Geldeingang).
+  const cashIn = cashInResult.rows.filter((r) => r.status === "BEZAHLT").reduce((sum, r) => sum + r.amountNet, 0);
   const cashOut = costEntries.reduce((sum, e) => sum + e.amountNet, 0);
   const operatingCashflow = cashIn - cashOut;
   const taxReservePercent = organization?.cashflowTaxReservePercent ?? null;

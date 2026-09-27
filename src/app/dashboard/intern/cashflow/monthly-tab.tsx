@@ -13,8 +13,10 @@ export async function MonthlyTab({ organizationId, year, month }: { organization
     prisma.cashflowCostEntry.findMany({ where: { organizationId, transactionDate: { gte: monthStart, lt: monthEnd } } }),
   ]);
 
+  // "Cash-In" ist tatsächlicher Cashflow, nicht Rechnungsvolumen - nur
+  // bezahlte Rechnungen zählen (Geplant/Überfällig ist noch kein Geldeingang).
   const cashInThisMonth = cashInResult.rows
-    .filter((r) => new Date(r.invoiceDate).getMonth() + 1 === month)
+    .filter((r) => r.status === "BEZAHLT" && new Date(r.invoiceDate).getMonth() + 1 === month)
     .reduce((sum, r) => sum + r.amountNet, 0);
   const cashOutThisMonth = costEntries.reduce((sum, e) => sum + e.amountNet, 0);
   const operatingCashflow = cashInThisMonth - cashOutThisMonth;
