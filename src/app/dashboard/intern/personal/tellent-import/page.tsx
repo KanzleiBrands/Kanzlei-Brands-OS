@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TellentImportForm } from "./tellent-import-form";
+import { DeleteImportedAbsencesButton } from "./delete-imported-absences-button";
 
 /**
  * Einmalige Migration: Personal-Stammdaten aus Tellent HR übernehmen.
@@ -27,6 +28,20 @@ export default async function TellentImportPage() {
             &quot;Übernehmen&quot; anwenden. Der API-Key wird nicht gespeichert.
           </p>
           <TellentImportForm />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Import-Sammelanträge wieder entfernen</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Entfernt die als &quot;[Tellent-Import]&quot; markierten Sammelanträge einer Abwesenheitsart wieder -
+            org-weit, für alle Personen und Jahre. Kontingente (Konten-Tab) bleiben unangetastet, nur die
+            Jahressummen-Anträge verschwinden, z.B. um sie danach durch echte, datierte Anträge zu ersetzen.
+          </p>
+          <DeleteImportedAbsencesButton absenceTypeName="Urlaub" />
         </CardContent>
       </Card>
     </div>

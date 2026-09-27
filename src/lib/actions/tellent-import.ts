@@ -200,6 +200,26 @@ async function findOrCreateAbsenceType(category: TimeOffCategory, customName: st
   });
 }
 
+/**
+ * Entfernt die Tellent-Import-Sammelanträge einer Abwesenheitsart wieder
+ * (org-weit, alle Personen/Jahre) - z.B. wenn die Jahressumme durch echte,
+ * datierte Anträge ersetzt werden soll, statt als ein Sammel-Antrag stehen
+ * zu bleiben. Lässt Kontingente (AbsenceBalance) und alle nicht aus dem
+ * Import stammenden Anträge unangetastet.
+ */
+export async function deleteTellentImportedAbsences(absenceTypeName: string): Promise<{ deleted: number }> {
+  await requireAgencyAdmin();
+  const absenceType = await prisma.absenceType.findFirst({
+    where: { name: { equals: absenceTypeName, mode: "insensitive" } },
+  });
+  if (!absenceType) return { deleted: 0 };
+
+  const { count } = await prisma.absenceRequest.deleteMany({
+    where: { absenceTypeId: absenceType.id, note: { startsWith: "[Tellent-Import" } },
+  });
+  return { deleted: count };
+}
+
 export async function runTellentImport(formData: FormData): Promise<TellentImportResult> {
   const session = await requireAgencyAdmin();
   const apiKey = String(formData.get("apiKey") ?? "").trim();
