@@ -135,11 +135,14 @@ async function closeFetchAll<T>(path: string, params: Record<string, string>, ap
 //   1.2 Quali / Erstgespräch  -> Setter
 //   1.3 Sales Call            -> Closer
 //   2.3 After Sales Formular  -> Abschlüsse (Opener+Setter+Closer je Deal)
-// Raw-REST-Shape von /activity/{custom_activity_type_id}/ gegen echte Daten
-// verifiziert: Objekte tragen user_id (wer die Aktivität geloggt hat) und ein
-// custom_fields-Array aus {id, name, value} - anders als bei den fest
-// eingebauten Activity-Typen wird "value" hier per Feldname statt Feld-ID
-// gelesen (siehe fieldValue).
+// Custom Activities liegen NICHT unter /activity/{custom_activity_type_id}/
+// (das gibt es bei Close nicht, führt zu 404) - Instanzen eines Custom-
+// Activity-Typs werden über den generischen /activity/custom/-Endpoint mit
+// custom_activity_type_id als Query-Parameter gelistet. Raw-REST-Shape gegen
+// echte Daten verifiziert: Objekte tragen user_id (wer die Aktivität geloggt
+// hat) und ein custom_fields-Array aus {id, name, value} - anders als bei
+// den fest eingebauten Activity-Typen wird "value" hier per Feldname statt
+// Feld-ID gelesen (siehe fieldValue).
 // ---------------------------------------------------------------------------
 
 const ACTIVITY_TYPE_OUTBOUND_CALL = "actitype_5nA75KbOpKFg3iTt4cRGI7"; // 1.0 Outbound Call
@@ -160,8 +163,12 @@ async function listCustomActivitiesForYear(
   apiKey: string,
 ): Promise<CloseCustomActivityInstance[]> {
   return closeFetchAll<CloseCustomActivityInstance>(
-    `/activity/${activityTypeId}/`,
-    { activity_at__gte: `${year}-01-01T00:00:00`, activity_at__lte: `${year}-12-31T23:59:59` },
+    `/activity/custom/`,
+    {
+      custom_activity_type_id: activityTypeId,
+      activity_at__gte: `${year}-01-01T00:00:00`,
+      activity_at__lte: `${year}-12-31T23:59:59`,
+    },
     apiKey,
   );
 }
