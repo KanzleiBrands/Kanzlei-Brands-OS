@@ -2171,6 +2171,11 @@ model Touchpoint {
   clickIdType  ClickIdType?
   clickIdValue String?
 
+  // Metas eigene First-Party-Cookies (vom Meta-Pixel gesetzt, falls installiert) -
+  // liefern bessere CAPI-Matchqualität als der rohe fbclid allein.
+  fbp String?
+  fbc String?
+
   landingUrl  String
   referrerUrl String?
   ipAddress   String?

@@ -24,6 +24,8 @@ type CollectPayload = {
   utmTerm?: string | null;
   clickIdType?: ClickIdType | null;
   clickIdValue?: string | null;
+  fbp?: string | null;
+  fbc?: string | null;
   landingUrl?: string;
   referrerUrl?: string | null;
   email?: string;
@@ -84,6 +86,8 @@ export async function POST(request: Request) {
         utmTerm: payload.utmTerm ?? null,
         clickIdType,
         clickIdValue: payload.clickIdValue ?? null,
+        fbp: payload.fbp ?? null,
+        fbc: payload.fbc ?? null,
         landingUrl: payload.landingUrl ?? "",
         referrerUrl: payload.referrerUrl ?? null,
         ipAddress: request.headers.get("x-forwarded-for"),

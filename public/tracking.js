@@ -8,6 +8,20 @@
  * Beim Formular-Absenden ruft die Landingpage window.KBTrack.identify(email)
  * auf, um den bisherigen anonymen Verlauf rückwirkend mit der E-Mail zu
  * verknüpfen ("Pre-Journey"). Bewusst ohne Consent-Gate (Vorgabe Geschäftsführung).
+ *
+ * Zusätzlich zum reinen Erfassen:
+ * - Hängt die aktuellen UTM-Werte an jeden Calendly-Link/-Embed auf der Seite
+ *   an, BEVOR der Besucher klickt. Ohne das kommen in Calendlys eigenem
+ *   Webhook (payload.tracking.utm_*, siehe /api/webhooks/calendly) leere
+ *   Felder an, da Calendly UTMs nur aus der eigenen URL liest, nicht von der
+ *   Eltern-Seite erbt.
+ * - Füllt versteckte Formularfelder automatisch, deren value-Attribut einen
+ *   unserer Schlüssel trägt (z.B. <input type="hidden" value="utm_source">),
+ *   damit auch Formulare, deren Backend wir nicht kontrollieren, die Werte
+ *   mitbekommen.
+ * - Liest zusätzlich Metas eigene _fbp/_fbc-Cookies (falls der Meta-Pixel
+ *   ebenfalls installiert ist) für bessere CAPI-Matchqualität als der rohe
+ *   fbclid allein.
  */
 (function () {
   var script = document.currentScript;
@@ -26,6 +40,11 @@
       var v = c === "x" ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
+  }
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return match ? decodeURIComponent(match[1]) : null;
   }
 
   function getVisitorId() {
@@ -104,6 +123,8 @@
     utmTerm: lastTouch.utm_term || null,
     clickIdType: lastTouch.clickIdType || null,
     clickIdValue: lastTouch.clickIdValue || null,
+    fbp: getCookie("_fbp"),
+    fbc: getCookie("_fbc"),
     landingUrl: window.location.href,
     referrerUrl: document.referrer || null,
   });
@@ -114,4 +135,82 @@
       send({ orgId: orgId, event: "identify", anonymousVisitorId: visitorId, email: email, name: name || null });
     },
   };
+
+  // ---------------------------------------------------------------------
+  // Calendly-UTM-Passthrough + versteckte Formularfelder
+  // ---------------------------------------------------------------------
+
+  var CALENDLY_MARKER = "calendly.com";
+
+  function appendUtmToUrl(rawUrl) {
+    try {
+      var url = new URL(rawUrl, window.location.href);
+      for (var i = 0; i < UTM_KEYS.length; i++) {
+        var key = UTM_KEYS[i];
+        var value = lastTouch[key];
+        if (value && !url.searchParams.has(key)) url.searchParams.set(key, value);
+      }
+      return url.toString();
+    } catch (e) {
+      return rawUrl;
+    }
+  }
+
+  function tagCalendlyElements() {
+    var links = document.querySelectorAll('a[href*="' + CALENDLY_MARKER + '"]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute("href");
+      if (href) links[i].setAttribute("href", appendUtmToUrl(href));
+    }
+    var iframes = document.querySelectorAll('iframe[src*="' + CALENDLY_MARKER + '"]');
+    for (var j = 0; j < iframes.length; j++) {
+      var src = iframes[j].getAttribute("src");
+      if (src) iframes[j].setAttribute("src", appendUtmToUrl(src));
+    }
+    // Offizielles Calendly-Inline-Embed nutzt data-url statt src/href.
+    var dataUrlEls = document.querySelectorAll('[data-url*="' + CALENDLY_MARKER + '"]');
+    for (var k = 0; k < dataUrlEls.length; k++) {
+      var dataUrl = dataUrlEls[k].getAttribute("data-url");
+      if (dataUrl) dataUrlEls[k].setAttribute("data-url", appendUtmToUrl(dataUrl));
+    }
+  }
+
+  var HIDDEN_FIELD_VALUES = {
+    utm_source: lastTouch.utm_source || null,
+    utm_medium: lastTouch.utm_medium || null,
+    utm_campaign: lastTouch.utm_campaign || null,
+    utm_content: lastTouch.utm_content || null,
+    utm_term: lastTouch.utm_term || null,
+    anonymousVisitorId: visitorId,
+  };
+
+  function fillHiddenFields() {
+    var hiddenInputs = document.querySelectorAll('input[type="hidden"]');
+    for (var i = 0; i < hiddenInputs.length; i++) {
+      var el = hiddenInputs[i];
+      var marker = el.value;
+      if (Object.prototype.hasOwnProperty.call(HIDDEN_FIELD_VALUES, marker)) {
+        var real = HIDDEN_FIELD_VALUES[marker];
+        if (real) el.value = real;
+      }
+    }
+  }
+
+  function syncOutboundTracking() {
+    tagCalendlyElements();
+    fillHiddenFields();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", syncOutboundTracking);
+  } else {
+    syncOutboundTracking();
+  }
+  // Calendly-Embeds und manche Formular-Builder rendern ihr Markup erst nach
+  // eigenem asynchronem Nachladen - einmaliges Prüfen beim Start reicht dann
+  // nicht, ein MutationObserver fängt das nachträglich eingefügte DOM ab.
+  try {
+    new MutationObserver(syncOutboundTracking).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+  document.addEventListener("submit", fillHiddenFields, true);
 })();
