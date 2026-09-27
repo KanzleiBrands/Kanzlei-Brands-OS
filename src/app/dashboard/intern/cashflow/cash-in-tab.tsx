@@ -1,5 +1,5 @@
-import { listCashInForecast, type CashInEntry, type CashInStatus } from "@/lib/easybill/client";
-import { getCashInForYear } from "@/lib/cashflow/cash-in-fallback";
+import type { CashInEntry, CashInStatus } from "@/lib/easybill/client";
+import { getCashInForYear, getCashInForecast } from "@/lib/cashflow/cash-in-fallback";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MONTHS } from "@/lib/cashflow/constants";
@@ -56,7 +56,7 @@ function InvoiceTable({ rows, emptyLabel }: { rows: CashInEntry[]; emptyLabel: s
 export async function CashInTab({ organizationId, year, month }: { organizationId: string; year: number; month?: number }) {
   const [invoicesResult, forecastResult, clients] = await Promise.all([
     getCashInForYear(organizationId, year),
-    listCashInForecast(6),
+    getCashInForecast(organizationId, 6),
     prisma.organization.findMany({
       where: { type: "CLIENT", parentId: organizationId },
       select: { id: true, name: true, easybillCustomerId: true },

@@ -161,6 +161,7 @@ model Organization {
   cashflowCostEntries       CashflowCostEntry[]
   salesActivityLogs         SalesActivityLog[]
   cashInLedgerEntries       CashInLedgerEntry[]
+  easybillCashInCache       EasybillCashInCache[]
   adCampaigns               AdCampaign[]
   adSpendEntries            AdSpendEntry[]
   candidateAccounts         CandidateAccount[]
@@ -1809,6 +1810,36 @@ model CashInLedgerEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId, invoiceDate])
+}
+
+// Cron-synchronisierter Spiegel der EasyBill-Rechnungen/Forecasts (siehe
+// /api/cron/easybill-sync) - ersetzt das Live-Abfragen bei jedem Tab-/
+// Monatswechsel, das EasyBills Rate-Limit ausgelöst hat. isForecast=true
+// Zeilen werden bei jedem Sync komplett ersetzt (Forecast ist immer neu
+// berechnet, nie ergänzend), isForecast=false Zeilen werden per
+// easybillDocumentId upgesertet (stabile historische Fakten).
+model EasybillCashInCache {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  easybillDocumentId Int
+  isForecast         Boolean      @default(false)
+  customerId         Int?
+  customerLabel      String
+  product            String
+  invoiceDate        DateTime
+  dueDate            DateTime?
+  paidAt             DateTime?
+  isDraft            Boolean      @default(false)
+  amountNet          Float
+  amountGross        Float
+  taxRatePercent     Float        @default(19)
+  number             String?
+
+  syncedAt DateTime @default(now())
+
+  @@unique([organizationId, easybillDocumentId, isForecast, invoiceDate])
   @@index([organizationId, invoiceDate])
 }
 

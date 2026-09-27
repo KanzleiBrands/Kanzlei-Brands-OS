@@ -102,6 +102,12 @@ export type CashInEntry = {
   product: string;
   invoiceDate: string; // ISO-Datum
   dueDate: string | null;
+  // Roh-Felder statt nur des abgeleiteten status, damit ein zwischengespeicherter
+  // Datensatz (siehe EasybillCashInCache) den Status beim Lesen jederzeit neu
+  // berechnen kann (z.B. GEPLANT -> ÜBERFÄLLIG, sobald due_date verstreicht),
+  // statt zwischen zwei Cron-Syncs auf einem veralteten Status stehen zu bleiben.
+  isDraft: boolean;
+  paidAt: string | null;
   amountNet: number; // €
   amountGross: number; // €
   taxRatePercent: number;
@@ -115,10 +121,10 @@ function productLabel(items: EasybillDocumentPosition[]): string {
   return names.length > 0 ? Array.from(new Set(names)).join(", ") : "–";
 }
 
-function documentStatus(doc: Pick<EasybillDocument, "is_draft" | "paid_at" | "due_date">, today: Date): CashInStatus {
-  if (doc.paid_at) return "BEZAHLT";
-  if (doc.is_draft) return "GEPLANT";
-  if (doc.due_date && new Date(doc.due_date) < today) return "UEBERFAELLIG";
+export function documentStatus(doc: { isDraft: boolean; paidAt: string | null; dueDate: string | null }, today: Date): CashInStatus {
+  if (doc.paidAt) return "BEZAHLT";
+  if (doc.isDraft) return "GEPLANT";
+  if (doc.dueDate && new Date(doc.dueDate) < today) return "UEBERFAELLIG";
   return "GEPLANT";
 }
 
@@ -148,10 +154,12 @@ export async function listCashInForYear(year: number): Promise<EasybillResult<Ca
         product: productLabel(doc.items),
         invoiceDate: doc.document_date as string,
         dueDate: doc.due_date,
+        isDraft: doc.is_draft,
+        paidAt: doc.paid_at,
         amountNet: doc.amount_net / 100,
         amountGross: doc.amount / 100,
         taxRatePercent: doc.items[0]?.vat_percent ?? 19,
-        status: documentStatus(doc, today),
+        status: documentStatus({ isDraft: doc.is_draft, paidAt: doc.paid_at, dueDate: doc.due_date }, today),
         number: doc.number,
         isForecast: false,
       }));
@@ -203,6 +211,8 @@ export async function listCashInForecast(monthsAhead: number): Promise<EasybillR
           product: productLabel(doc.items),
           invoiceDate: occurrence.toISOString().slice(0, 10),
           dueDate: null,
+          isDraft: true,
+          paidAt: null,
           amountNet: doc.amount_net / 100,
           amountGross: doc.amount / 100,
           taxRatePercent: doc.items[0]?.vat_percent ?? 19,
