@@ -23,9 +23,30 @@ export function extractClickId(params: URLSearchParams | Record<string, string |
   return null;
 }
 
+// Bekannte Such-/Social-Hostnamen, wie sie der Referrer-Fallback im
+// Tracking-Snippet (public/tracking.js) als utm_source einträgt, wenn ein
+// Besucher ohne UTM-Parameter über einen dieser Dienste kam. Müssen VOR den
+// Substring-Checks unten geprüft werden: sonst würde z.B. "google.com"
+// (organischer Traffic) durch den "includes('google')"-Check fälschlich als
+// bezahlte GOOGLE-Plattform durchgehen und mit Werbekonto-Spend verrechnet
+// werden - echte Ad-UTM-Werte sehen nie wie ein roher Hostname aus.
+const ORGANIC_SEARCH_HOSTS = new Set(["google.com", "google.de", "bing.com", "duckduckgo.com", "yahoo.com", "ecosia.org", "startpage.com"]);
+const ORGANIC_SOCIAL_HOSTS = new Set([
+  "facebook.com",
+  "instagram.com",
+  "linkedin.com",
+  "tiktok.com",
+  "youtube.com",
+  "twitter.com",
+  "x.com",
+  "pinterest.com",
+  "reddit.com",
+]);
+
 /** Leitet die Plattform aus utm_source (bzw. Click-ID als Fallback) ab - fürs Auto-Anlegen von AdCampaign. */
 export function resolvePlatform(utmSource: string | null | undefined, clickIdType: ClickIdType | null): AdPlatform {
   const source = (utmSource ?? "").toLowerCase();
+  if (!clickIdType && (ORGANIC_SEARCH_HOSTS.has(source) || ORGANIC_SOCIAL_HOSTS.has(source))) return "ORGANIC";
   if (source.includes("facebook") || source.includes("meta") || source.includes("instagram") || clickIdType === "FBCLID") return "META";
   if (source.includes("google") || clickIdType === "GCLID" || clickIdType === "GBRAID" || clickIdType === "WBRAID") return "GOOGLE";
   if (source.includes("linkedin") || clickIdType === "LI_FAT_ID") return "LINKEDIN";

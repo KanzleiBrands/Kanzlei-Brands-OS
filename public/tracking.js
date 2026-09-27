@@ -82,6 +82,14 @@
     return hasAny ? touch : null;
   }
 
+  function hostnameOf(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch (e) {
+      return null;
+    }
+  }
+
   function getLastTouch() {
     var fresh = readTouchFromUrl();
     if (fresh) {
@@ -92,10 +100,24 @@
     }
     try {
       var stored = localStorage.getItem(LAST_TOUCH_KEY);
-      return stored ? JSON.parse(stored) : {};
-    } catch (e) {
-      return {};
-    }
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+
+    // Kein UTM in der URL und noch nie eine Attribution gespeichert - erster
+    // bekannter Touch dieses Besuchers. Referrer als Quelle nutzen, damit die
+    // Candidate Journey nicht jeden unbezahlten Erstkontakt nur als "Direkt"
+    // zeigt (resolvePlatform() ordnet bekannte Such-/Social-Hostnamen dann
+    // "Organisch" statt einer bezahlten Plattform zu). Wird einmalig
+    // gespeichert, damit spätere interne Seitenwechsel nicht den eigenen
+    // Referrer fälschlich als neuen Touch übernehmen.
+    var referrerFallback = {
+      utm_source: document.referrer ? hostnameOf(document.referrer) || "direct" : "direct",
+      utm_medium: document.referrer ? "referrer" : "none",
+    };
+    try {
+      localStorage.setItem(LAST_TOUCH_KEY, JSON.stringify(referrerFallback));
+    } catch (e) {}
+    return referrerFallback;
   }
 
   function send(payload) {
