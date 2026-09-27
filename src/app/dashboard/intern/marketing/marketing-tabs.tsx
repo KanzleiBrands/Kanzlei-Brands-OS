@@ -8,6 +8,7 @@ const TABS = [
   { href: "/dashboard/intern/marketing/email", label: "E-Mail-Marketing" },
   { href: "/dashboard/intern/marketing/whatsapp", label: "WhatsApp" },
   { href: "/dashboard/intern/marketing/campaigns", label: "Kampagnen" },
+  { href: "/dashboard/intern/marketing/integrations", label: "Integrationen" },
 ];
 
 export function MarketingTabs() {
