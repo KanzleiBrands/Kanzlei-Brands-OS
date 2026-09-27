@@ -3,6 +3,30 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertCanManageSocialContentFor, AccessDeniedError } from "@/lib/access";
+import { getBaseUrl } from "@/lib/base-url";
+import { ensureCalendlyWebhookSubscription, type EnsureWebhookResult } from "@/lib/calendly/client";
+
+/**
+ * Richtet das Calendly-Organization-Webhook-Abo automatisch ein (statt es
+ * manuell im Calendly-UI anzulegen) - braucht CALENDLY_API_TOKEN (Personal
+ * Access Token mit webhooks:read/write). Läuft bewusst im App-Server
+ * (Vercel), nicht in einer externen Sandbox, da der Token dafür server-
+ * seitig als Env-Var vorliegen muss. Gibt bei Neu-Anlage den Signing-Key
+ * einmalig zurück - der muss danach als CALENDLY_WEBHOOK_SIGNING_KEY in
+ * Vercel gesetzt werden, sonst kann /api/webhooks/calendly eingehende
+ * Events nicht verifizieren.
+ */
+export async function setupCalendlyWebhook(): Promise<EnsureWebhookResult> {
+  const session = await requireSession();
+  if (session.user.role !== "AGENCY_ADMIN") {
+    throw new AccessDeniedError("Nur die Geschäftsführung kann Integrationen einrichten.");
+  }
+  const apiToken = process.env.CALENDLY_API_TOKEN;
+  if (!apiToken) return { ok: false, error: "CALENDLY_API_TOKEN ist nicht gesetzt." };
+
+  const baseUrl = await getBaseUrl();
+  return ensureCalendlyWebhookSubscription(apiToken, `${baseUrl}/api/webhooks/calendly`);
+}
 
 /**
  * Legt (idempotent) einen Tag + Webhook fürs interne E-Mail-Marketing an,

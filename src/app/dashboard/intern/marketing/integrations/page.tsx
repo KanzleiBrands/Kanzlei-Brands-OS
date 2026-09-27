@@ -5,12 +5,11 @@ import { getBaseUrl } from "@/lib/base-url";
 import { prisma } from "@/lib/prisma";
 import { checkEnvStatus } from "@/lib/env-status";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CheckCircle2Icon, CircleIcon } from "lucide-react";
 import { TrackingSnippetCard } from "../campaigns/tracking-snippet-card";
 import { LeadSourceCard } from "./lead-source-card";
-
-const PLATFORM_LABELS: Record<string, string> = { META: "Meta", LINKEDIN: "LinkedIn" };
+import { CalendlySetupButton } from "./calendly-setup-button";
+import { SocialChannelList } from "../../../clients/[orgId]/social-channel-list";
 
 function StatusRow({ label, connected, missing, hint }: { label: string; connected: boolean; missing: string[]; hint?: string }) {
   return (
@@ -44,7 +43,8 @@ export default async function IntegrationsPage() {
   const baseUrl = await getBaseUrl();
 
   const close = checkEnvStatus("Close.io", ["CLOSE_API_KEY"]);
-  const calendly = checkEnvStatus("Calendly", ["CALENDLY_WEBHOOK_SIGNING_KEY"]);
+  const calendlyToken = checkEnvStatus("Calendly-API-Token", ["CALENDLY_API_TOKEN"]);
+  const calendly = checkEnvStatus("Calendly-Webhook", ["CALENDLY_WEBHOOK_SIGNING_KEY"]);
   const meta = checkEnvStatus("Meta Ads", ["META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"]);
   const google = checkEnvStatus("Google Ads", ["GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"]);
   const linkedin = checkEnvStatus("LinkedIn Ads", ["LINKEDIN_ADS_ACCESS_TOKEN", "LINKEDIN_AD_ACCOUNT_ID"]);
@@ -86,10 +86,12 @@ export default async function IntegrationsPage() {
         <CardHeader><CardTitle>CRM & Termine (Candidate Journey)</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-3">
           <StatusRow {...close} hint="Speist Leads, Termine (Quali-/Sales-Call) und Deal-Abschlüsse in die Candidate Journey ein - läuft alle 15 Min. automatisch." />
+          <StatusRow {...calendlyToken} hint="Personal Access Token (Scope webhooks:read/write) - wird nur einmalig gebraucht, um das Webhook-Abo unten automatisch anzulegen." />
           <StatusRow
             {...calendly}
-            hint={`Webhook-Ziel bei Calendly (Integrations > Webhooks, Event "invitee.created"): ${baseUrl}/api/webhooks/calendly - erfasst Terminbuchungen inkl. UTM-Zuordnung für die Journey.`}
+            hint={`Webhook-Signatur zur Verifizierung eingehender Events auf ${baseUrl}/api/webhooks/calendly - entsteht automatisch beim Einrichten unten (Button), nicht manuell im Calendly-UI anzulegen.`}
           />
+          <CalendlySetupButton />
         </CardContent>
       </Card>
 
@@ -120,18 +122,10 @@ export default async function IntegrationsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Social Media Content</CardTitle>
-          <p className="text-sm text-muted-foreground">Eure eigenen Kanäle fürs organische Posten - bereits eingerichtet, nur zur Übersicht.</p>
+          <p className="text-sm text-muted-foreground">Eure eigenen Kanäle fürs organische Posten - verbinden/trennen direkt hier.</p>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {socialChannels.length === 0 && <p className="text-sm text-muted-foreground">Noch kein Kanal verbunden - siehe Social-Media-Reiter.</p>}
-          {socialChannels.map((c) => (
-            <div key={c.id} className="flex items-center gap-2 text-sm">
-              {c.active ? <CheckCircle2Icon className="size-4 text-emerald-600" /> : <CircleIcon className="size-4 text-red-600" />}
-              <span className="font-medium">{PLATFORM_LABELS[c.platform] ?? c.platform}</span>
-              <span className="text-muted-foreground">{c.displayName}</span>
-              {!c.active && <Badge variant="secondary">Erneut verbinden nötig</Badge>}
-            </div>
-          ))}
+        <CardContent>
+          <SocialChannelList organizationId={organizationId} channels={socialChannels} canManage={session.user.role === "AGENCY_ADMIN"} />
         </CardContent>
       </Card>
 

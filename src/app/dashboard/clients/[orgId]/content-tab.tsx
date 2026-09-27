@@ -23,6 +23,7 @@ export function ContentTab({
   comments,
   analyticsPosts,
   canManageChannels = true,
+  showChannelList = true,
 }: {
   organizationId: string;
   channels: Channel[];
@@ -33,6 +34,8 @@ export function ContentTab({
   analyticsPosts: AnalyticsPost[];
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
+  /** false im internen Marketing-Center - dort lebt die Kanal-Verwaltung im Integrationen-Tab. */
+  showChannelList?: boolean;
 }) {
   const [view, setView] = useState<"board" | "calendar" | "community" | "analytics">("board");
   const commentInboxPosts: CommentInboxPost[] = posts.map((post) => ({
@@ -46,7 +49,7 @@ export function ContentTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <SocialChannelList organizationId={organizationId} channels={channels} canManage={canManageChannels} />
+      {showChannelList && <SocialChannelList organizationId={organizationId} channels={channels} canManage={canManageChannels} />}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1.5">

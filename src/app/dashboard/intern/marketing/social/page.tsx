@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
@@ -26,12 +27,21 @@ export default async function InternalSocialMediaPage() {
   ]);
 
   return (
-    <ContentTab
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Kanäle verbinden/trennen läuft jetzt zentral im{" "}
+        <Link href="/dashboard/intern/marketing/integrations" className="underline underline-offset-2">
+          Integrationen-Tab
+        </Link>
+        .
+      </p>
+      <ContentTab
       organizationId={organizationId}
       channels={channels}
       pipelines={pipelines}
       agencyUsers={agencyUsers}
       canManageChannels={session.user.role === "AGENCY_ADMIN"}
+      showChannelList={false}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,
@@ -76,6 +86,7 @@ export default async function InternalSocialMediaPage() {
           shareCount: post.shareCount,
           clickCount: post.clickCount,
         }))}
-    />
+      />
+    </div>
   );
 }
