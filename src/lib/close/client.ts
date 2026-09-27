@@ -289,6 +289,56 @@ export async function listCloserStats(year: number): Promise<CloseResult<CloserS
   }
 }
 
+// ---------------------------------------------------------------------------
+// Attribution/Kampagnen-Reiter: Leads + Opportunities für den Candidate-
+// Journey-Sync (siehe src/lib/attribution/close-sync.ts). Anders als die
+// Custom-Activity-Instanzen oben tragen Lead-Objekte ihre custom_fields
+// direkt im selben {id,name,value}-Array-Format (gegen einen echten Lead
+// via mcp__Close__fetch_lead verifiziert) - fieldValue() ist wiederverwendbar.
+// ---------------------------------------------------------------------------
+
+export type CloseLeadContact = { id: string; name: string; emails?: { email: string; type?: string }[] };
+export type CloseLead = {
+  id: string;
+  name: string;
+  created_at: string;
+  contacts: CloseLeadContact[];
+  custom_fields: CloseCustomField[];
+};
+
+/** Alle Leads der Organisation - ohne query-Filter listet /lead/ den gesamten Bestand paginiert auf. */
+export async function listCloseLeadsForAttribution(): Promise<CloseResult<CloseLead>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+  try {
+    const rows = await closeFetchAll<CloseLead>("/lead/", {}, apiKey);
+    return { ok: true, rows };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
+
+export type CloseOpportunity = {
+  id: string;
+  lead_id: string;
+  status_type: "active" | "won" | "lost";
+  value: number | null; // in Cent
+  date_won: string | null;
+  updated_at: string;
+};
+
+/** Alle Opportunities (Deals) - status_type=won trägt den echten Abschluss samt Wert/Datum. */
+export async function listCloseOpportunities(): Promise<CloseResult<CloseOpportunity>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+  try {
+    const rows = await closeFetchAll<CloseOpportunity>("/opportunity/", {}, apiKey);
+    return { ok: true, rows };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
+
 export type ClosedDeal = { openerUserId: string | null; setterUserId: string | null; closerUserId: string | null; amountNet: number };
 
 /** Abschlüsse eines Jahres aus "2.3 After Sales Formular" - trägt Opener/Setter/Closer als eigene Felder. */

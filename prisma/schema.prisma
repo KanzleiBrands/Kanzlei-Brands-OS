@@ -161,6 +161,10 @@ model Organization {
   cashflowCostEntries       CashflowCostEntry[]
   salesActivityLogs         SalesActivityLog[]
   cashInLedgerEntries       CashInLedgerEntry[]
+  adCampaigns               AdCampaign[]
+  adSpendEntries            AdSpendEntry[]
+  candidateAccounts         CandidateAccount[]
+  touchpoints               Touchpoint[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1996,4 +2000,220 @@ model AbsenceRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Attribution / Kampagnen-Reiter (Moneyboard-Ersatz) - eigenes, inhouse
+// Marketing-Attributionstool für die EIGENEN Akquise-Kampagnen von Kanzlei
+// Brands (A-Mandanten/Mitarbeitergewinnung/Homepage), nicht für Kunden-
+// Kampagnen. Erfasst jeden Touchpoint (Anzeige -> Landingpage -> Formular ->
+// Quali-Call -> Sales-Call -> Deal) und rechnet Kampagnen/Creatives Kosten
+// und Ergebnisse zu, um Moneyboard (Drittanbieter) abzulösen. Bewusst ohne
+// DSGVO-Consent-Gate für first-party Tracking der eigenen Domains - explizite
+// Vorgabe der Geschäftsführung.
+// ---------------------------------------------------------------------------
+
+enum AdPlatform {
+  META
+  GOOGLE
+  LINKEDIN
+  ORGANIC
+  DIRECT
+  OTHER
+}
+
+enum ClickIdType {
+  FBCLID
+  GCLID
+  GBRAID
+  WBRAID
+  MSCLKID
+  LI_FAT_ID
+}
+
+// Automatisch erkannt: beim ersten Touchpoint mit passendem utm_campaign/
+// Plattform angelegt (org+platform+name eindeutig), kein manuelles Anlegen
+// nötig. externalCampaignId/status werden erst gefüllt, sobald die jeweilige
+// Ads-API angebunden ist (Meta/Google/LinkedIn) - bis dahin bleiben sie leer
+// und Spend kommt über AdSpendEntry.source=MANUAL.
+model AdCampaign {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  platform           AdPlatform
+  name               String
+  externalCampaignId String?
+  status             String?
+
+  creatives    AdCreative[]
+  touchpoints  Touchpoint[]
+  spendEntries AdSpendEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, platform, name])
+  @@index([organizationId])
+}
+
+// Anzeigen-/Creative-Ebene einer Kampagne (utm_content bzw. externe Ad-ID),
+// damit sich auswerten lässt "welche Creatives bringen Sales" - nicht nur
+// Kampagnen-Ebene.
+model AdCreative {
+  id           String     @id @default(cuid())
+  campaignId   String
+  campaign     AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name         String
+  externalAdId String?
+  adSetName    String?
+  previewUrl   String?
+  copyHeadline String?
+  copyBody     String?
+
+  touchpoints Touchpoint[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, name])
+  @@index([campaignId])
+}
+
+// Werbekosten je Tag/Kampagne. source=MANUAL solange keine Ads-API
+// angebunden ist (siehe Kampagnen-Tab-Formular), source=API sobald Meta/
+// Google/LinkedIn Insights automatisch synchronisiert werden.
+model AdSpendEntry {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaignId     String?
+  campaign       AdCampaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  platform       AdPlatform
+  date           DateTime
+  amountSpent    Float
+  impressions    Int?
+  clicks         Int?
+  source         String       @default("MANUAL")
+
+  createdAt DateTime @default(now())
+
+  @@unique([organizationId, campaignId, platform, date])
+  @@index([organizationId, date])
+}
+
+// Eine Zielfirma (Kanzlei), zu der mehrere Entscheider (Partner/GF) gehören
+// können - bei größeren Kanzleien oft mehrere Partner (Richtwert 1 Partner/
+// GF je 10-20 Mitarbeiter), deren einzelne Touchpoints/Calls trotzdem auf
+// dieselbe Kaufentscheidung einzahlen. domain = E-Mail-Domain, primärer
+// Match-Schlüssel; name/closeLeadId kommen aus dem Close-Sync.
+model CandidateAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domain         String?
+  name           String?
+  closeLeadId    String?
+
+  candidates Candidate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, domain])
+  @@index([organizationId])
+}
+
+// Eine einzelne Ansprechperson (z.B. ein Partner) innerhalb einer
+// CandidateAccount - entspricht einem Close-Kontakt/-Lead.
+model Candidate {
+  id             String           @id @default(cuid())
+  accountId      String
+  account        CandidateAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  email          String
+  name           String?
+  closeContactId String?
+
+  touchpoints   Touchpoint[]
+  journeyEvents JourneyEvent[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([accountId, email])
+  @@index([accountId])
+}
+
+// Ein einzelner Touchpoint - Klick/Landing (anonym, vor Lead-Entstehung) bis
+// hin zu bereits verknüpften Candidates. anonymousVisitorId kommt vom
+// Tracking-Snippet (src/app/tracking.js, siehe /api/tracking/collect) und
+// erlaubt die rückwirkende Verknüpfung aller Vor-Lead-Touchpoints, sobald
+// sich ein Besucher per identify() (E-Mail-Eingabe im Formular) zu erkennen
+// gibt - das ist die "Pre-Journey"-Erfassung.
+model Touchpoint {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  anonymousVisitorId String
+
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+
+  platform   AdPlatform @default(OTHER)
+  campaignId String?
+  campaign   AdCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  creativeId String?
+  creative   AdCreative? @relation(fields: [creativeId], references: [id], onDelete: SetNull)
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+
+  clickIdType  ClickIdType?
+  clickIdValue String?
+
+  landingUrl  String
+  referrerUrl String?
+  ipAddress   String?
+  userAgent   String?
+
+  occurredAt DateTime @default(now())
+
+  @@index([organizationId, anonymousVisitorId])
+  @@index([candidateId])
+  @@index([campaignId])
+  @@index([organizationId, occurredAt])
+}
+
+// Meilensteine der Candidate Journey (aus Close.io Custom Fields + Calendly
+// gefüllt, siehe src/lib/attribution/close-sync.ts) - das Rückgrat der
+// Journey-Zeitstrahl-Ansicht im Kampagnen-Reiter.
+enum JourneyEventType {
+  LEAD_CREATED
+  QUALI_CALL_BOOKED
+  QUALI_CALL_DONE
+  QUALI_CALL_NO_SHOW
+  SALES_CALL_1_BOOKED
+  SALES_CALL_1_DONE
+  SALES_CALL_1_NO_SHOW
+  SALES_CALL_2_BOOKED
+  SALES_CALL_2_DONE
+  SALES_CALL_2_NO_SHOW
+  UPSELL
+  DEAL_WON
+  DEAL_LOST
+}
+
+model JourneyEvent {
+  id          String           @id @default(cuid())
+  candidateId String
+  candidate   Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type        JourneyEventType
+  occurredAt  DateTime
+  dealValue   Float?
+  note        String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([candidateId, type])
+  @@index([candidateId, occurredAt])
 }
