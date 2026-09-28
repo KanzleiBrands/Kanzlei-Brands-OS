@@ -373,7 +373,7 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
   if (!result.firstName && !result.lastName) {
     const fullName = toStringOrNull(payload.name ?? payload.full_name ?? payload.ansprechpartner ?? payload.kontaktperson);
     if (fullName) {
-      const [first, ...rest] = fullName.split(" ");
+      const [first, ...rest] = fullName.trim().split(/\s+/);
       result.firstName = first;
       result.lastName = rest.join(" ") || null;
     }
