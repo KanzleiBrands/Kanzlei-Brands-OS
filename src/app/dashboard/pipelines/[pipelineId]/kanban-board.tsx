@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BanIcon, GripVerticalIcon } from "lucide-react";
+import { toast } from "sonner";
+import { BanIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -14,11 +15,13 @@ import {
 import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { moveContactStage } from "@/lib/actions/contacts";
-import { reorderStages } from "@/lib/actions/stages";
+import { reorderStages, createStage, deleteStage } from "@/lib/actions/stages";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { contactDisplayName } from "@/lib/contact-display";
 import { StarRating } from "@/components/star-rating";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { RejectionReasonDialog } from "@/components/rejection-reason-dialog";
 import { FinalStageDialog } from "@/components/final-stage-dialog";
@@ -84,6 +87,7 @@ function StageColumn({
   onDragLeave,
   onDropContact,
   onReject,
+  onDeleteStage,
 }: {
   stage: Stage;
   stageIndex: number;
@@ -97,6 +101,7 @@ function StageColumn({
   onDragLeave: () => void;
   onDropContact: (contactId: string) => void;
   onReject: (contactId: string) => void;
+  onDeleteStage: (stageId: string, stageName: string) => void;
 }) {
   const rejectLabel = "Als ungeeignet markieren";
   // useSortable ist immer aktiv (Hooks dürfen nicht bedingt aufgerufen werden) -
@@ -139,10 +144,21 @@ function StageColumn({
           className="inline-block size-2 rounded-full"
           style={{ backgroundColor: stage.color ?? "var(--muted-foreground)" }}
         />
-        {stage.name}
-        <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+        <span className="min-w-0 flex-1 truncate">{stage.name}</span>
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
           {stage.contacts.length}
         </span>
+        {canManageStages && (
+          <button
+            type="button"
+            aria-label={`Stufe "${stage.name}" löschen`}
+            title="Stufe löschen"
+            className="flex size-5 flex-shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => onDeleteStage(stage.id, stage.name)}
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
+        )}
       </p>
       <div className="flex flex-col gap-2.5">
         {stage.contacts.map((contact) => {
@@ -242,6 +258,8 @@ export function KanbanBoard({
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [rejectingContactId, setRejectingContactId] = useState<string | null>(null);
   const [finalizingContactId, setFinalizingContactId] = useState<string | null>(null);
+  const [isAddingStage, setIsAddingStage] = useState(false);
+  const [newStageName, setNewStageName] = useState("");
   // Nicht per useEffect mit `stages` synchron gehalten (React rät davon ab,
   // synchron in einem Effect setState aufzurufen) - stattdessen bekommt
   // KanbanBoard von PipelineView einen key aus den Stage-Ids, der bei einer
@@ -300,6 +318,33 @@ export function KanbanBoard({
     });
   }
 
+  function handleDeleteStage(stageId: string, stageName: string) {
+    if (!window.confirm(`Stufe "${stageName}" wirklich löschen? Dies kann nicht rückgängig gemacht werden.`)) return;
+    const formData = new FormData();
+    formData.set("stageId", stageId);
+    startTransition(async () => {
+      const error = await deleteStage(formData);
+      if (error) toast.error(error);
+    });
+  }
+
+  function handleCreateStage() {
+    const name = newStageName.trim();
+    if (!name) return;
+    const formData = new FormData();
+    formData.set("pipelineId", pipelineId);
+    formData.set("name", name);
+    startTransition(async () => {
+      const error = await createStage(undefined, formData);
+      if (error) {
+        toast.error(error);
+      } else {
+        setNewStageName("");
+        setIsAddingStage(false);
+      }
+    });
+  }
+
   const orderedStages = stageOrder.map((id) => stages.find((s) => s.id === id)).filter((s): s is Stage => !!s);
 
   return (
@@ -322,8 +367,52 @@ export function KanbanBoard({
                 onDragLeave={() => setDragOverStageId(null)}
                 onDropContact={(contactId) => handleDrop(stage.id, contactId)}
                 onReject={(contactId) => setRejectingContactId(contactId)}
+                onDeleteStage={handleDeleteStage}
               />
             ))}
+            {canManageStages &&
+              (isAddingStage ? (
+                <div className="flex w-[260px] flex-shrink-0 flex-col gap-2 rounded-lg border bg-muted/30 p-2 sm:w-72">
+                  <Input
+                    autoFocus
+                    placeholder="Name der Stufe"
+                    value={newStageName}
+                    onChange={(e) => setNewStageName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreateStage();
+                      if (e.key === "Escape") {
+                        setIsAddingStage(false);
+                        setNewStageName("");
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" disabled={isPending} onClick={handleCreateStage}>
+                      Hinzufügen
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddingStage(false);
+                        setNewStageName("");
+                      }}
+                    >
+                      Abbrechen
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="flex h-10 w-[260px] flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground sm:w-72"
+                  onClick={() => setIsAddingStage(true)}
+                >
+                  <PlusIcon className="size-4" />
+                  Stufe hinzufügen
+                </button>
+              ))}
           </div>
         </SortableContext>
       </DndContext>
