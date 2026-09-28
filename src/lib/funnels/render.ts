@@ -48,7 +48,7 @@ function paragraphToHtml(paragraph: string, trackUrl: (url: string) => string): 
     const [full, label, url] = match;
     const index = match.index ?? 0;
     html += applyInlineFormatting(escapeHtml(paragraph.slice(lastIndex, index)));
-    html += `<a href="${escapeHtml(trackUrl(url))}">${applyInlineFormatting(escapeHtml(label))}</a>`;
+    html += `<a href="${escapeHtml(trackUrl(url))}" style="color:#2563eb;text-decoration:underline;">${applyInlineFormatting(escapeHtml(label))}</a>`;
     lastIndex = index + full.length;
   }
   html += applyInlineFormatting(escapeHtml(paragraph.slice(lastIndex)));
