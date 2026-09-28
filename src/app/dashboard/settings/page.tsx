@@ -63,7 +63,12 @@ export default async function SettingsPage({
   // (syncs ins Posteingang), Textbausteine (Kunden-Auto-Replies) und
   // Datenschutz (Kunden-Datenlöschfristen) sind für sie irrelevant.
   const isInternalStaffOnly = session.user.role === "AGENCY_STAFF";
-  const canManageTeam = session.user.role === "CLIENT_ADMIN" || isAgency;
+  // Mitarbeiter-Verwaltung der Agentur (Rollen/Abteilungen zuweisen, Kollegen
+  // löschen) ist bewusst NICHT an die Rolle AGENCY_ADMIN gekoppelt - die wird
+  // auch an normale Fulfillment-Mitarbeitende vergeben (siehe
+  // src/lib/super-admin.ts) - sonst könnte sich jeder Fulfillment-Mitarbeiter
+  // selbst eine andere Abteilung/Rolle geben.
+  const canManageTeam = session.user.role === "CLIENT_ADMIN" || (isAgency && isSuperAdmin(session.user.email));
   // Kunden und Fulfillment-Mitarbeiter können ihr eigenes Postfach anbinden -
   // Kunden für den eigenen Gebrauch, Fulfillment fürs team-weite /dashboard/inbox.
   const canUseMailbox = !isInternalStaffOnly;

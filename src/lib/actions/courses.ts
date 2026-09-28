@@ -8,6 +8,7 @@ import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { parseLessonBlocks, firstVideoBlockUrl, type LessonBlock } from "@/lib/lesson-blocks";
 import { isAgencyDepartment } from "@/lib/agency-departments";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 // ---------------------------------------------------------------------------
 // Course
@@ -92,7 +93,7 @@ export async function updateCourse(_prevState: string | undefined, formData: For
 /** Weist einen internen (audience=INTERNAL) Kurs einer Abteilung zu/ab - Pendant zu setCourseAssignment für Kunden. */
 export async function setCourseDepartmentAssignment(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
+  if (!isSuperAdmin(session.user.email)) return;
 
   const courseId = String(formData.get("courseId") ?? "");
   const department = String(formData.get("department") ?? "");

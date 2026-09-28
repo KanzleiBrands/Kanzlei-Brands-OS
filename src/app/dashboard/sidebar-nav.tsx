@@ -181,7 +181,7 @@ export function SidebarNav({
           ))}
         </div>
 
-        {role === "AGENCY_ADMIN" && (
+        {isSuperAdmin(email) && (
           <div className="mt-5 flex flex-col gap-1">
             <p className="mb-1 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Verwaltung</p>
             <Link

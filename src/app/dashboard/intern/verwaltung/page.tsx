@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { DepartmentResourcesCard } from "../department-resources-card";
 import { CourseDepartmentToggle } from "../course-department-toggle";
 import { AGENCY_DEPARTMENTS, DEPARTMENT_LABELS } from "@/lib/agency-departments";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 export default async function InternalPortalAdminPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "AGENCY_ADMIN") redirect("/dashboard/intern");
+  if (!isSuperAdmin(session.user.email)) redirect("/dashboard/intern");
 
   const [agencyUsers, resourceLinks, internalCourses] = await Promise.all([
     prisma.user.findMany({

@@ -10,6 +10,7 @@ import { generateActivationToken } from "@/lib/invite";
 import { getBaseUrl } from "@/lib/base-url";
 import { getClientReadiness } from "@/lib/client-readiness";
 import { AGENCY_DEPARTMENTS } from "@/lib/agency-departments";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 import { slugify } from "@/lib/slugify";
 
@@ -331,6 +332,11 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
     if (organizationId !== session.user.organizationId) {
       return { status: "error", message: "Agentur-Mitarbeiter können nur in der eigenen Organisation angelegt werden." };
     }
+    // Neue Agentur-Mitarbeiter anzulegen (mit Rolle/Abteilung nach Wahl) ist
+    // nur dem Super-Admin vorbehalten - siehe updateAgencyUserDepartment.
+    if (!isSuperAdmin(session.user.email)) {
+      return { status: "error", message: "Nur der Super-Admin kann Agentur-Mitarbeiter anlegen." };
+    }
     if (role === "AGENCY_STAFF") {
       // AGENCY_STAFF has no CRM access at all - the department decides which
       // Hub they land on in the internen Portal, so it can't be left unset.
@@ -392,10 +398,19 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
   return { status: "success", link };
 }
 
-/** Ändert die Abteilung eines Agentur-Mitarbeiters (bestimmt dessen Hub im internen Portal) - nur AGENCY_ADMIN. */
+/**
+ * Ändert die Abteilung eines Agentur-Mitarbeiters (bestimmt dessen Hub im
+ * internen Portal sowie Sales-Cockpit/Marketing-Center/Cashflow-Zugriff) -
+ * bewusst NICHT an die Rolle AGENCY_ADMIN gekoppelt, sonst könnte sich jeder
+ * Fulfillment-Mitarbeiter mit AGENCY_ADMIN-Rolle selbst z.B. auf EXECUTIVE
+ * setzen und sich damit Cashflow-Cockpit-Zugriff verschaffen. Nur der
+ * Super-Admin (siehe src/lib/super-admin.ts) darf Rollen/Abteilungen
+ * zuweisen - explizite Anforderung: "Kein anderer Mitarbeiter außer ich
+ * sollte sich selbst eine andere Rolle geben können".
+ */
 export async function updateAgencyUserDepartment(userId: string, department: string | null) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können die Abteilung ändern.";
+  if (!isSuperAdmin(session.user.email)) return "Nur der Super-Admin kann die Abteilung ändern.";
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || user.organizationId !== session.user.organizationId || (user.role !== "AGENCY_ADMIN" && user.role !== "AGENCY_STAFF")) {
@@ -491,6 +506,11 @@ export async function deleteUser(formData: FormData) {
   if (target.id === session.user.id) return;
   // CLIENT_ADMIN may only remove staff in their own org, never other admins.
   if (session.user.role === "CLIENT_ADMIN" && target.role !== "CLIENT_STAFF") return;
+  // Agentur-Kollegen (AGENCY_ADMIN/AGENCY_STAFF) zu entfernen ist nur dem
+  // Super-Admin vorbehalten - sonst könnte ein Fulfillment-Mitarbeiter mit
+  // AGENCY_ADMIN-Rolle Kollegen löschen. Kunden-Nutzer bleiben für jeden
+  // AGENCY_ADMIN weiterhin entfernbar.
+  if ((target.role === "AGENCY_ADMIN" || target.role === "AGENCY_STAFF") && !isSuperAdmin(session.user.email)) return;
 
   await prisma.user.delete({ where: { id: userId } });
 
