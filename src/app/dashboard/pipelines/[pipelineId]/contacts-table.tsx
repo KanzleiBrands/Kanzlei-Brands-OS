@@ -9,6 +9,7 @@ import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { StageSelectForm } from "@/app/dashboard/contacts/[contactId]/stage-select-form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MergeDuplicatesDialog } from "@/components/contacts/merge-duplicates-dialog";
 import type { DuplicateContactKeys } from "@/lib/duplicate-contacts";
 
 type Contact = {
@@ -117,11 +118,8 @@ export function ContactsTable({
                       <span className="font-medium">{fullName}</span>
                       {((contact.email && duplicateContacts.emails.has(contact.email.trim().toLowerCase())) ||
                         (contact.phone && duplicateContacts.phones.has(contact.phone.trim().toLowerCase()))) && (
-                        <span
-                          className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500"
-                          title="Mögliches Duplikat: E-Mail oder Telefonnummer existiert mehrfach in dieser Pipeline"
-                        >
-                          ⚠ Duplikat
+                        <span onClick={(e) => e.preventDefault()}>
+                          <MergeDuplicatesDialog contactId={contact.id} contactName={fullName} label="⚠ Duplikat" />
                         </span>
                       )}
                     </span>

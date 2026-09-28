@@ -7,6 +7,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "pipeline_access.revoked": "Kampagnen-Zugriff entzogen",
   "contact.deleted": "Kontakt gelöscht",
   "contacts.csv_imported": "Kontakte per CSV importiert",
+  "contacts.merged": "Duplikate zusammengeführt",
   "user.activated": "Zugang aktiviert",
   "user.deleted": "Mitarbeiter gelöscht",
   "organization.archived": "Kunde archiviert",
