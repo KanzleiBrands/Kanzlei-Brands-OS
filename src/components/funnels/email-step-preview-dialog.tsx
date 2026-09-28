@@ -78,7 +78,10 @@ export function EmailStepPreviewDialog({
               <p className="text-sm text-muted-foreground">{preheader}</p>
             </div>
           )}
-          <div className="rounded-lg border bg-card p-4" dangerouslySetInnerHTML={{ __html: rendered.html }} />
+          {/* Feste helle Fläche statt bg-card: die gerenderte Mail setzt selbst
+              dunkle Schriftfarbe (wie in einem echten Postfach auf weißem
+              Grund) - im Dark Mode der App wäre das sonst kaum lesbar. */}
+          <div className="rounded-lg border p-4" style={{ background: "#fff" }} dangerouslySetInnerHTML={{ __html: rendered.html }} />
           <p className="text-xs text-muted-foreground">
             Vorschau mit Beispieldaten ({PREVIEW_CONTACT.firstName} {PREVIEW_CONTACT.lastName}, {PREVIEW_CONTACT.companyName}) - Links
             sind hier nicht klickbar/getrackt.
