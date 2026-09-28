@@ -19,9 +19,16 @@ export default async function CoursesPage() {
   const isAgency = session.user.role === "AGENCY_ADMIN";
 
   if (isAgency) {
+    // Diese Kursverwaltung ist bewusst nur für Kunden-Schulungen
+    // (audience=CLIENT) - interne Mitarbeiterschulungen laufen komplett
+    // getrennt über /dashboard/intern/schulung/verwaltung (nur Super-Admin),
+    // damit z.B. Fulfillment-Mitarbeiter hier nie eine interne
+    // Vertriebsschulung sehen oder bearbeiten können, die nicht für sie
+    // bestimmt ist.
     const courses = await prisma.course.findMany({
+      where: { audience: "CLIENT" },
       include: {
-        _count: { select: { assignments: true, departmentAssignments: true, modules: true } },
+        _count: { select: { assignments: true, modules: true } },
         modules: { select: { _count: { select: { lessons: true } } } },
       },
       orderBy: { createdAt: "desc" },
@@ -30,8 +37,8 @@ export default async function CoursesPage() {
     return (
       <div className="p-4 sm:p-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-semibold">Schulung – Kursverwaltung</h1>
-          <NewCourseForm />
+          <h1 className="text-2xl font-semibold">Schulung – Kundenkurse verwalten</h1>
+          <NewCourseForm audience="CLIENT" />
         </div>
 
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
@@ -49,18 +56,12 @@ export default async function CoursesPage() {
                     <CardTitle className="min-w-0 flex-1 truncate" title={course.title}>
                       {course.title}
                     </CardTitle>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <Badge variant="secondary">{CATEGORY_LABELS[course.category]}</Badge>
-                      {course.audience === "INTERNAL" && <Badge variant="outline">Intern</Badge>}
-                    </div>
+                    <Badge variant="secondary" className="shrink-0">{CATEGORY_LABELS[course.category]}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">
-                    {course._count.modules} Module · {lessonCount} Lektionen ·{" "}
-                    {course.audience === "INTERNAL"
-                      ? `${course._count.departmentAssignments} Abteilungen zugewiesen`
-                      : `${course._count.assignments} Kunden zugewiesen`}
+                    {course._count.modules} Module · {lessonCount} Lektionen · {course._count.assignments} Kunden zugewiesen
                   </p>
                   <div className="flex flex-col items-start gap-2">
                     <Link href={`/dashboard/courses/${course.id}?manage=1`} className="text-sm underline">

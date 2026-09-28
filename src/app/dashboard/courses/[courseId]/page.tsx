@@ -18,6 +18,7 @@ import { DeleteCourseButton } from "./delete-course-button";
 import { PublishToggle } from "../publish-toggle";
 import { hasCourseAccess } from "@/lib/courses-access";
 import { CourseDetailLearnerView } from "../course-detail-learner-view";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 export default async function CourseDetailPage({
   params,
@@ -32,12 +33,6 @@ export default async function CourseDetailPage({
   if (!session?.user) redirect("/login");
 
   const isAgency = session.user.role === "AGENCY_ADMIN";
-  const isPreview = isAgency && preview === "1";
-  // manage=1 kommt explizit aus der Kursverwaltung (/dashboard/courses) - ohne
-  // das lädt diese Seite immer die Lerner-Ansicht, auch für Admins, damit sie
-  // im internen Portal ihre eigenen Schulungen konsumieren können (siehe
-  // /dashboard/intern/schulung), statt zwangsweise im Builder zu landen.
-  const showBuilder = isAgency && manage === "1" && !isPreview;
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
@@ -51,6 +46,21 @@ export default async function CourseDetailPage({
     },
   });
   if (!course) notFound();
+
+  // Interne Kurse (audience=INTERNAL) sind vom Kunden-Kursbereich entkoppelt -
+  // hier verwalten/bearbeiten/vorschauen darf nur der Super-Admin, sonst
+  // könnte jeder Fulfillment-AGENCY_ADMIN eine interne Vertriebsschulung
+  // öffnen, die nicht für ihn bestimmt ist (siehe
+  // /dashboard/intern/schulung/verwaltung).
+  const canManage = course.audience === "INTERNAL" ? isSuperAdmin(session.user.email) : isAgency;
+  const isPreview = canManage && preview === "1";
+  // manage=1 kommt explizit aus der Kursverwaltung (/dashboard/courses bzw.
+  // /dashboard/intern/schulung/verwaltung) - ohne das lädt diese Seite immer
+  // die Lerner-Ansicht, auch für Admins, damit sie im internen Portal ihre
+  // eigenen Schulungen konsumieren können (siehe /dashboard/intern/schulung),
+  // statt zwangsweise im Builder zu landen.
+  const showBuilder = canManage && manage === "1" && !isPreview;
+
   if (!isAgency && !course.published) notFound();
   if (!showBuilder && !isPreview && !(await hasCourseAccess(session, course))) notFound();
 

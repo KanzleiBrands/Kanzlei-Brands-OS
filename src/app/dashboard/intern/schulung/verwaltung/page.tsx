@@ -1,0 +1,85 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/impersonation";
+import { prisma } from "@/lib/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CourseThumbnail } from "@/app/dashboard/courses/course-thumbnail";
+import { NewCourseForm } from "@/app/dashboard/courses/new-course-form";
+import { PublishToggle } from "@/app/dashboard/courses/publish-toggle";
+import { isSuperAdmin } from "@/lib/super-admin";
+
+const CATEGORY_LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
+
+/**
+ * Verwaltung der internen Mitarbeiterschulungen (audience=INTERNAL) -
+ * bewusst komplett getrennt von /dashboard/courses (Kunden-Kursverwaltung)
+ * und nur für den Super-Admin sichtbar. Vorher konnte jeder Fulfillment-
+ * AGENCY_ADMIN über die geteilte Kursverwaltung auch interne Kurse anderer
+ * Abteilungen (z.B. eine Vertriebsschulung) einsehen und bearbeiten.
+ */
+export default async function InternalCourseAdminPage() {
+  const session = await getSession();
+  if (!session?.user) redirect("/login");
+  if (!isSuperAdmin(session.user.email)) redirect("/dashboard/intern/schulung");
+
+  const courses = await prisma.course.findMany({
+    where: { audience: "INTERNAL" },
+    include: {
+      _count: { select: { departmentAssignments: true, modules: true } },
+      modules: { select: { _count: { select: { lessons: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return (
+    <div className="p-4 sm:p-8">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">Interne Schulungen verwalten</h1>
+        <NewCourseForm audience="INTERNAL" />
+      </div>
+      <p className="mb-6 text-muted-foreground">
+        Abteilungszuweisung erfolgt unter{" "}
+        <Link href="/dashboard/intern/verwaltung" className="underline">
+          Abteilungen &amp; Mitarbeiter
+        </Link>
+        .
+      </p>
+
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
+        {courses.map((course) => {
+          const lessonCount = course.modules.reduce((sum, m) => sum + m._count.lessons, 0);
+          return (
+            <Card key={course.id} className="overflow-hidden">
+              <div className="px-(--card-spacing)">
+                <Link href={`/dashboard/courses/${course.id}?manage=1`} className="block">
+                  <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-full rounded-lg" />
+                </Link>
+              </div>
+              <CardHeader>
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <CardTitle className="min-w-0 flex-1 truncate" title={course.title}>
+                    {course.title}
+                  </CardTitle>
+                  <Badge variant="secondary" className="shrink-0">{CATEGORY_LABELS[course.category]}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {course._count.modules} Module · {lessonCount} Lektionen · {course._count.departmentAssignments} Abteilungen zugewiesen
+                </p>
+                <div className="flex flex-col items-start gap-2">
+                  <Link href={`/dashboard/courses/${course.id}?manage=1`} className="text-sm underline">
+                    Kurs verwalten
+                  </Link>
+                  <PublishToggle courseId={course.id} published={course.published} className="w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {courses.length === 0 && <p className="text-muted-foreground">Noch keine internen Kurse angelegt.</p>}
+      </div>
+    </div>
+  );
+}

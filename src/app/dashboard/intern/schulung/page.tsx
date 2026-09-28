@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "@/app/dashboard/courses/course-thumbnail";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 /**
  * Eigene, vom Kundenportal getrennte Schulungsansicht fürs interne Portal -
@@ -19,11 +20,15 @@ export default async function InternalSchulungPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
-  const isAgencyAdmin = session.user.role === "AGENCY_ADMIN";
+  const viewerIsSuperAdmin = isSuperAdmin(session.user.email);
 
+  // Nur der Super-Admin sieht alle internen Kurse (Überblick über jede
+  // Abteilung). Jeder andere - auch AGENCY_ADMIN, das ist hier bewusst KEIN
+  // Freifahrtschein - sieht nur Kurse seiner eigenen zugewiesenen
+  // Abteilung(en), sonst könnte z.B. ein Fulfillment-Mitarbeiter eine
+  // interne Vertriebsschulung sehen, die nicht für ihn bestimmt ist.
   let courseWhere: Prisma.CourseWhereInput;
-  if (isAgencyAdmin) {
-    // Admins haben oft keine feste Abteilung - sehen daher alle internen Kurse.
+  if (viewerIsSuperAdmin) {
     courseWhere = { published: true, audience: "INTERNAL" };
   } else {
     const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
@@ -45,8 +50,11 @@ export default async function InternalSchulungPage() {
     <div className="p-4 sm:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Schulung</h1>
-        {isAgencyAdmin && (
-          <Link href="/dashboard/courses" className="text-sm text-muted-foreground underline underline-offset-2">
+        {viewerIsSuperAdmin && (
+          <Link
+            href="/dashboard/intern/schulung/verwaltung"
+            className="text-sm text-muted-foreground underline underline-offset-2"
+          >
             Kurse verwalten
           </Link>
         )}

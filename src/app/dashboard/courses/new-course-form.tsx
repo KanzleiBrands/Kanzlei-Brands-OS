@@ -17,9 +17,14 @@ import { useSaveToast } from "@/hooks/use-save-toast";
 import { ThumbnailGenerator } from "./thumbnail-generator";
 
 const LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
-const AUDIENCE_LABELS: Record<string, string> = { CLIENT: "Kunden", INTERNAL: "Mitarbeiter (internes Portal)" };
 
-export function NewCourseForm() {
+/**
+ * `audience` ist fest vom Aufrufer vorgegeben statt frei wählbar - Kunden-
+ * und interne Kursverwaltung sind bewusst getrennte Bereiche (siehe
+ * /dashboard/courses vs. /dashboard/intern/schulung/verwaltung), damit hier
+ * kein interner Kurs versehentlich im Kundenbereich landet oder umgekehrt.
+ */
+export function NewCourseForm({ audience }: { audience: "CLIENT" | "INTERNAL" }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createCourse, undefined);
   useSaveToast(error, isPending, "Kurs angelegt.");
@@ -51,6 +56,7 @@ export function NewCourseForm() {
         </DialogHeader>
 
         <form ref={formRef} action={formAction} className="flex flex-col gap-3" encType="multipart/form-data">
+          <input type="hidden" name="audience" value={audience} />
           <Input
             name="title"
             placeholder="Kurstitel"
@@ -81,15 +87,6 @@ export function NewCourseForm() {
             <SelectContent>
               <SelectItem value="ONBOARDING">Onboarding</SelectItem>
               <SelectItem value="TRAINING">Training</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select name="audience" defaultValue="CLIENT">
-            <SelectTrigger>
-              <SelectValue>{(value: string) => AUDIENCE_LABELS[value] ?? value}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CLIENT">{AUDIENCE_LABELS.CLIENT}</SelectItem>
-              <SelectItem value="INTERNAL">{AUDIENCE_LABELS.INTERNAL}</SelectItem>
             </SelectContent>
           </Select>
           {error && <p className="text-sm text-destructive">{error}</p>}
