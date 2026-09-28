@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { ThumbnailGenerator } from "../courses/thumbnail-generator";
 
 type PartnerRewardData = {
   id: string;
@@ -26,9 +27,11 @@ export function PartnerRewardFormDialog({ reward }: { reward?: PartnerRewardData
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
+  const [titleValue, setTitleValue] = useState(reward?.title ?? "");
   const [imageUrl, setImageUrl] = useState(reward?.imageUrl ?? "");
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) setOpen(false);
@@ -38,6 +41,7 @@ export function PartnerRewardFormDialog({ reward }: { reward?: PartnerRewardData
   function handleOpenChange(next: boolean) {
     if (next && !isEdit) {
       formRef.current?.reset();
+      setTitleValue("");
       setImageUrl("");
       setImageError(null);
     }
@@ -88,7 +92,13 @@ export function PartnerRewardFormDialog({ reward }: { reward?: PartnerRewardData
           {isEdit && <input type="hidden" name="rewardId" value={reward.id} />}
           <input type="hidden" name="imageUrl" value={imageUrl} />
 
-          <Input name="title" placeholder="Titel, z.B. Employer Branding Shooting" required defaultValue={reward?.title} />
+          <Input
+            name="title"
+            placeholder="Titel, z.B. Employer Branding Shooting"
+            required
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+          />
           <Textarea name="description" placeholder="Beschreibung" rows={2} defaultValue={reward?.description ?? ""} />
 
           <div className="flex flex-col gap-1.5">
@@ -117,6 +127,12 @@ export function PartnerRewardFormDialog({ reward }: { reward?: PartnerRewardData
               </div>
             )}
             {imageError && <p className="text-xs text-destructive">{imageError}</p>}
+            <input ref={thumbnailInputRef} type="file" accept="image/*" className="hidden" />
+            <ThumbnailGenerator
+              seedTitle={titleValue}
+              fileInputRef={thumbnailInputRef}
+              onGenerate={() => handleImageFile(thumbnailInputRef.current?.files?.[0])}
+            />
           </div>
 
           <div className="flex gap-2">
