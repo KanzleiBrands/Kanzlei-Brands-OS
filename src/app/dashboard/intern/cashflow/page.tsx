@@ -33,8 +33,8 @@ export default async function CashflowCockpitPage({
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") redirect("/dashboard");
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } });
-  if (!hasCashflowCockpitAccess({ email: session.user.email, department: user?.department ?? null, hasCashflowAccess: user?.hasCashflowAccess ?? false })) {
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true, hasCashflowAccess: true } });
+  if (!hasCashflowCockpitAccess({ email: session.user.email, departments: user?.departments ?? [], hasCashflowAccess: user?.hasCashflowAccess ?? false })) {
     redirect("/dashboard/intern");
   }
 

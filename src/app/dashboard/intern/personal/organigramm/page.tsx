@@ -10,7 +10,7 @@ type EmployeeNode = {
   id: string;
   name: string;
   position: string | null;
-  department: string | null;
+  departments: string[];
   avatarUrl: string | null;
   managerId: string | null;
 };
@@ -39,11 +39,11 @@ function OrgNode({ node, byManager }: { node: EmployeeNode; byManager: Map<strin
         )}
         <span className="font-medium">{node.name}</span>
         {node.position && <span className="text-xs text-muted-foreground">{node.position}</span>}
-        {node.department && (
-          <Badge variant="secondary" className="text-[10px]">
-            {DEPARTMENT_LABELS[node.department as keyof typeof DEPARTMENT_LABELS]}
+        {node.departments.map((dep) => (
+          <Badge key={dep} variant="secondary" className="text-[10px]">
+            {DEPARTMENT_LABELS[dep as keyof typeof DEPARTMENT_LABELS]}
           </Badge>
-        )}
+        ))}
         {reports.length > 0 && (
           <span className="text-xs text-muted-foreground">
             {reports.length} direkt Berichtende
@@ -85,7 +85,7 @@ export default async function OrganigrammPage() {
       role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] },
       employmentEndedAt: null,
     },
-    select: { id: true, name: true, position: true, department: true, avatarUrl: true, managerId: true },
+    select: { id: true, name: true, position: true, departments: true, avatarUrl: true, managerId: true },
     orderBy: { name: "asc" },
   });
 

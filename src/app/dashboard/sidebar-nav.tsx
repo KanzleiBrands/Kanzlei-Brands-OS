@@ -24,7 +24,7 @@ type NavLink = { href: string; label: string; icon?: React.ReactNode };
 export function SidebarNav({
   role,
   email,
-  department,
+  departments,
   hasCashflowAccess = false,
   links,
   adminLinks = [],
@@ -34,9 +34,9 @@ export function SidebarNav({
   role: string;
   /** Für den Cashflow-Cockpit-Zugriffscheck (siehe src/lib/cashflow-access.ts) - nicht an die Rolle gekoppelt. */
   email: string;
-  /** Nur für AGENCY_ADMIN/AGENCY_STAFF relevant - steuert z.B. den Marketing-Center-Link im internen Portal. */
-  department?: string | null;
-  /** Von der GF gezielt freigeschalteter Cashflow-Cockpit-Zugriff über department=EXECUTIVE hinaus. */
+  /** Nur für AGENCY_ADMIN/AGENCY_STAFF relevant - ein Mitarbeiter kann mehrere Rollen gleichzeitig haben; steuert welche internen Dashboards überhaupt auftauchen. */
+  departments: string[];
+  /** Von der GF gezielt freigeschalteter Cashflow-Cockpit-Zugriff über departments=EXECUTIVE hinaus. */
   hasCashflowAccess?: boolean;
   links: NavLink[];
   adminLinks?: NavLink[];
@@ -141,21 +141,21 @@ export function SidebarNav({
       { href: "/dashboard/intern/personal", label: "Personal", icon: <UsersIcon className="size-4 flex-shrink-0" /> },
       { href: "/dashboard/intern/schulung", label: "Schulung", icon: <GraduationCap className="size-4 flex-shrink-0" /> },
     ];
-    if (isSuperAdmin(email) || department === "MARKETING") {
+    if (isSuperAdmin(email) || departments.includes("MARKETING")) {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/marketing",
         label: "Marketing-Center",
         icon: <MegaphoneIcon className="size-4 flex-shrink-0" />,
       });
     }
-    if (hasCashflowCockpitAccess({ email, department: department ?? null, hasCashflowAccess })) {
+    if (hasCashflowCockpitAccess({ email, departments, hasCashflowAccess })) {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/cashflow",
         label: "Cashflow Cockpit",
         icon: <WalletIcon className="size-4 flex-shrink-0" />,
       });
     }
-    if (isSuperAdmin(email) || department === "SALES" || department === "EXECUTIVE") {
+    if (isSuperAdmin(email) || departments.includes("SALES") || departments.includes("EXECUTIVE")) {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/sales-cockpit",
         label: "Sales Cockpit",

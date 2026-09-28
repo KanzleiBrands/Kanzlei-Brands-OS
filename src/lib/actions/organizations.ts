@@ -311,7 +311,7 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const requestedRole = String(formData.get("role") ?? "CLIENT_STAFF");
-  const requestedDepartment = String(formData.get("department") ?? "");
+  const requestedDepartments = formData.getAll("departments").map(String);
 
   if (!organizationId || !name || !email) {
     return { status: "error", message: "Alle Felder sind erforderlich." };
@@ -326,26 +326,25 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
 
   // CLIENT_ADMIN may only create staff in their own org, never other admins.
   const role = session.user.role === "AGENCY_ADMIN" ? requestedRole : "CLIENT_STAFF";
-  let department: AgencyDepartment | null = null;
+  let departments: AgencyDepartment[] = [];
   if (role === "AGENCY_ADMIN" || role === "AGENCY_STAFF") {
     // Agency staff accounts may only be created directly in the agency's own org.
     if (organizationId !== session.user.organizationId) {
       return { status: "error", message: "Agentur-Mitarbeiter können nur in der eigenen Organisation angelegt werden." };
     }
-    // Neue Agentur-Mitarbeiter anzulegen (mit Rolle/Abteilung nach Wahl) ist
-    // nur dem Super-Admin vorbehalten - siehe updateAgencyUserDepartment.
+    // Neue Agentur-Mitarbeiter anzulegen (mit Rolle/Abteilung(en) nach Wahl)
+    // ist nur dem Super-Admin vorbehalten - siehe updateAgencyUserDepartments.
     if (!isSuperAdmin(session.user.email)) {
       return { status: "error", message: "Nur der Super-Admin kann Agentur-Mitarbeiter anlegen." };
     }
-    if (role === "AGENCY_STAFF") {
-      // AGENCY_STAFF has no CRM access at all - the department decides which
-      // Hub they land on in the internen Portal, so it can't be left unset.
-      if (!AGENCY_DEPARTMENTS.includes(requestedDepartment as AgencyDepartment)) {
-        return { status: "error", message: "Bitte eine Abteilung auswählen." };
-      }
-      department = requestedDepartment as AgencyDepartment;
-    } else if (AGENCY_DEPARTMENTS.includes(requestedDepartment as AgencyDepartment)) {
-      department = requestedDepartment as AgencyDepartment;
+    if (!requestedDepartments.every((d) => AGENCY_DEPARTMENTS.includes(d as AgencyDepartment))) {
+      return { status: "error", message: "Ungültige Abteilung." };
+    }
+    departments = requestedDepartments as AgencyDepartment[];
+    if (role === "AGENCY_STAFF" && departments.length === 0) {
+      // AGENCY_STAFF has no CRM access at all - departments decide which
+      // Hub(s) they land on in the internen Portal, so at least one is required.
+      return { status: "error", message: "Bitte mindestens eine Abteilung auswählen." };
     }
   } else if (role !== "CLIENT_ADMIN" && role !== "CLIENT_STAFF") {
     return { status: "error", message: "Ungültige Rolle." };
@@ -372,7 +371,7 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
       name,
       email,
       role,
-      department,
+      departments,
       organizationId,
       passwordHash: null,
       activationToken: token,
@@ -399,16 +398,17 @@ export async function createOrgUser(_prevState: CreateUserResult, formData: Form
 }
 
 /**
- * Ändert die Abteilung eines Agentur-Mitarbeiters (bestimmt dessen Hub im
- * internen Portal sowie Sales-Cockpit/Marketing-Center/Cashflow-Zugriff) -
+ * Ändert die Abteilung(en) eines Agentur-Mitarbeiters (bestimmt dessen Hub(s)
+ * im internen Portal sowie Sales-Cockpit/Marketing-Center/Cashflow-Zugriff) -
  * bewusst NICHT an die Rolle AGENCY_ADMIN gekoppelt, sonst könnte sich jeder
  * Fulfillment-Mitarbeiter mit AGENCY_ADMIN-Rolle selbst z.B. auf EXECUTIVE
  * setzen und sich damit Cashflow-Cockpit-Zugriff verschaffen. Nur der
  * Super-Admin (siehe src/lib/super-admin.ts) darf Rollen/Abteilungen
  * zuweisen - explizite Anforderung: "Kein anderer Mitarbeiter außer ich
- * sollte sich selbst eine andere Rolle geben können".
+ * sollte sich selbst eine andere Rolle geben können". Ein Mitarbeiter kann
+ * mehrere Abteilungen gleichzeitig haben (z.B. Fulfillment + Marketing).
  */
-export async function updateAgencyUserDepartment(userId: string, department: string | null) {
+export async function updateAgencyUserDepartments(userId: string, departments: string[]) {
   const session = await requireSession();
   if (!isSuperAdmin(session.user.email)) return "Nur der Super-Admin kann die Abteilung ändern.";
 
@@ -416,14 +416,14 @@ export async function updateAgencyUserDepartment(userId: string, department: str
   if (!user || user.organizationId !== session.user.organizationId || (user.role !== "AGENCY_ADMIN" && user.role !== "AGENCY_STAFF")) {
     return "Ungültiger Mitarbeiter.";
   }
-  if (department !== null && !AGENCY_DEPARTMENTS.includes(department as AgencyDepartment)) {
+  if (!departments.every((d) => AGENCY_DEPARTMENTS.includes(d as AgencyDepartment))) {
     return "Ungültige Abteilung.";
   }
-  if (user.role === "AGENCY_STAFF" && department === null) {
-    return "Mitarbeiter ohne Fulfillment-Zugriff benötigen eine Abteilung.";
+  if (user.role === "AGENCY_STAFF" && departments.length === 0) {
+    return "Mitarbeiter ohne Fulfillment-Zugriff benötigen mindestens eine Abteilung.";
   }
 
-  await prisma.user.update({ where: { id: userId }, data: { department: department as AgencyDepartment | null } });
+  await prisma.user.update({ where: { id: userId }, data: { departments: departments as AgencyDepartment[] } });
   revalidatePath("/dashboard/settings");
   return undefined;
 }

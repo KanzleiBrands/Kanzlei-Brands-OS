@@ -42,7 +42,7 @@ export async function ExecutiveDashboard({
     pendingAbsenceCount,
     absentToday,
     peopleWithEvents,
-    employeesByDepartment,
+    totalEmployees,
     scheduledPostsCount,
     draftPostsCount,
     whatsappSentThisMonth,
@@ -61,10 +61,10 @@ export async function ExecutiveDashboard({
       },
       select: { id: true, name: true, avatarUrl: true, birthday: true, hireDate: true },
     }),
-    prisma.user.groupBy({
-      by: ["department"],
+    // Headcount statt Aufschlüsselung je Abteilung - ein Mitarbeiter kann
+    // mehrere Rollen gleichzeitig haben, würde also mehrfach gezählt.
+    prisma.user.count({
       where: { organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] }, employmentEndedAt: null },
-      _count: { _all: true },
     }),
     prisma.socialPost.count({ where: { organizationId, status: "SCHEDULED", scheduledAt: { lte: in7Days } } }),
     prisma.socialPost.count({ where: { organizationId, status: { in: ["IDEA", "IN_PRODUCTION"] } } }),
@@ -91,8 +91,6 @@ export async function ExecutiveDashboard({
   }
   events.sort((a, b) => a.date.getTime() - b.date.getTime());
   probationEndingSoon.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  const totalEmployees = employeesByDepartment.reduce((sum, d) => sum + d._count._all, 0);
 
   return (
     <div className="flex flex-col gap-6">

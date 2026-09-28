@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { AGENCY_DEPARTMENTS, DEPARTMENT_LABELS } from "@/lib/agency-departments";
+import type { AgencyDepartment } from "@prisma/client";
 
 const NONE = "__none__";
 
@@ -21,7 +22,7 @@ export function EmployeeProfileForm({
   userId,
   position,
   location,
-  department,
+  departments,
   managerId,
   birthday,
   hireDate,
@@ -31,7 +32,7 @@ export function EmployeeProfileForm({
   userId: string;
   position: string | null;
   location: string | null;
-  department: string | null;
+  departments: AgencyDepartment[];
   managerId: string | null;
   birthday: Date | null;
   hireDate: Date | null;
@@ -41,10 +42,14 @@ export function EmployeeProfileForm({
   const [error, formAction, isPending] = useActionState(updateEmployeeProfile, undefined);
   useSaveToast(error, isPending, "Profil gespeichert.");
   const [isActive, setIsActive] = useState(active);
+  const [selectedDepartments, setSelectedDepartments] = useState<AgencyDepartment[]>(departments);
 
   return (
     <form action={formAction} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <input type="hidden" name="userId" value={userId} />
+      {selectedDepartments.map((dep) => (
+        <input key={dep} type="hidden" name="departments" value={dep} />
+      ))}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="position">Position</Label>
@@ -57,22 +62,20 @@ export function EmployeeProfileForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>Gruppe / Abteilung</Label>
-        <Select name="department" defaultValue={department ?? NONE}>
-          <SelectTrigger className="w-full">
-            <SelectValue>
-              {(value: string) => (value === NONE ? "Keine Gruppe" : DEPARTMENT_LABELS[value as keyof typeof DEPARTMENT_LABELS])}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NONE}>Keine Gruppe</SelectItem>
-            {AGENCY_DEPARTMENTS.map((dep) => (
-              <SelectItem key={dep} value={dep}>
-                {DEPARTMENT_LABELS[dep]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>Gruppe(n) / Abteilung(en)</Label>
+        <div className="flex flex-col gap-1.5">
+          {AGENCY_DEPARTMENTS.map((dep) => (
+            <label key={dep} className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={selectedDepartments.includes(dep)}
+                onCheckedChange={(checked) =>
+                  setSelectedDepartments((prev) => (checked === true ? [...prev, dep] : prev.filter((d) => d !== dep)))
+                }
+              />
+              {DEPARTMENT_LABELS[dep]}
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">

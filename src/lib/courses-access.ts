@@ -14,10 +14,10 @@ export async function hasCourseAccess(
 ): Promise<boolean> {
   if (course.audience === "INTERNAL") {
     if (session.user.role === "AGENCY_ADMIN") return true;
-    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
-    if (!viewer?.department) return false;
+    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
+    if (!viewer?.departments.length) return false;
     const assigned = await prisma.courseDepartmentAssignment.findFirst({
-      where: { courseId: course.id, department: viewer.department },
+      where: { courseId: course.id, department: { in: viewer.departments } },
     });
     return !!assigned;
   }

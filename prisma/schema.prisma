@@ -204,8 +204,12 @@ model User {
   role         UserRole
 
   // Nur für Agentur-Mitarbeiter (AGENCY_ADMIN/AGENCY_STAFF) relevant - siehe
-  // AgencyDepartment. Bestimmt den Hub im internen Portal (/dashboard/intern).
-  department AgencyDepartment?
+  // AgencyDepartment. Bestimmt die Hub(s) im internen Portal
+  // (/dashboard/intern) sowie den Zugriff auf Sales Cockpit/Marketing-Center
+  // (departments.includes(...)). Ein Mitarbeiter kann mehrere Rollen
+  // gleichzeitig haben (z.B. Fulfillment + internes Marketing) - nur der
+  // Super-Admin darf das zuweisen (siehe src/lib/super-admin.ts).
+  departments AgencyDepartment[] @default([])
 
   // Cashflow Cockpit ist grundsätzlich nur für department=EXECUTIVE sichtbar -
   // dieser Schalter erlaubt der Geschäftsführung, es gezielt auch anderen

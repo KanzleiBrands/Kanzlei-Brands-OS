@@ -21,7 +21,7 @@ export default async function MitarbeiterverzeichnisPage() {
       id: true,
       name: true,
       avatarUrl: true,
-      department: true,
+      departments: true,
       location: true,
       position: true,
       employmentEndedAt: true,
@@ -78,7 +78,17 @@ export default async function MitarbeiterverzeichnisPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    {employee.department ? <Badge variant="secondary">{DEPARTMENT_LABELS[employee.department]}</Badge> : "—"}
+                    {employee.departments.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {employee.departments.map((dep) => (
+                          <Badge key={dep} variant="secondary">
+                            {DEPARTMENT_LABELS[dep]}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{employee.location ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{employee.position ?? "—"}</td>

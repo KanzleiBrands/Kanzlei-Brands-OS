@@ -108,9 +108,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const internalUser =
     session.user.role === "AGENCY_ADMIN" || session.user.role === "AGENCY_STAFF"
-      ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } })
+      ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true, hasCashflowAccess: true } })
       : null;
-  const department = internalUser?.department ?? null;
+  const departments = internalUser?.departments ?? [];
   const hasCashflowAccess = internalUser?.hasCashflowAccess ?? false;
 
   const clients =
@@ -149,7 +149,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <SidebarNav
         role={session.user.role}
         email={session.user.email}
-        department={department}
+        departments={departments}
         hasCashflowAccess={hasCashflowAccess}
         links={mainLinks}
         adminLinks={adminLinks}

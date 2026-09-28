@@ -8,16 +8,16 @@
  * Cockpit") hat dadurch versehentlich CRM-Vollzugriff mit
  * Geschäftsführungs-Zugriff gleichgesetzt - genau das hier behoben wird.
  *
- * OWNER_EMAIL ist ein bewusster, zusätzlicher Fallback: department ist
- * nullable, und ohne diesen Fallback könnte ein fehlendes department-Feld
- * den Geschäftsführer selbst aussperren. department=EXECUTIVE oder
- * hasCashflowAccess (Settings -> Team) bleiben die regulären Wege, weiteren
- * Personen gezielt Zugriff zu geben.
+ * OWNER_EMAIL ist ein bewusster, zusätzlicher Fallback: departments kann
+ * leer sein, und ohne diesen Fallback könnte ein fehlendes
+ * departments-Feld den Geschäftsführer selbst aussperren.
+ * departments enthält EXECUTIVE oder hasCashflowAccess (Settings -> Team)
+ * bleiben die regulären Wege, weiteren Personen gezielt Zugriff zu geben.
  */
 const OWNER_EMAIL = "lukas@kanzlei-brands.de";
 
-export function hasCashflowCockpitAccess(user: { email: string; department: string | null; hasCashflowAccess: boolean }): boolean {
+export function hasCashflowCockpitAccess(user: { email: string; departments: string[]; hasCashflowAccess: boolean }): boolean {
   if (user.email.toLowerCase() === OWNER_EMAIL) return true;
-  if (user.department === "EXECUTIVE") return true;
+  if (user.departments.includes("EXECUTIVE")) return true;
   return user.hasCashflowAccess;
 }

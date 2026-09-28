@@ -101,8 +101,9 @@ export default async function SalesCockpitPage({
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") redirect("/dashboard");
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
-  if (!isSuperAdmin(session.user.email) && user?.department !== "SALES" && user?.department !== "EXECUTIVE") {
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
+  const departments = user?.departments ?? [];
+  if (!isSuperAdmin(session.user.email) && !departments.includes("SALES") && !departments.includes("EXECUTIVE")) {
     redirect("/dashboard/intern");
   }
 

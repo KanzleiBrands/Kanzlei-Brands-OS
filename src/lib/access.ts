@@ -34,8 +34,8 @@ export function assertOrganizationAccess(session: Session, organizationId: strin
  */
 export async function isAgencyMarketingStaffFor(session: Session, organizationId: string): Promise<boolean> {
   if (session.user.role !== "AGENCY_STAFF" || organizationId !== session.user.organizationId) return false;
-  const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
-  return me?.department === "MARKETING";
+  const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
+  return me?.departments.includes("MARKETING") ?? false;
 }
 
 /** Gate for Social-Media-Beiträge/Kommentare: AGENCY_ADMIN always; Marketing-Mitarbeiter nur für die eigene Organisation. */

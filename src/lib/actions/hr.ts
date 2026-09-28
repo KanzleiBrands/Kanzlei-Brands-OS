@@ -58,7 +58,7 @@ export async function updateEmployeeProfile(_prevState: string | undefined, form
 
   const position = String(formData.get("position") ?? "").trim() || null;
   const location = String(formData.get("location") ?? "").trim() || null;
-  const department = String(formData.get("department") ?? "");
+  const departments = formData.getAll("departments").map(String).filter(isAgencyDepartment);
   const managerIdRaw = String(formData.get("managerId") ?? "").trim();
   const managerId = managerIdRaw && managerIdRaw !== "__none__" ? managerIdRaw : null;
   const birthday = parseDate(formData.get("birthday"));
@@ -78,7 +78,7 @@ export async function updateEmployeeProfile(_prevState: string | undefined, form
     data: {
       position,
       location,
-      department: department && isAgencyDepartment(department) ? department : null,
+      departments,
       managerId,
       birthday,
       hireDate,

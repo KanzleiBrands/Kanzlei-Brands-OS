@@ -18,7 +18,7 @@ export default async function InternalPortalAdminPage() {
   const [agencyUsers, resourceLinks, internalCourses] = await Promise.all([
     prisma.user.findMany({
       where: { organizationId: session.user.organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },
-      select: { id: true, name: true, role: true, department: true },
+      select: { id: true, name: true, role: true, departments: true },
       orderBy: { name: "asc" },
     }),
     prisma.departmentResourceLink.findMany({ orderBy: { order: "asc" } }),
@@ -46,7 +46,7 @@ export default async function InternalPortalAdminPage() {
 
       <div className="flex flex-col gap-6">
         {AGENCY_DEPARTMENTS.map((department) => {
-          const members = agencyUsers.filter((u) => u.department === department);
+          const members = agencyUsers.filter((u) => u.departments.includes(department));
           return (
             <Card key={department}>
               <CardHeader>

@@ -63,7 +63,11 @@ export default async function EmployeeProfilePage({
           )}
           <p className="font-medium">{employee.name}</p>
           {employee.position && <p className="text-sm text-muted-foreground">{employee.position}</p>}
-          {employee.department && <Badge variant="secondary">{DEPARTMENT_LABELS[employee.department]}</Badge>}
+          {employee.departments.map((dep) => (
+            <Badge key={dep} variant="secondary">
+              {DEPARTMENT_LABELS[dep]}
+            </Badge>
+          ))}
         </CardContent>
       </Card>
     );
@@ -183,8 +187,8 @@ export default async function EmployeeProfilePage({
                 <span className="text-muted-foreground">Manager*in:</span> {employee.manager?.name ?? "—"}
               </p>
               <p>
-                <span className="text-muted-foreground">Gruppe:</span>{" "}
-                {employee.department ? DEPARTMENT_LABELS[employee.department] : "—"}
+                <span className="text-muted-foreground">Gruppe(n):</span>{" "}
+                {employee.departments.length > 0 ? employee.departments.map((dep) => DEPARTMENT_LABELS[dep]).join(", ") : "—"}
               </p>
             </CardContent>
           </Card>
@@ -223,7 +227,7 @@ export default async function EmployeeProfilePage({
             userId={employee.id}
             position={employee.position}
             location={employee.location}
-            department={employee.department}
+            departments={employee.departments}
             managerId={employee.managerId}
             birthday={employee.birthday}
             hireDate={employee.hireDate}

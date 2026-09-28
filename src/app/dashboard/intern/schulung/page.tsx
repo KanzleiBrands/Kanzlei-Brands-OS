@@ -26,9 +26,9 @@ export default async function InternalSchulungPage() {
     // Admins haben oft keine feste Abteilung - sehen daher alle internen Kurse.
     courseWhere = { published: true, audience: "INTERNAL" };
   } else {
-    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
-    courseWhere = viewer?.department
-      ? { published: true, audience: "INTERNAL", departmentAssignments: { some: { department: viewer.department } } }
+    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
+    courseWhere = viewer?.departments.length
+      ? { published: true, audience: "INTERNAL", departmentAssignments: { some: { department: { in: viewer.departments } } } }
       : { id: "__none__" };
   }
 

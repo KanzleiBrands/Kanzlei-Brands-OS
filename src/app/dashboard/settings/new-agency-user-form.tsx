@@ -13,6 +13,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { AGENCY_DEPARTMENTS, DEPARTMENT_LABELS } from "@/lib/agency-departments";
 
@@ -50,7 +52,7 @@ export function NewAgencyUserForm({ organizationId }: { organizationId: string }
 function NewAgencyUserFormInner({ organizationId, onDone }: { organizationId: string; onDone: () => void }) {
   const [result, formAction, isPending] = useActionState(createOrgUser, undefined);
   const [role, setRole] = useState<"AGENCY_ADMIN" | "AGENCY_STAFF">("AGENCY_ADMIN");
-  const [department, setDepartment] = useState("");
+  const [departments, setDepartments] = useState<string[]>([]);
   useSaveToast(
     result?.status === "success"
       ? { status: "success", message: "Mitarbeiter angelegt." }
@@ -67,7 +69,9 @@ function NewAgencyUserFormInner({ organizationId, onDone }: { organizationId: st
         <form action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="organizationId" value={organizationId} />
           <input type="hidden" name="role" value={role} />
-          <input type="hidden" name="department" value={department} />
+          {departments.map((dep) => (
+            <input key={dep} type="hidden" name="departments" value={dep} />
+          ))}
           <Input name="name" placeholder="Name" required />
           <Input name="email" type="email" placeholder="E-Mail" required />
           <Select value={role} onValueChange={(v) => v && setRole(v as "AGENCY_ADMIN" | "AGENCY_STAFF")}>
@@ -79,22 +83,22 @@ function NewAgencyUserFormInner({ organizationId, onDone }: { organizationId: st
               <SelectItem value="AGENCY_STAFF">{ROLE_LABELS.AGENCY_STAFF}</SelectItem>
             </SelectContent>
           </Select>
-          {role === "AGENCY_STAFF" && (
-            <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Abteilung auswählen">
-                  {(value) => DEPARTMENT_LABELS[value as keyof typeof DEPARTMENT_LABELS] ?? "Abteilung auswählen"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {AGENCY_DEPARTMENTS.map((dep) => (
-                  <SelectItem key={dep} value={dep}>
-                    {DEPARTMENT_LABELS[dep]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <Label>{role === "AGENCY_STAFF" ? "Abteilung(en) auswählen" : "Abteilung(en) (optional)"}</Label>
+            <div className="flex flex-col gap-1.5">
+              {AGENCY_DEPARTMENTS.map((dep) => (
+                <label key={dep} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={departments.includes(dep)}
+                    onCheckedChange={(checked) =>
+                      setDepartments((prev) => (checked === true ? [...prev, dep] : prev.filter((d) => d !== dep)))
+                    }
+                  />
+                  {DEPARTMENT_LABELS[dep]}
+                </label>
+              ))}
+            </div>
+          </div>
           <p className="text-sm text-muted-foreground">
             Der neue Zugang wird per Aktivierungslink eingeladen &ndash; kein Passwort nötig.{" "}
             {role === "AGENCY_ADMIN"

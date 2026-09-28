@@ -14,8 +14,8 @@ async function requireExecutiveAccess(organizationId: string) {
   const session = await requireSession();
   assertOrganizationAccess(session, organizationId);
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } });
-  if (!hasCashflowCockpitAccess({ email: session.user.email, department: user?.department ?? null, hasCashflowAccess: user?.hasCashflowAccess ?? false })) {
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true, hasCashflowAccess: true } });
+  if (!hasCashflowCockpitAccess({ email: session.user.email, departments: user?.departments ?? [], hasCashflowAccess: user?.hasCashflowAccess ?? false })) {
     throw new AccessDeniedError("Das Cashflow Cockpit ist nur für die Geschäftsführung sichtbar.");
   }
   return session;
@@ -196,8 +196,8 @@ export async function unmapEasybillCustomer(formData: FormData): Promise<void> {
  */
 export async function setCashflowAccess(formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
-  const caller = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } });
-  if (!hasCashflowCockpitAccess({ email: session.user.email, department: caller?.department ?? null, hasCashflowAccess: caller?.hasCashflowAccess ?? false })) {
+  const caller = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true, hasCashflowAccess: true } });
+  if (!hasCashflowCockpitAccess({ email: session.user.email, departments: caller?.departments ?? [], hasCashflowAccess: caller?.hasCashflowAccess ?? false })) {
     return "Nur die Geschäftsführung kann Cashflow-Zugriff vergeben.";
   }
 

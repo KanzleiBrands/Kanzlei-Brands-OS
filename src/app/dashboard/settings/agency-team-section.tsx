@@ -15,7 +15,7 @@ type AgencyUser = {
   name: string;
   email: string;
   role: UserRole;
-  department: AgencyDepartment | null;
+  departments: AgencyDepartment[];
   hasCashflowAccess: boolean;
   passwordHash: string | null;
   activationToken: string | null;
@@ -77,7 +77,7 @@ export function AgencyTeamSection({
                   <TableCell>
                     <EditableUserDepartment
                       userId={user.id}
-                      department={user.department}
+                      departments={user.departments}
                       required={user.role === "AGENCY_STAFF"}
                     />
                   </TableCell>
@@ -86,7 +86,7 @@ export function AgencyTeamSection({
                       <EditableCashflowAccess
                         userId={user.id}
                         hasCashflowAccess={user.hasCashflowAccess}
-                        lockedOn={user.department === "EXECUTIVE" || user.email.toLowerCase() === "lukas@kanzlei-brands.de"}
+                        lockedOn={user.departments.includes("EXECUTIVE") || user.email.toLowerCase() === "lukas@kanzlei-brands.de"}
                       />
                     </TableCell>
                   )}

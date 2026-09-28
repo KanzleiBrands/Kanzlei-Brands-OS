@@ -10,8 +10,8 @@ export default async function MarketingCenterLayout({ children }: { children: Re
   if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") redirect("/dashboard");
 
   if (!isSuperAdmin(session.user.email)) {
-    const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
-    if (me?.department !== "MARKETING") redirect("/dashboard/intern");
+    const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
+    if (!me?.departments.includes("MARKETING")) redirect("/dashboard/intern");
   }
 
   return (
