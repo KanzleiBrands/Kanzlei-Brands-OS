@@ -14,6 +14,7 @@ type PartnerActionData = {
   title: string;
   description: string | null;
   ctaLabel: string;
+  ctaType: "LINK" | "ACCOUNT_MANAGER_REQUEST";
   ctaUrl: string | null;
   points: number;
 };
@@ -21,6 +22,7 @@ type PartnerActionData = {
 export function PartnerActionFormDialog({ action }: { action?: PartnerActionData }) {
   const isEdit = !!action;
   const [open, setOpen] = useState(false);
+  const [ctaType, setCtaType] = useState<"LINK" | "ACCOUNT_MANAGER_REQUEST">(action?.ctaType ?? "LINK");
   const [error, formAction, isPending] = useActionState(isEdit ? updatePartnerAction : createPartnerAction, undefined);
   useSaveToast(error, isPending, isEdit ? "Aktion gespeichert." : "Aktion angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
@@ -32,7 +34,10 @@ export function PartnerActionFormDialog({ action }: { action?: PartnerActionData
   }, [isPending, error]);
 
   function handleOpenChange(next: boolean) {
-    if (next && !isEdit) formRef.current?.reset();
+    if (next && !isEdit) {
+      formRef.current?.reset();
+      setCtaType("LINK");
+    }
     setOpen(next);
   }
 
@@ -75,7 +80,45 @@ export function PartnerActionFormDialog({ action }: { action?: PartnerActionData
               <Input name="ctaLabel" placeholder="z.B. Google Bewertung abgeben" defaultValue={action?.ctaLabel} />
             </div>
           </div>
-          <Input name="ctaUrl" type="url" placeholder="Link (z.B. Google-Bewertungslink, Buchungslink) - optional" defaultValue={action?.ctaUrl ?? ""} />
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Button-Aktion</label>
+            <div className="flex gap-2">
+              <label className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="ctaType"
+                  value="LINK"
+                  checked={ctaType === "LINK"}
+                  onChange={() => setCtaType("LINK")}
+                  className="peer sr-only"
+                />
+                <span className="block rounded-md border px-3 py-1.5 text-sm peer-checked:border-primary peer-checked:bg-primary/10">
+                  Externer Link
+                </span>
+              </label>
+              <label className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="ctaType"
+                  value="ACCOUNT_MANAGER_REQUEST"
+                  checked={ctaType === "ACCOUNT_MANAGER_REQUEST"}
+                  onChange={() => setCtaType("ACCOUNT_MANAGER_REQUEST")}
+                  className="peer sr-only"
+                />
+                <span className="block rounded-md border px-3 py-1.5 text-sm peer-checked:border-primary peer-checked:bg-primary/10">
+                  Anfrage an Account-Manager
+                </span>
+              </label>
+            </div>
+          </div>
+          {ctaType === "LINK" ? (
+            <Input name="ctaUrl" type="url" placeholder="Link (z.B. Google-Bewertungslink, Buchungslink) - optional" defaultValue={action?.ctaUrl ?? ""} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Kein Link nötig - ein Klick auf den Button schickt euch eine Anfrage per E-Mail und Slack, ihr plant die
+              Umsetzung dann manuell mit dem Kunden ein.
+            </p>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
             {isPending ? "Wird gespeichert..." : isEdit ? "Speichern" : "Aktion anlegen"}

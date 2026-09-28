@@ -37,11 +37,12 @@ export async function createPartnerAction(_prevState: string | undefined, formDa
   if (!title) return "Titel ist erforderlich.";
   const description = String(formData.get("description") ?? "").trim() || null;
   const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Jetzt starten";
-  const ctaUrl = String(formData.get("ctaUrl") ?? "").trim() || null;
+  const ctaType = String(formData.get("ctaType") ?? "LINK") === "ACCOUNT_MANAGER_REQUEST" ? "ACCOUNT_MANAGER_REQUEST" : "LINK";
+  const ctaUrl = ctaType === "LINK" ? String(formData.get("ctaUrl") ?? "").trim() || null : null;
   const points = Math.max(1, Number(formData.get("points") ?? 1) || 1);
 
   const last = await prisma.partnerAction.findFirst({ orderBy: { order: "desc" } });
-  await prisma.partnerAction.create({ data: { title, description, ctaLabel, ctaUrl, points, order: (last?.order ?? 0) + 1 } });
+  await prisma.partnerAction.create({ data: { title, description, ctaLabel, ctaType, ctaUrl, points, order: (last?.order ?? 0) + 1 } });
 
   revalidatePath(PATHS[0]);
   revalidatePath("/dashboard/clients");
@@ -62,13 +63,14 @@ export async function updatePartnerAction(_prevState: string | undefined, formDa
   if (!title) return "Titel ist erforderlich.";
   const description = String(formData.get("description") ?? "").trim() || null;
   const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Jetzt starten";
-  const ctaUrl = String(formData.get("ctaUrl") ?? "").trim() || null;
+  const ctaType = String(formData.get("ctaType") ?? "LINK") === "ACCOUNT_MANAGER_REQUEST" ? "ACCOUNT_MANAGER_REQUEST" : "LINK";
+  const ctaUrl = ctaType === "LINK" ? String(formData.get("ctaUrl") ?? "").trim() || null : null;
   const points = Math.max(1, Number(formData.get("points") ?? 1) || 1);
 
   const action = await prisma.partnerAction.findUnique({ where: { id: actionId } });
   if (!action) return "Aktion nicht gefunden.";
 
-  await prisma.partnerAction.update({ where: { id: actionId }, data: { title, description, ctaLabel, ctaUrl, points } });
+  await prisma.partnerAction.update({ where: { id: actionId }, data: { title, description, ctaLabel, ctaType, ctaUrl, points } });
   revalidatePath(PATHS[0]);
   return undefined;
 }
@@ -205,6 +207,41 @@ export async function movePartnerReward(formData: FormData) {
     prisma.partnerReward.update({ where: { id: rewards[target].id }, data: { order: rewards[index].order } }),
   ]);
   revalidatePath(PATHS[0]);
+}
+
+/**
+ * Kunde klickt bei einer ACCOUNT_MANAGER_REQUEST-Aktion (z.B. "Video
+ * Interview") auf den CTA-Button - statt einer externen URL bekommt der
+ * Account-Manager direkt eine Anfrage (E-Mail + Slack, siehe
+ * notifyAccountManager) und plant die Umsetzung manuell ein. Die
+ * Punktegutschrift selbst bleibt wie bei jeder PartnerAction ein separater,
+ * manueller Schritt der Agentur (creditPartnerAction).
+ */
+export async function requestPartnerAction(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
+  const session = await requireSession();
+  if (session.user.role === "AGENCY_ADMIN") return "Diese Aktion ist für Kunden gedacht.";
+
+  const actionId = String(formData.get("actionId") ?? "");
+  const action = await prisma.partnerAction.findUnique({ where: { id: actionId } });
+  if (!action || !action.active || action.ctaType !== "ACCOUNT_MANAGER_REQUEST") return "Aktion nicht gefunden.";
+
+  await logAudit({
+    action: "partner_action.requested",
+    entityType: "PartnerAction",
+    entityId: actionId,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+  });
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: session.user.organizationId },
+    select: { name: true },
+  });
+  const subject = `${organization?.name ?? "Ein Kunde"} hat "${action.title}" angefragt`;
+  const text = `${session.user.name} (${session.user.email}) hat bei der Partnerprogramm-Aktion "${action.title}" auf "${action.ctaLabel}" geklickt und braucht dafür eure Unterstützung.`;
+  await notifyAccountManager(session.user.organizationId, subject, text);
+
+  return undefined;
 }
 
 // --- Punkte-Ledger -------------------------------------------------------

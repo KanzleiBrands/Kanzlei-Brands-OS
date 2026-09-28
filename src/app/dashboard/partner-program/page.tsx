@@ -11,6 +11,7 @@ import { PartnerActionFormDialog } from "./partner-action-form-dialog";
 import { PartnerRewardFormDialog } from "./partner-reward-form-dialog";
 import { PartnerActiveToggle, PartnerMoveButtons, PartnerDeleteButton } from "./partner-row-controls";
 import { RedeemRewardButton } from "./redeem-reward-button";
+import { RequestAccountManagerButton } from "./request-account-manager-button";
 
 const ACCOUNT_MANAGER_EMAIL = "support@kanzlei-brands.de";
 
@@ -197,15 +198,21 @@ export default async function PartnerProgramPage() {
               </Badge>
               <p className="font-medium">{action.title}</p>
               {action.description && <p className="text-sm text-muted-foreground">{action.description}</p>}
-              {action.ctaUrl && (
-                <a
-                  href={action.ctaUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 inline-flex w-fit items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-                >
-                  {action.ctaLabel}
-                </a>
+              {action.ctaType === "ACCOUNT_MANAGER_REQUEST" ? (
+                <div className="mt-1 w-fit">
+                  <RequestAccountManagerButton actionId={action.id} ctaLabel={action.ctaLabel} />
+                </div>
+              ) : (
+                action.ctaUrl && (
+                  <a
+                    href={action.ctaUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex w-fit items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                  >
+                    {action.ctaLabel}
+                  </a>
+                )
               )}
             </CardContent>
           </Card>

@@ -1857,19 +1857,30 @@ enum PartnerTransactionKind {
   ADJUSTMENT // manuelle Korrektur durch die Agentur, ohne Bezug zu Action/Reward
 }
 
+// LINK öffnet ctaUrl direkt (z.B. Google-Bewertungslink, Buchungslink).
+// ACCOUNT_MANAGER_REQUEST braucht keine URL - der Klick schickt stattdessen
+// eine Anfrage an den Account-Manager (E-Mail + Slack, siehe
+// notifyAccountManager/requestPartnerAction), für Aktionen, die die Agentur
+// erst manuell einplanen muss (z.B. ein Video-Interview).
+enum PartnerActionCtaType {
+  LINK
+  ACCOUNT_MANAGER_REQUEST
+}
+
 // Katalog-Eintrag "Punkte sammeln" - global, gilt für alle Kunden. Punkte
 // werden nicht automatisch erkannt (z.B. Google-Bewertung lässt sich nicht
 // zuverlässig einem Kunden zuordnen), sondern von der Agentur nach Prüfung
 // manuell gutgeschrieben - siehe PartnerPointsTransaction.
 model PartnerAction {
-  id          String  @id @default(cuid())
+  id          String               @id @default(cuid())
   title       String
   description String?
-  ctaLabel    String  @default("Jetzt starten")
+  ctaLabel    String               @default("Jetzt starten")
+  ctaType     PartnerActionCtaType @default(LINK)
   ctaUrl      String?
-  points      Int     @default(1)
-  order       Int     @default(0)
-  active      Boolean @default(true)
+  points      Int                  @default(1)
+  order       Int                  @default(0)
+  active      Boolean              @default(true)
 
   transactions PartnerPointsTransaction[]
 
