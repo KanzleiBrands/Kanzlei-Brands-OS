@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Prisma } from "@prisma/client";
+import type { ContactSource, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertPipelineAccess, AccessDeniedError } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
@@ -426,6 +426,37 @@ export async function createContact(_prevState: string | undefined, formData: Fo
   revalidatePath(`/dashboard/pipelines/${pipelineId}`);
 }
 
+// Häufige normalisierte Spaltennamen (siehe normalizeFieldKey) für Status/
+// Stufe, Quelle und das ursprüngliche Erfassungsdatum in CSV-Exporten aus
+// anderen Tools (z.B. Airtable/Google Sheets) - keine davon ist Teil von
+// extractContactFields, da sie kein Contact-Feld sondern Stage/createdAt/
+// source betreffen.
+const STATUS_COLUMN_KEYS = ["pipeline_status", "status", "stufe", "stage"];
+const DATE_COLUMN_KEYS = ["datum", "date", "erstellt", "created_at"];
+const SOURCE_COLUMN_KEYS = ["quelle", "source"];
+
+function resolveCsvSource(rawValue: string | undefined): ContactSource {
+  const value = (rawValue ?? "").toLowerCase();
+  if (value.includes("meta") || value.includes("facebook") || value.includes("instagram")) return "META_LEAD_ADS";
+  if (value.includes("google")) return "GOOGLE_ADS";
+  if (value.includes("linkedin")) return "LINKEDIN_LEAD_GEN";
+  return "MANUAL";
+}
+
+function resolveCsvDate(rawValue: string | undefined): Date | null {
+  if (!rawValue) return null;
+  const parsed = new Date(rawValue.trim());
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * CSV-Import mit Status-zu-Stufe-Zuordnung: erkennt eine Status-/Stufen-
+ * Spalte (z.B. "Pipeline Status") und verteilt Kontakte entsprechend auf die
+ * Stufen der Pipeline, statt sie alle in die erste Stufe zu legen - eine
+ * Stufe, deren Name (case-insensitive) noch nicht existiert, wird beim
+ * Import automatisch neu angelegt (ans Ende der Reihenfolge angehängt).
+ * Zeilen ohne (erkennbaren) Status landen wie zuvor in der ersten Stufe.
+ */
 export async function importContactsCsv(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
   const pipelineId = String(formData.get("pipelineId") ?? "");
@@ -437,11 +468,12 @@ export async function importContactsCsv(_prevState: string | undefined, formData
 
   await assertPipelineAccess(session, pipelineId);
 
-  const firstStage = await prisma.stage.findFirst({
-    where: { pipelineId },
-    orderBy: { order: "asc" },
-  });
+  const stages = await prisma.stage.findMany({ where: { pipelineId }, orderBy: { order: "asc" } });
+  const firstStage = stages[0];
   if (!firstStage) return "Diese Pipeline hat keine Stufen.";
+
+  const stageByName = new Map(stages.map((s) => [s.name.trim().toLowerCase(), s.id]));
+  let nextOrder = Math.max(...stages.map((s) => s.order)) + 1;
 
   const text = await file.text();
   const rows = csvToObjects(text);
@@ -458,10 +490,31 @@ export async function importContactsCsv(_prevState: string | undefined, formData
     const fields = extractContactFields(normalized);
     if (!fields.firstName && !fields.lastName && !fields.email) continue;
 
+    const statusRaw = STATUS_COLUMN_KEYS.map((key) => normalized[key]).find((v) => v?.trim())?.trim();
+    let stageId = firstStage.id;
+    if (statusRaw) {
+      const statusKey = statusRaw.toLowerCase();
+      let matchedStageId = stageByName.get(statusKey);
+      if (!matchedStageId) {
+        const newStage = await prisma.stage.create({
+          data: { pipelineId, name: statusRaw, order: nextOrder },
+        });
+        nextOrder += 1;
+        stageByName.set(statusKey, newStage.id);
+        matchedStageId = newStage.id;
+      }
+      stageId = matchedStageId;
+    }
+
+    const dateRaw = DATE_COLUMN_KEYS.map((key) => normalized[key]).find((v) => v?.trim());
+    const createdAt = resolveCsvDate(dateRaw);
+
+    const sourceRaw = SOURCE_COLUMN_KEYS.map((key) => normalized[key]).find((v) => v?.trim());
+
     await prisma.contact.create({
       data: {
         pipelineId,
-        stageId: firstStage.id,
+        stageId,
         firstName: fields.firstName,
         lastName: fields.lastName,
         email: fields.email,
@@ -471,8 +524,9 @@ export async function importContactsCsv(_prevState: string | undefined, formData
         website: deriveWebsiteFromEmail(fields.email),
         address: fields.address,
         cvUrl: fields.cvUrl,
-        source: "MANUAL",
+        source: resolveCsvSource(sourceRaw),
         customFields: stripTrackingFields((fields.customFields as Prisma.InputJsonObject | null) ?? row),
+        ...(createdAt ? { createdAt } : {}),
       },
     });
     imported++;

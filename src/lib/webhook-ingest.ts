@@ -368,8 +368,10 @@ export function extractContactFields(payload: Record<string, unknown>, fieldMapp
   }
 
   // Split a combined "name" field if first/last name weren't found individually.
+  // "ansprechpartner"/"kontaktperson" are common German CRM-export column
+  // names for a single combined contact-person field (e.g. CSV imports).
   if (!result.firstName && !result.lastName) {
-    const fullName = toStringOrNull(payload.name ?? payload.full_name);
+    const fullName = toStringOrNull(payload.name ?? payload.full_name ?? payload.ansprechpartner ?? payload.kontaktperson);
     if (fullName) {
       const [first, ...rest] = fullName.split(" ");
       result.firstName = first;

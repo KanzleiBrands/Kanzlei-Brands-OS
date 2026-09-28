@@ -162,8 +162,10 @@ export function AddSourceDialog({ pipelineId, existingSources }: { pipelineId: s
           <div className="border-t pt-4">
             <p className="mb-1 text-sm font-medium">CSV Upload</p>
             <p className="mb-2 text-sm text-muted-foreground">
-              Spalten wie Vorname, Nachname, E-Mail, Telefon und Ort werden automatisch erkannt. Alle Kontakte landen
-              in der ersten Stufe dieser Pipeline (max. 2000 Zeilen).
+              Spalten wie Vorname/Ansprechpartner, Nachname, E-Mail, Telefon und Ort werden automatisch erkannt. Eine
+              Spalte &bdquo;Status&ldquo;/&bdquo;Pipeline Status&ldquo;/&bdquo;Stufe&ldquo; verteilt Kontakte
+              automatisch auf die passende Stufe - eine noch nicht vorhandene Stufe wird dabei neu angelegt. Ohne
+              diese Spalte landen alle Kontakte in der ersten Stufe dieser Pipeline (max. 2000 Zeilen).
             </p>
             <form ref={csvFormRef} action={csvFormAction} className="flex flex-col gap-2">
               <input type="hidden" name="pipelineId" value={pipelineId} />
