@@ -436,10 +436,20 @@ function EnrollPicker({ funnelId, contacts }: { funnelId: string; contacts: Funn
     return <p className="text-sm text-muted-foreground">Alle Leads dieser Kampagne sind bereits eingeschrieben.</p>;
   }
 
+  const allSelected = selected.size === contacts.length;
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(contacts.map((c) => c.id)));
+  }
+
   return (
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="funnelId" value={funnelId} />
       <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-lg border bg-card p-2">
+        <label className="flex items-center gap-2 rounded-md border-b px-1.5 py-1 pb-1.5 text-sm font-medium hover:bg-muted/50">
+          <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+          Alle auswählen ({contacts.length})
+        </label>
         {contacts.map((c) => (
           <label key={c.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted/50">
             <input
