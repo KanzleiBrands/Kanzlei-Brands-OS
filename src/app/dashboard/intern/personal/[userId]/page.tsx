@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { canApproveAbsenceFor, probationEndDate } from "@/lib/hr-access";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
@@ -38,7 +39,7 @@ export default async function EmployeeProfilePage({
   }
 
   const isSelf = session.user.id === employee.id;
-  const isHrAdmin = session.user.role === "AGENCY_ADMIN";
+  const isHrAdmin = isSuperAdmin(session.user.email);
   const canViewFull = isSelf || isHrAdmin || (await canApproveAbsenceFor(session, employee.id));
 
   const [firstName, ...rest] = employee.name.trim().split(/\s+/);

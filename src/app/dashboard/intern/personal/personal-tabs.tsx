@@ -5,18 +5,20 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/dashboard/intern/personal", label: "Startseite" },
-  { href: "/dashboard/intern/personal/verzeichnis", label: "Mitarbeiter" },
+  { href: "/dashboard/intern/personal/verzeichnis", label: "Mitarbeiter", superAdminOnly: true },
   { href: "/dashboard/intern/personal/organigramm", label: "Organigramm" },
   { href: "/dashboard/intern/personal/abwesenheit", label: "Abwesenheit" },
-  { href: "/dashboard/intern/personal/unternehmen", label: "Unternehmen" },
+  { href: "/dashboard/intern/personal/unternehmen", label: "Unternehmen", superAdminOnly: true },
 ];
 
-export function PersonalTabs() {
+/** "Mitarbeiter" (komplettes Verzeichnis) und "Unternehmen" sind Geschäftsführungssache - für alle anderen Mitarbeiter tabu (siehe verzeichnis/page.tsx, unternehmen/page.tsx). */
+export function PersonalTabs({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const pathname = usePathname();
+  const visibleTabs = TABS.filter((tab) => !tab.superAdminOnly || isSuperAdmin);
 
   return (
     <div className="mb-6 flex flex-wrap gap-1 border-b border-foreground/10">
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const active = tab.href === "/dashboard/intern/personal" ? pathname === tab.href : pathname.startsWith(tab.href);
         return (
           <Link

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { PersonalTabs } from "./personal-tabs";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 export default async function PersonalLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -12,7 +13,7 @@ export default async function PersonalLayout({ children }: { children: React.Rea
       <h1 className="mb-2 text-2xl font-semibold">Personal</h1>
       <p className="mb-6 text-muted-foreground">Mitarbeiterverzeichnis, Organigramm, Abwesenheiten und Unternehmensdaten.</p>
 
-      <PersonalTabs />
+      <PersonalTabs isSuperAdmin={isSuperAdmin(session.user.email)} />
 
       {children}
     </div>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { getManagedUserIds } from "@/lib/hr-access";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
@@ -21,7 +22,7 @@ export default async function PersonalStartseite() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
-  const isHrAdmin = session.user.role === "AGENCY_ADMIN";
+  const isHrAdmin = isSuperAdmin(session.user.email);
   const managedUserIds = isHrAdmin ? [] : await getManagedUserIds(session.user.id, session.user.organizationId);
   const canReviewRequests = isHrAdmin || managedUserIds.length > 0;
 
@@ -170,9 +171,11 @@ export default async function PersonalStartseite() {
           <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/intern/personal/${session.user.id}`} />}>
             Mein Profil
           </Button>
-          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/dashboard/intern/personal/verzeichnis" />}>
-            Mitarbeiterverzeichnis
-          </Button>
+          {isHrAdmin && (
+            <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/dashboard/intern/personal/verzeichnis" />}>
+              Mitarbeiterverzeichnis
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { DEPARTMENT_LABELS } from "@/lib/agency-departments";
 import { PlusIcon } from "lucide-react";
+import { isSuperAdmin } from "@/lib/super-admin";
 
+/** Das komplette Mitarbeiterverzeichnis (alle Namen/Abteilungen/Positionen) ist Geschäftsführungssache - nur der Super-Admin sieht diesen Tab überhaupt (siehe personal-tabs.tsx). */
 export default async function MitarbeiterverzeichnisPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
+  if (!isSuperAdmin(session.user.email)) redirect("/dashboard/intern/personal");
 
   const employees = await prisma.user.findMany({
     where: { organizationId: session.user.organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },

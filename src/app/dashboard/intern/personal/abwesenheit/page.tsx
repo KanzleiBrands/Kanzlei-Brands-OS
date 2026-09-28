@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { getManagedUserIds } from "@/lib/hr-access";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { MeineAbwesenheiten } from "./meine-abwesenheiten";
 import { AntraegeListe } from "./antraege-liste";
 import { KontenTabelle } from "./konten-tabelle";
@@ -18,7 +19,7 @@ export default async function AbwesenheitPage({ searchParams }: { searchParams: 
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
-  const isHrAdmin = session.user.role === "AGENCY_ADMIN";
+  const isHrAdmin = isSuperAdmin(session.user.email);
   const managedUserIds = isHrAdmin ? [] : await getManagedUserIds(session.user.id, session.user.organizationId);
   const isManager = managedUserIds.length > 0;
   const canReviewRequests = isHrAdmin || isManager;

@@ -48,7 +48,7 @@ function businessDaysBetween(start: Date, end: Date): number {
 
 export async function updateEmployeeProfile(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
 
   const userId = String(formData.get("userId") ?? "");
   const target = await prisma.user.findUnique({ where: { id: userId } });
@@ -98,7 +98,7 @@ export async function updateEmployeeProfile(_prevState: string | undefined, form
 
 export async function uploadEmployeeDocument(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
 
   const userId = String(formData.get("userId") ?? "");
   const category = String(formData.get("category") ?? "");
@@ -140,7 +140,7 @@ export async function uploadEmployeeDocument(_prevState: string | undefined, for
 
 export async function deleteEmployeeDocument(documentId: string) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
 
   const doc = await prisma.employeeDocument.findUnique({ where: { id: documentId } });
   if (!doc) return;
@@ -154,7 +154,7 @@ export async function deleteEmployeeDocument(documentId: string) {
 
 export async function createAbsenceType(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
 
   const name = String(formData.get("name") ?? "").trim();
   const icon = String(formData.get("icon") ?? "CalendarDays").trim();
@@ -187,7 +187,7 @@ export async function createAbsenceType(_prevState: string | undefined, formData
 
 export async function archiveAbsenceType(typeId: string) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
   await prisma.absenceType.update({ where: { id: typeId }, data: { archivedAt: new Date() } });
   revalidatePath(`${PERSONAL_PATH}/abwesenheit`);
 }
@@ -198,7 +198,7 @@ export async function archiveAbsenceType(typeId: string) {
 
 export async function setAbsenceBalance(formData: FormData) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
 
   const userId = String(formData.get("userId") ?? "");
   const absenceTypeId = String(formData.get("absenceTypeId") ?? "");
@@ -375,7 +375,7 @@ export async function decideAbsenceRequest(requestId: string, decision: "APPROVE
 
 export async function updateCompanyProfile(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  requireHrAdmin(session.user.role);
+  requireHrAdmin(session.user.email);
 
   const name = String(formData.get("name") ?? "").trim();
   const companyWebsite = String(formData.get("companyWebsite") ?? "").trim();

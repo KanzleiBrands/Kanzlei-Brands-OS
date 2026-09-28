@@ -1,6 +1,7 @@
 import type { AbsenceAllowanceType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Session } from "next-auth";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 /**
  * Personal (HR) gilt für alle Agentur-Mitarbeiter (AGENCY_ADMIN + AGENCY_STAFF),
@@ -10,9 +11,16 @@ export function isAgencyMember(role: string): boolean {
   return role === "AGENCY_ADMIN" || role === "AGENCY_STAFF";
 }
 
-/** Nur AGENCY_ADMIN darf Mitarbeiterdaten/Personalakte/Kontingente/Firmendaten pflegen. */
-export function requireHrAdmin(role: string) {
-  if (role !== "AGENCY_ADMIN") throw new Error("Nur Agentur-Admins können den Personal-Bereich verwalten.");
+/**
+ * Nur der Super-Admin darf Mitarbeiterdaten/Personalakte/Kontingente/
+ * Firmendaten pflegen - bewusst NICHT an die Rolle AGENCY_ADMIN gekoppelt,
+ * die auch an normale Fulfillment-Mitarbeitende vergeben wird (siehe
+ * src/lib/super-admin.ts). Ohne diese Trennung könnte sich ein
+ * Fulfillment-Mitarbeiter über updateEmployeeProfile selbst eine andere
+ * Abteilung geben, genau wie beim Cashflow-/Sales-/Marketing-Vorfall.
+ */
+export function requireHrAdmin(email: string) {
+  if (!isSuperAdmin(email)) throw new Error("Nur der Super-Admin kann den Personal-Bereich verwalten.");
 }
 
 /**
@@ -34,9 +42,9 @@ export async function isInManagerChainOf(viewerId: string, targetUserId: string)
   return false;
 }
 
-/** AGENCY_ADMIN darf immer; ein Manager darf für seine (auch indirekten) Berichtenden. */
+/** Der Super-Admin darf immer; ein Manager darf für seine (auch indirekten) Berichtenden. */
 export async function canApproveAbsenceFor(session: Session, targetUserId: string): Promise<boolean> {
-  if (session.user.role === "AGENCY_ADMIN") return true;
+  if (isSuperAdmin(session.user.email)) return true;
   if (session.user.id === targetUserId) return false;
   return isInManagerChainOf(session.user.id, targetUserId);
 }
@@ -44,7 +52,8 @@ export async function canApproveAbsenceFor(session: Session, targetUserId: strin
 /**
  * Wer über einen neuen Abwesenheitsantrag von `employee` informiert werden
  * soll - laut Organigramm die direkte Führungskraft (managerId), oder ohne
- * eine solche (z.B. die GF an der Spitze) alle anderen Agentur-Admins.
+ * eine solche (z.B. die GF an der Spitze) der Super-Admin (nur der darf laut
+ * canApproveAbsenceFor ohne Manager-Beziehung genehmigen).
  */
 export async function getAbsenceApprovers(employee: {
   id: string;
@@ -58,10 +67,11 @@ export async function getAbsenceApprovers(employee: {
     });
     return manager ? [manager] : [];
   }
-  return prisma.user.findMany({
-    where: { organizationId: employee.organizationId, role: "AGENCY_ADMIN", id: { not: employee.id } },
+  const candidates = await prisma.user.findMany({
+    where: { organizationId: employee.organizationId, id: { not: employee.id } },
     select: { id: true, name: true, email: true },
   });
+  return candidates.filter((u) => isSuperAdmin(u.email));
 }
 
 /** Alle (auch indirekten) Berichtenden eines Managers, laut Organigramm (managerId-Kette abwärts). */
