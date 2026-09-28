@@ -148,6 +148,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </div>
       <SidebarNav
         role={session.user.role}
+        email={session.user.email}
         department={department}
         hasCashflowAccess={hasCashflowAccess}
         links={mainLinks}

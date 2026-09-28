@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
+import { hasCashflowCockpitAccess } from "@/lib/cashflow-access";
 import { AnnualTab } from "./annual-tab";
 import { MonthlyTab } from "./monthly-tab";
 import { CashInTab } from "./cash-in-tab";
@@ -19,10 +20,9 @@ type TabKey = (typeof TABS)[number]["key"];
  * Cashflow Cockpit - exakter Nachbau der geteilten Google-Sheet-Vorlage,
  * bewusst OHNE Close.io: Cash-In basiert auf tatsächlich gestellten/
  * geplanten Rechnungen (live aus EasyBill, siehe src/lib/easybill/client.ts),
- * Cash-Out auf dem tatsächlichen Bankabgang. Nur für die Geschäftsführung
- * (department=EXECUTIVE) bzw. AGENCY_ADMIN sichtbar - ein zusätzlicher
- * gezielter Zugriff (z.B. Backoffice) ist als User.hasCashflowAccess
- * vorbereitet, sobald die zugehörige Migration angewendet ist.
+ * Cash-Out auf dem tatsächlichen Bankabgang. Zugriff siehe
+ * src/lib/cashflow-access.ts - bewusst NICHT an die Rolle AGENCY_ADMIN
+ * gekoppelt, da die auch an Fulfillment-Mitarbeitende vergeben wird.
  */
 export default async function CashflowCockpitPage({
   searchParams,
@@ -34,7 +34,7 @@ export default async function CashflowCockpitPage({
   if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") redirect("/dashboard");
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } });
-  if (session.user.role !== "AGENCY_ADMIN" && user?.department !== "EXECUTIVE" && !user?.hasCashflowAccess) {
+  if (!hasCashflowCockpitAccess({ email: session.user.email, department: user?.department ?? null, hasCashflowAccess: user?.hasCashflowAccess ?? false })) {
     redirect("/dashboard/intern");
   }
 

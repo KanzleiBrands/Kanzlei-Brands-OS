@@ -3,24 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertOrganizationAccess, AccessDeniedError } from "@/lib/access";
+import { hasCashflowCockpitAccess } from "@/lib/cashflow-access";
 
 function revalidateCashflow() {
   revalidatePath("/dashboard/intern/cashflow");
 }
 
-/**
- * Cashflow Cockpit ist ausschließlich für die Geschäftsführung (department
- * EXECUTIVE) bzw. AGENCY_ADMIN sichtbar - zusätzlich kann die GF gezielt
- * einzelnen Mitarbeiter:innen (z.B. Backoffice) über User.hasCashflowAccess
- * Zugriff freischalten, ohne deren Abteilung zu ändern.
- */
+/** Cashflow Cockpit-Zugriff - siehe src/lib/cashflow-access.ts. */
 async function requireExecutiveAccess(organizationId: string) {
   const session = await requireSession();
   assertOrganizationAccess(session, organizationId);
-  if (session.user.role === "AGENCY_ADMIN") return session;
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } });
-  if (user?.department !== "EXECUTIVE" && !user?.hasCashflowAccess) {
+  if (!hasCashflowCockpitAccess({ email: session.user.email, department: user?.department ?? null, hasCashflowAccess: user?.hasCashflowAccess ?? false })) {
     throw new AccessDeniedError("Das Cashflow Cockpit ist nur für die Geschäftsführung sichtbar.");
   }
   return session;
@@ -193,10 +188,18 @@ export async function unmapEasybillCustomer(formData: FormData): Promise<void> {
   revalidateCashflow();
 }
 
-/** Schaltet Cashflow-Cockpit-Zugriff für einen einzelnen Mitarbeiter frei/ab (z.B. Backoffice) - nur AGENCY_ADMIN. */
+/**
+ * Schaltet Cashflow-Cockpit-Zugriff für einen einzelnen Mitarbeiter frei/ab
+ * (z.B. Backoffice) - nur wer selbst Zugriff hat (nicht jeder AGENCY_ADMIN,
+ * siehe src/lib/cashflow-access.ts), sonst könnte sich ein
+ * Fulfillment-Mitarbeiter mit AGENCY_ADMIN-Rolle selbst freischalten.
+ */
 export async function setCashflowAccess(formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Cashflow-Zugriff vergeben.";
+  const caller = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true, hasCashflowAccess: true } });
+  if (!hasCashflowCockpitAccess({ email: session.user.email, department: caller?.department ?? null, hasCashflowAccess: caller?.hasCashflowAccess ?? false })) {
+    return "Nur die Geschäftsführung kann Cashflow-Zugriff vergeben.";
+  }
 
   const userId = String(formData.get("userId") ?? "");
   const hasCashflowAccess = formData.get("hasCashflowAccess") === "true";

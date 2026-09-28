@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
+import { hasCashflowCockpitAccess } from "@/lib/cashflow-access";
 
 type Pipeline = { id: string; name: string; active: boolean };
 type ClientOrg = { id: string; name: string; pipelines: Pipeline[] };
@@ -21,6 +22,7 @@ type NavLink = { href: string; label: string; icon?: React.ReactNode };
 
 export function SidebarNav({
   role,
+  email,
   department,
   hasCashflowAccess = false,
   links,
@@ -29,6 +31,8 @@ export function SidebarNav({
   showPortalSwitch = false,
 }: {
   role: string;
+  /** Für den Cashflow-Cockpit-Zugriffscheck (siehe src/lib/cashflow-access.ts) - nicht an die Rolle gekoppelt. */
+  email: string;
   /** Nur für AGENCY_ADMIN/AGENCY_STAFF relevant - steuert z.B. den Marketing-Center-Link im internen Portal. */
   department?: string | null;
   /** Von der GF gezielt freigeschalteter Cashflow-Cockpit-Zugriff über department=EXECUTIVE hinaus. */
@@ -143,7 +147,7 @@ export function SidebarNav({
         icon: <MegaphoneIcon className="size-4 flex-shrink-0" />,
       });
     }
-    if (role === "AGENCY_ADMIN" || department === "EXECUTIVE" || hasCashflowAccess) {
+    if (hasCashflowCockpitAccess({ email, department: department ?? null, hasCashflowAccess })) {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/cashflow",
         label: "Cashflow Cockpit",
