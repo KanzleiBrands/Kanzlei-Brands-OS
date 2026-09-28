@@ -28,6 +28,8 @@ export async function createOffer(_prevState: string | undefined, formData: Form
   const imageUrl = String(formData.get("imageUrl") ?? "").trim();
   const badge = String(formData.get("badge") ?? "").trim();
   const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Interesse";
+  const ctaType = String(formData.get("ctaType") ?? "ACCOUNT_MANAGER_REQUEST") === "LINK" ? "LINK" : "ACCOUNT_MANAGER_REQUEST";
+  const ctaUrl = ctaType === "LINK" ? String(formData.get("ctaUrl") ?? "").trim() || null : null;
   const productTag = String(formData.get("productTag") ?? "").trim().toLowerCase() || null;
   const highlights = parseStringArray(formData.get("highlights"));
   const galleryUrls = parseStringArray(formData.get("galleryUrls"));
@@ -41,6 +43,8 @@ export async function createOffer(_prevState: string | undefined, formData: Form
       imageUrl: imageUrl || null,
       badge: badge || null,
       ctaLabel,
+      ctaType,
+      ctaUrl,
       productTag,
       highlights,
       galleryUrls,
@@ -61,6 +65,8 @@ export async function updateOffer(_prevState: string | undefined, formData: Form
   const imageUrl = String(formData.get("imageUrl") ?? "").trim();
   const badge = String(formData.get("badge") ?? "").trim();
   const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Interesse";
+  const ctaType = String(formData.get("ctaType") ?? "ACCOUNT_MANAGER_REQUEST") === "LINK" ? "LINK" : "ACCOUNT_MANAGER_REQUEST";
+  const ctaUrl = ctaType === "LINK" ? String(formData.get("ctaUrl") ?? "").trim() || null : null;
   const productTag = String(formData.get("productTag") ?? "").trim().toLowerCase() || null;
   const highlights = parseStringArray(formData.get("highlights"));
   const galleryUrls = parseStringArray(formData.get("galleryUrls"));
@@ -78,6 +84,8 @@ export async function updateOffer(_prevState: string | undefined, formData: Form
       imageUrl: imageUrl || null,
       badge: badge || null,
       ctaLabel,
+      ctaType,
+      ctaUrl,
       productTag,
       highlights,
       galleryUrls,
@@ -159,7 +167,7 @@ export async function registerInterest(_prevState: string | undefined, formData:
   const note = String(formData.get("note") ?? "").trim();
 
   const offer = await prisma.offer.findUnique({ where: { id: offerId } });
-  if (!offer) return "Angebot nicht gefunden.";
+  if (!offer || offer.ctaType !== "ACCOUNT_MANAGER_REQUEST") return "Angebot nicht gefunden.";
 
   await prisma.offerInterest.create({
     data: { offerId, userId: session.user.id, note: note || null },

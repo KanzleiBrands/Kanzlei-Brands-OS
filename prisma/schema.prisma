@@ -1258,15 +1258,26 @@ model LessonProgress {
 // Kunden-Hub: Angebote / Upsells
 // ---------------------------------------------------------------------------
 
+// LINK öffnet ctaUrl direkt. ACCOUNT_MANAGER_REQUEST (Standard - das bisherige,
+// einzige Verhalten) braucht keine URL: der Klick registriert stattdessen ein
+// OfferInterest und schickt eine Anfrage an den Account-Manager (E-Mail +
+// Slack, siehe registerInterest/notifyAccountManager).
+enum OfferCtaType {
+  LINK
+  ACCOUNT_MANAGER_REQUEST
+}
+
 // An upsell/offer shown in every client's Kunden-Hub, unless the client
 // already has the matching productTag in Organization.bookedProductTags.
 model Offer {
-  id          String  @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
   imageUrl    String?
-  ctaLabel    String  @default("Interesse")
-  active      Boolean @default(true)
+  ctaLabel    String       @default("Interesse")
+  ctaType     OfferCtaType @default(ACCOUNT_MANAGER_REQUEST)
+  ctaUrl      String?
+  active      Boolean      @default(true)
 
   // Kleines Schlagwort über dem Titel, z.B. "Neu" oder "Beliebt".
   badge String?

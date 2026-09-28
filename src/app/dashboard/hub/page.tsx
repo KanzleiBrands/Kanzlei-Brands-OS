@@ -4,6 +4,7 @@ import { CheckIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { getOffersSectionEnabled } from "@/lib/actions/offers";
 import { CampaignRequestCard } from "../pipelines/campaign-request-card";
@@ -158,7 +159,20 @@ export default async function KundenHubPage() {
                     ))}
                   </ul>
                 )}
-                <InterestButton offerId={offer.id} ctaLabel={offer.ctaLabel} already={offer.interests.length > 0} />
+                {offer.ctaType === "LINK" ? (
+                  offer.ctaUrl && (
+                    <a
+                      href={offer.ctaUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={buttonVariants({ size: "sm", className: "w-fit" })}
+                    >
+                      {offer.ctaLabel}
+                    </a>
+                  )
+                ) : (
+                  <InterestButton offerId={offer.id} ctaLabel={offer.ctaLabel} already={offer.interests.length > 0} />
+                )}
               </CardContent>
             </Card>
           ))}

@@ -93,6 +93,8 @@ export default async function OffersPage() {
                           imageUrl: offer.imageUrl,
                           badge: offer.badge,
                           ctaLabel: offer.ctaLabel,
+                          ctaType: offer.ctaType,
+                          ctaUrl: offer.ctaUrl,
                           productTag: offer.productTag,
                           highlights: offer.highlights,
                           galleryUrls: offer.galleryUrls,

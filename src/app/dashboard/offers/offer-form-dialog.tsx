@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { ThumbnailGenerator } from "../courses/thumbnail-generator";
 
 type OfferData = {
   id: string;
@@ -37,6 +38,8 @@ type OfferData = {
   imageUrl: string | null;
   badge: string | null;
   ctaLabel: string;
+  ctaType: "LINK" | "ACCOUNT_MANAGER_REQUEST";
+  ctaUrl: string | null;
   productTag: string | null;
   highlights: string[];
   galleryUrls: string[];
@@ -87,9 +90,12 @@ export function OfferFormDialog({ offer }: { offer?: OfferData }) {
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
+  const [titleValue, setTitleValue] = useState(offer?.title ?? "");
   const [heroUrl, setHeroUrl] = useState(offer?.imageUrl ?? "");
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroError, setHeroError] = useState<string | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [ctaType, setCtaType] = useState<"LINK" | "ACCOUNT_MANAGER_REQUEST">(offer?.ctaType ?? "ACCOUNT_MANAGER_REQUEST");
 
   const [gallery, setGallery] = useState<{ id: string; url: string }[]>(
     (offer?.galleryUrls ?? []).map((url) => ({ id: newId(), url })),
@@ -113,11 +119,13 @@ export function OfferFormDialog({ offer }: { offer?: OfferData }) {
       // Reset a create dialog's fields each time it's reopened, so a
       // previous submission's state doesn't linger into the next one.
       formRef.current?.reset();
+      setTitleValue("");
       setHeroUrl("");
       setHeroError(null);
       setGallery([]);
       setHighlights([]);
       setHighlightDraft("");
+      setCtaType("ACCOUNT_MANAGER_REQUEST");
     }
     setOpen(next);
   }
@@ -207,7 +215,13 @@ export function OfferFormDialog({ offer }: { offer?: OfferData }) {
           <input type="hidden" name="highlights" value={JSON.stringify(highlights)} />
           <input type="hidden" name="galleryUrls" value={JSON.stringify(gallery.map((g) => g.url))} />
 
-          <Input name="title" placeholder="Titel" required defaultValue={offer?.title} />
+          <Input
+            name="title"
+            placeholder="Titel"
+            required
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+          />
           <Textarea name="description" placeholder="Beschreibung" rows={3} defaultValue={offer?.description ?? ""} />
           <Input name="badge" placeholder="Badge, z.B. Neu oder Beliebt (optional)" defaultValue={offer?.badge ?? ""} />
 
@@ -253,6 +267,12 @@ export function OfferFormDialog({ offer }: { offer?: OfferData }) {
               </div>
             )}
             {heroError && <p className="text-xs text-destructive">{heroError}</p>}
+            <input ref={thumbnailInputRef} type="file" accept="image/*" className="hidden" />
+            <ThumbnailGenerator
+              seedTitle={titleValue}
+              fileInputRef={thumbnailInputRef}
+              onGenerate={() => handleHeroFile(thumbnailInputRef.current?.files?.[0])}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -344,6 +364,47 @@ export function OfferFormDialog({ offer }: { offer?: OfferData }) {
           </div>
 
           <Input name="ctaLabel" placeholder="Button-Text (Standard: Interesse)" defaultValue={offer?.ctaLabel} />
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Button-Aktion</label>
+            <div className="flex gap-2">
+              <label className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="ctaType"
+                  value="ACCOUNT_MANAGER_REQUEST"
+                  checked={ctaType === "ACCOUNT_MANAGER_REQUEST"}
+                  onChange={() => setCtaType("ACCOUNT_MANAGER_REQUEST")}
+                  className="peer sr-only"
+                />
+                <span className="block rounded-md border px-3 py-1.5 text-sm peer-checked:border-primary peer-checked:bg-primary/10">
+                  Anfrage an Account-Manager
+                </span>
+              </label>
+              <label className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="ctaType"
+                  value="LINK"
+                  checked={ctaType === "LINK"}
+                  onChange={() => setCtaType("LINK")}
+                  className="peer sr-only"
+                />
+                <span className="block rounded-md border px-3 py-1.5 text-sm peer-checked:border-primary peer-checked:bg-primary/10">
+                  Externer Link
+                </span>
+              </label>
+            </div>
+          </div>
+          {ctaType === "LINK" ? (
+            <Input name="ctaUrl" type="url" placeholder="Link (z.B. Buchungslink) - optional" defaultValue={offer?.ctaUrl ?? ""} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Kein Link nötig - ein Klick auf den Button schickt euch eine Anfrage per E-Mail und Slack, ihr meldet
+              euch dann beim Kunden.
+            </p>
+          )}
+
           <div className="flex flex-col gap-1">
             <Input name="productTag" placeholder="Produkt-Tag, z.B. webseite (optional)" defaultValue={offer?.productTag ?? ""} />
             <p className="text-xs text-muted-foreground">
