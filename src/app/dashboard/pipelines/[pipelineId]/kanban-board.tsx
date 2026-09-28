@@ -2,8 +2,19 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BanIcon } from "lucide-react";
+import { BanIcon, GripVerticalIcon } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { moveContactStage } from "@/lib/actions/contacts";
+import { reorderStages } from "@/lib/actions/stages";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
 import { contactDisplayName } from "@/lib/contact-display";
@@ -11,6 +22,7 @@ import { StarRating } from "@/components/star-rating";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { RejectionReasonDialog } from "@/components/rejection-reason-dialog";
 import { FinalStageDialog } from "@/components/final-stage-dialog";
+import { MergeDuplicatesDialog } from "@/components/contacts/merge-duplicates-dialog";
 import type { DuplicateContactKeys } from "@/lib/duplicate-contacts";
 
 type Contact = {
@@ -59,26 +71,184 @@ function TimeBadge({ createdAt, isFirstStage }: { createdAt: Date; isFirstStage:
   return <span className={`rounded-full px-1.5 py-0.5 text-xs whitespace-nowrap ${classes}`}>{label}</span>;
 }
 
+function StageColumn({
+  stage,
+  stageIndex,
+  canManageStages,
+  duplicateContacts,
+  dragOverStageId,
+  isPending,
+  rejectStageId,
+  canDeleteContacts,
+  onDragOver,
+  onDragLeave,
+  onDropContact,
+  onReject,
+}: {
+  stage: Stage;
+  stageIndex: number;
+  canManageStages: boolean;
+  duplicateContacts: DuplicateContactKeys;
+  dragOverStageId: string | null;
+  isPending: boolean;
+  rejectStageId?: string;
+  canDeleteContacts: boolean;
+  onDragOver: () => void;
+  onDragLeave: () => void;
+  onDropContact: (contactId: string) => void;
+  onReject: (contactId: string) => void;
+}) {
+  const rejectLabel = "Als ungeeignet markieren";
+  // useSortable ist immer aktiv (Hooks dürfen nicht bedingt aufgerufen werden) -
+  // ohne canManageStages hängen einfach keine Drag-Listener am Griff, die Spalte
+  // bleibt also für Kunden/Nicht-Admins optisch und funktional unverändert.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      data-testid={`stage-column-${stage.id}`}
+      className={`flex w-[260px] flex-shrink-0 flex-col rounded-lg border bg-muted/30 p-2 sm:w-72 ${
+        dragOverStageId === stage.id ? "ring-2 ring-primary" : ""
+      }`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOver();
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => {
+        e.preventDefault();
+        const contactId = e.dataTransfer.getData("text/contact-id");
+        if (contactId) onDropContact(contactId);
+      }}
+    >
+      <p className="mb-2 flex items-center gap-1.5 px-1 text-sm font-medium">
+        {canManageStages && (
+          <button
+            type="button"
+            aria-label="Stufe verschieben"
+            className="-ml-1 flex size-5 shrink-0 touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVerticalIcon className="size-3.5" />
+          </button>
+        )}
+        <span
+          className="inline-block size-2 rounded-full"
+          style={{ backgroundColor: stage.color ?? "var(--muted-foreground)" }}
+        />
+        {stage.name}
+        <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+          {stage.contacts.length}
+        </span>
+      </p>
+      <div className="flex flex-col gap-2.5">
+        {stage.contacts.map((contact) => {
+          const fullName = contactDisplayName(contact);
+          const isDuplicate =
+            (!!contact.email && duplicateContacts.emails.has(contact.email.trim().toLowerCase())) ||
+            (!!contact.phone && duplicateContacts.phones.has(contact.phone.trim().toLowerCase()));
+          return (
+            <Link
+              key={contact.id}
+              href={`/dashboard/contacts/${contact.id}`}
+              draggable
+              data-testid="contact-card"
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/contact-id", contact.id);
+              }}
+              className={`group relative block cursor-grab rounded-md border bg-background p-3.5 text-sm shadow-sm transition-shadow hover:border-primary hover:shadow-md ${
+                isPending ? "opacity-60" : ""
+              }`}
+            >
+              <div className="absolute top-1 right-1 hidden items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 sm:flex">
+                {rejectStageId && stage.id !== rejectStageId && (
+                  <button
+                    type="button"
+                    title={rejectLabel}
+                    aria-label={rejectLabel}
+                    className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onReject(contact.id);
+                    }}
+                  >
+                    <BanIcon className="size-3.5" />
+                  </button>
+                )}
+                {canDeleteContacts && <DeleteContactButton contactId={contact.id} contactName={fullName} />}
+              </div>
+              <div className="flex items-center gap-2 overflow-hidden pr-0 sm:pr-14">
+                <span
+                  className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                  style={{ backgroundColor: avatarColorFor(fullName) }}
+                >
+                  {initialsOf(contact.firstName, contact.lastName)}
+                </span>
+                <p className="min-w-0 flex-1 truncate font-medium">{fullName}</p>
+                <span className="flex-shrink-0">
+                  <TimeBadge createdAt={contact.createdAt} isFirstStage={stageIndex === 0} />
+                </span>
+              </div>
+
+              {isDuplicate && (
+                <span onClick={(e) => e.preventDefault()} className="mt-1.5 inline-block">
+                  <MergeDuplicatesDialog contactId={contact.id} contactName={fullName} />
+                </span>
+              )}
+
+              <p className="mt-2 truncate text-xs text-muted-foreground">
+                Eingang {new Date(contact.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+              </p>
+
+              <div className="mt-2.5 flex items-center justify-between">
+                <StarRating contactId={contact.id} rating={contact.rating} size="sm" />
+                {contact._count.activities > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {contact._count.activities} {contact._count.activities === 1 ? "Aktivität" : "Aktivitäten"}
+                  </span>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function KanbanBoard({
+  pipelineId,
   stages,
   duplicateContacts,
   rejectStageId,
   finalStageId,
   pipelineKind,
   canDeleteContacts,
+  canManageStages,
 }: {
+  pipelineId: string;
   stages: Stage[];
   duplicateContacts: DuplicateContactKeys;
   rejectStageId?: string;
   finalStageId?: string;
   pipelineKind: string;
   canDeleteContacts: boolean;
+  canManageStages: boolean;
 }) {
-  const rejectLabel = "Als ungeeignet markieren";
   const [isPending, startTransition] = useTransition();
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [rejectingContactId, setRejectingContactId] = useState<string | null>(null);
   const [finalizingContactId, setFinalizingContactId] = useState<string | null>(null);
+  // Nicht per useEffect mit `stages` synchron gehalten (React rät davon ab,
+  // synchron in einem Effect setState aufzurufen) - stattdessen bekommt
+  // KanbanBoard von PipelineView einen key aus den Stage-Ids, der bei einer
+  // tatsächlichen Änderung (z.B. neue Stufe durch CSV-Import) einen
+  // Re-Mount und damit einen frischen Ausgangszustand erzwingt.
+  const [stageOrder, setStageOrder] = useState(() => stages.map((s) => s.id));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   function move(stageId: string, contactId: string, extra?: { rejectionReason?: string; startDate?: string; dealVolumeEur?: string }) {
     const formData = new FormData();
@@ -114,112 +284,49 @@ export function KanbanBoard({
     setFinalizingContactId(null);
   }
 
+  function handleStageDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = stageOrder.indexOf(String(active.id));
+    const newIndex = stageOrder.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = arrayMove(stageOrder, oldIndex, newIndex);
+    setStageOrder(next);
+    const formData = new FormData();
+    formData.set("pipelineId", pipelineId);
+    formData.set("stageIds", JSON.stringify(next));
+    startTransition(() => {
+      reorderStages(undefined, formData);
+    });
+  }
+
+  const orderedStages = stageOrder.map((id) => stages.find((s) => s.id === id)).filter((s): s is Stage => !!s);
+
   return (
     <div>
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {stages.map((stage, stageIndex) => (
-          <div
-            key={stage.id}
-            data-testid={`stage-column-${stage.id}`}
-            className={`flex w-[260px] flex-shrink-0 flex-col rounded-lg border bg-muted/30 p-2 sm:w-72 ${
-              dragOverStageId === stage.id ? "ring-2 ring-primary" : ""
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOverStageId(stage.id);
-            }}
-            onDragLeave={() => setDragOverStageId(null)}
-            onDrop={(e) => {
-              e.preventDefault();
-              const contactId = e.dataTransfer.getData("text/contact-id");
-              if (contactId) handleDrop(stage.id, contactId);
-            }}
-          >
-            <p className="mb-2 flex items-center gap-1.5 px-1 text-sm font-medium">
-              <span
-                className="inline-block size-2 rounded-full"
-                style={{ backgroundColor: stage.color ?? "var(--muted-foreground)" }}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleStageDragEnd}>
+        <SortableContext items={stageOrder} strategy={horizontalListSortingStrategy}>
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {orderedStages.map((stage, stageIndex) => (
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                stageIndex={stageIndex}
+                canManageStages={canManageStages}
+                duplicateContacts={duplicateContacts}
+                dragOverStageId={dragOverStageId}
+                isPending={isPending}
+                rejectStageId={rejectStageId}
+                canDeleteContacts={canDeleteContacts}
+                onDragOver={() => setDragOverStageId(stage.id)}
+                onDragLeave={() => setDragOverStageId(null)}
+                onDropContact={(contactId) => handleDrop(stage.id, contactId)}
+                onReject={(contactId) => setRejectingContactId(contactId)}
               />
-              {stage.name}
-              <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                {stage.contacts.length}
-              </span>
-            </p>
-            <div className="flex flex-col gap-2.5">
-              {stage.contacts.map((contact) => {
-                const fullName = contactDisplayName(contact);
-                const isDuplicate =
-                  (!!contact.email && duplicateContacts.emails.has(contact.email.trim().toLowerCase())) ||
-                  (!!contact.phone && duplicateContacts.phones.has(contact.phone.trim().toLowerCase()));
-                return (
-                  <Link
-                    key={contact.id}
-                    href={`/dashboard/contacts/${contact.id}`}
-                    draggable
-                    data-testid="contact-card"
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("text/contact-id", contact.id);
-                    }}
-                    className={`group relative block cursor-grab rounded-md border bg-background p-3.5 text-sm shadow-sm transition-shadow hover:border-primary hover:shadow-md ${
-                      isPending ? "opacity-60" : ""
-                    }`}
-                  >
-                    <div className="absolute top-1 right-1 hidden items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 sm:flex">
-                      {rejectStageId && stage.id !== rejectStageId && (
-                        <button
-                          type="button"
-                          title={rejectLabel}
-                          aria-label={rejectLabel}
-                          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setRejectingContactId(contact.id);
-                          }}
-                        >
-                          <BanIcon className="size-3.5" />
-                        </button>
-                      )}
-                      {canDeleteContacts && <DeleteContactButton contactId={contact.id} contactName={fullName} />}
-                    </div>
-                    <div className="flex items-center gap-2 overflow-hidden pr-0 sm:pr-14">
-                      <span
-                        className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                        style={{ backgroundColor: avatarColorFor(fullName) }}
-                      >
-                        {initialsOf(contact.firstName, contact.lastName)}
-                      </span>
-                      <p className="min-w-0 flex-1 truncate font-medium">{fullName}</p>
-                      <span className="flex-shrink-0">
-                        <TimeBadge createdAt={contact.createdAt} isFirstStage={stageIndex === 0} />
-                      </span>
-                    </div>
-
-                    {isDuplicate && (
-                      <span className="mt-1.5 inline-block rounded-full bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500">
-                        ⚠ Mögliches Duplikat
-                      </span>
-                    )}
-
-                    <p className="mt-2 truncate text-xs text-muted-foreground">
-                      Eingang{" "}
-                      {new Date(contact.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
-                    </p>
-
-                    <div className="mt-2.5 flex items-center justify-between">
-                      <StarRating contactId={contact.id} rating={contact.rating} size="sm" />
-                      {contact._count.activities > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {contact._count.activities} {contact._count.activities === 1 ? "Aktivität" : "Aktivitäten"}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
       <RejectionReasonDialog
         open={!!rejectingContactId}
         onOpenChange={(open) => {

@@ -43,12 +43,14 @@ export function PipelineView({
   stages,
   showDuplicateWarning,
   canDeleteContacts,
+  canManageStages,
 }: {
   pipelineId: string;
   pipelineKind: string;
   stages: Stage[];
   showDuplicateWarning: boolean;
   canDeleteContacts: boolean;
+  canManageStages: boolean;
 }) {
   const [view, setView] = useState<"board" | "list">("board");
   const [statusTab, setStatusTab] = useState<"qualified" | "excluded">("qualified");
@@ -161,12 +163,15 @@ export function PipelineView({
         />
       ) : view === "board" ? (
         <KanbanBoard
+          key={qualifiedStages.map((s) => s.id).join(",")}
+          pipelineId={pipelineId}
           stages={qualifiedStages}
           duplicateContacts={duplicateContacts}
           rejectStageId={firstRejectedStageId}
           finalStageId={finalStageId}
           pipelineKind={pipelineKind}
           canDeleteContacts={canDeleteContacts}
+          canManageStages={canManageStages}
         />
       ) : (
         <ContactsTable
