@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 export function ImpersonationBanner({
   realUserName,
   viewingAsName,
+  viewingEmployee = false,
   onSwitchBack,
 }: {
   realUserName: string;
   viewingAsName: string;
+  /** true = Mitarbeiter-Ansicht (Super-Admin-Feature), false = Kundenansicht. */
+  viewingEmployee?: boolean;
   onSwitchBack: () => Promise<void>;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -20,8 +23,8 @@ export function ImpersonationBanner({
       <span className="flex items-start gap-1.5">
         <EyeIcon className="mt-0.5 size-4 flex-shrink-0" />
         <span>
-          Kundenansicht: du siehst die Plattform als <strong>{viewingAsName}</strong> ({realUserName} in
-          Agentur-Ansicht)
+          {viewingEmployee ? "Mitarbeiter-Ansicht" : "Kundenansicht"}: du siehst die Plattform als{" "}
+          <strong>{viewingAsName}</strong> ({realUserName} in Agentur-Ansicht)
         </span>
       </span>
       <Button

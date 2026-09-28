@@ -182,6 +182,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <ImpersonationBanner
           realUserName={session.impersonation.realUserName}
           viewingAsName={session.user.name}
+          viewingEmployee={session.user.role === "AGENCY_ADMIN" || session.user.role === "AGENCY_STAFF"}
           onSwitchBack={stopImpersonation}
         />
       )}

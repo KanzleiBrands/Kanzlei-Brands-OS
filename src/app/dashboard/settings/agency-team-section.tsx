@@ -7,6 +7,7 @@ import { DeleteUserButton } from "../clients/[orgId]/delete-user-button";
 import { EditableUserName } from "../clients/[orgId]/editable-user-name";
 import { NewAgencyUserForm } from "./new-agency-user-form";
 import { EditableUserDepartment } from "./editable-user-department";
+import { ImpersonateEmployeeButton } from "./impersonate-employee-button";
 
 type AgencyUser = {
   id: string;
@@ -24,11 +25,14 @@ export function AgencyTeamSection({
   users,
   baseUrl,
   currentUserId,
+  isSuperAdmin = false,
 }: {
   organizationId: string;
   users: AgencyUser[];
   baseUrl: string;
   currentUserId: string;
+  /** Nur der Super-Admin (siehe src/lib/super-admin.ts) darf sich als Mitarbeiter anmelden. */
+  isSuperAdmin?: boolean;
 }) {
   return (
     <Card>
@@ -78,7 +82,12 @@ export function AgencyTeamSection({
                     <ActivationStatus userId={user.id} isActive={!!user.passwordHash} activationLink={activationLink} />
                   </TableCell>
                   <TableCell>
-                    {user.id !== currentUserId && <DeleteUserButton userId={user.id} userName={user.name} />}
+                    <div className="flex items-center justify-end gap-0.5">
+                      {isSuperAdmin && user.id !== currentUserId && (
+                        <ImpersonateEmployeeButton userId={user.id} userName={user.name} />
+                      )}
+                      {user.id !== currentUserId && <DeleteUserButton userId={user.id} userName={user.name} />}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

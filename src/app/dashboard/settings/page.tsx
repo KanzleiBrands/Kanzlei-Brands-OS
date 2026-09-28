@@ -18,6 +18,7 @@ import { SYSTEM_EMAIL_DEFAULTS, SYSTEM_EMAIL_TYPES } from "@/lib/email/system-em
 import { PageLayoutBuilder } from "./page-layout-builder";
 import { getPageLayout } from "@/lib/page-layout";
 import type { EditableStage } from "./stage-list-editor";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 type Tab =
   | "account"
@@ -155,6 +156,7 @@ export default async function SettingsPage({
           organizationId={session.user.organizationId}
           currentUserId={session.user.id}
           isAgency={isAgency}
+          viewerIsSuperAdmin={isSuperAdmin(session.user.email)}
         />
       )}
 
@@ -210,10 +212,12 @@ async function TeamSectionData({
   organizationId,
   currentUserId,
   isAgency,
+  viewerIsSuperAdmin,
 }: {
   organizationId: string;
   currentUserId: string;
   isAgency: boolean;
+  viewerIsSuperAdmin: boolean;
 }) {
   const [organization, baseUrl] = await Promise.all([
     prisma.organization.findUnique({
@@ -234,6 +238,7 @@ async function TeamSectionData({
         users={organization.users}
         baseUrl={baseUrl}
         currentUserId={currentUserId}
+        isSuperAdmin={viewerIsSuperAdmin}
       />
     );
   }

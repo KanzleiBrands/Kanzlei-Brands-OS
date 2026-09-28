@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { Session } from "next-auth";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 export const IMPERSONATION_COOKIE = "impersonate_user_id";
 
@@ -23,8 +24,21 @@ export async function getSession(): Promise<Session | null> {
   const impersonatedUserId = store.get(IMPERSONATION_COOKIE)?.value;
   if (!impersonatedUserId) return session;
 
-  const target = await prisma.user.findUnique({ where: { id: impersonatedUserId } });
+  const target = await prisma.user.findUnique({
+    where: { id: impersonatedUserId },
+    include: { organization: { select: { type: true } } },
+  });
   if (!target) {
+    store.delete(IMPERSONATION_COOKIE);
+    return session;
+  }
+
+  // Mitarbeiter-Ansicht (organization.type AGENCY) ist ein Super-Admin-
+  // Privileg (siehe src/lib/super-admin.ts) - selbst wenn das Cookie von
+  // Hand auf eine Mitarbeiter-ID gesetzt würde, greift der Tausch hier nur,
+  // wenn der echte eingeloggte Nutzer der Super-Admin ist. Die Kundenansicht
+  // (organization.type CLIENT) bleibt unverändert für jeden AGENCY_ADMIN.
+  if (target.organization.type === "AGENCY" && !isSuperAdmin(session.user.email)) {
     store.delete(IMPERSONATION_COOKIE);
     return session;
   }
