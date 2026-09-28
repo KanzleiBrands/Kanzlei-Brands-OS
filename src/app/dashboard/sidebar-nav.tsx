@@ -15,6 +15,7 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 import { hasCashflowCockpitAccess } from "@/lib/cashflow-access";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 type Pipeline = { id: string; name: string; active: boolean };
 type ClientOrg = { id: string; name: string; pipelines: Pipeline[] };
@@ -140,7 +141,7 @@ export function SidebarNav({
       { href: "/dashboard/intern/personal", label: "Personal", icon: <UsersIcon className="size-4 flex-shrink-0" /> },
       { href: "/dashboard/intern/schulung", label: "Schulung", icon: <GraduationCap className="size-4 flex-shrink-0" /> },
     ];
-    if (role === "AGENCY_ADMIN" || department === "MARKETING") {
+    if (isSuperAdmin(email) || department === "MARKETING") {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/marketing",
         label: "Marketing-Center",
@@ -154,7 +155,7 @@ export function SidebarNav({
         icon: <WalletIcon className="size-4 flex-shrink-0" />,
       });
     }
-    if (role === "AGENCY_ADMIN" || department === "SALES" || department === "EXECUTIVE") {
+    if (isSuperAdmin(email) || department === "SALES" || department === "EXECUTIVE") {
       internalLinks.splice(2, 0, {
         href: "/dashboard/intern/sales-cockpit",
         label: "Sales Cockpit",

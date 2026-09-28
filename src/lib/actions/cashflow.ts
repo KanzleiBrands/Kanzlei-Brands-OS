@@ -203,6 +203,12 @@ export async function setCashflowAccess(formData: FormData): Promise<string | un
 
   const userId = String(formData.get("userId") ?? "");
   const hasCashflowAccess = formData.get("hasCashflowAccess") === "true";
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } });
+  if (!target || target.organizationId !== session.user.organizationId) {
+    return "Ungültiger Mitarbeiter.";
+  }
+
   await prisma.user.update({ where: { id: userId }, data: { hasCashflowAccess } });
   revalidateCashflow();
   return undefined;

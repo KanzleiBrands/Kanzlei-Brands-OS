@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { listOpenerStats, listSetterStats, listCloserStats, listClosedDeals } from "@/lib/close/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SalesActivityType } from "@prisma/client";
@@ -101,7 +102,7 @@ export default async function SalesCockpitPage({
   if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") redirect("/dashboard");
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
-  if (session.user.role !== "AGENCY_ADMIN" && user?.department !== "SALES" && user?.department !== "EXECUTIVE") {
+  if (!isSuperAdmin(session.user.email) && user?.department !== "SALES" && user?.department !== "EXECUTIVE") {
     redirect("/dashboard/intern");
   }
 

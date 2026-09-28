@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { MarketingTabs } from "./marketing-tabs";
 
 export default async function MarketingCenterLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,7 @@ export default async function MarketingCenterLayout({ children }: { children: Re
   if (!session?.user) redirect("/login");
   if (session.user.role !== "AGENCY_ADMIN" && session.user.role !== "AGENCY_STAFF") redirect("/dashboard");
 
-  if (session.user.role === "AGENCY_STAFF") {
+  if (!isSuperAdmin(session.user.email)) {
     const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { department: true } });
     if (me?.department !== "MARKETING") redirect("/dashboard/intern");
   }

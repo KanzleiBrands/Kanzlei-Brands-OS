@@ -8,6 +8,7 @@ import { EditableUserName } from "../clients/[orgId]/editable-user-name";
 import { NewAgencyUserForm } from "./new-agency-user-form";
 import { EditableUserDepartment } from "./editable-user-department";
 import { ImpersonateEmployeeButton } from "./impersonate-employee-button";
+import { EditableCashflowAccess } from "./editable-cashflow-access";
 
 type AgencyUser = {
   id: string;
@@ -15,6 +16,7 @@ type AgencyUser = {
   email: string;
   role: UserRole;
   department: AgencyDepartment | null;
+  hasCashflowAccess: boolean;
   passwordHash: string | null;
   activationToken: string | null;
   activationTokenExpiresAt: Date | null;
@@ -50,6 +52,7 @@ export function AgencyTeamSection({
               <TableHead>E-Mail</TableHead>
               <TableHead>Rolle</TableHead>
               <TableHead>Abteilung (internes Portal)</TableHead>
+              {isSuperAdmin && <TableHead>Cashflow Cockpit</TableHead>}
               <TableHead>Zugang</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -78,6 +81,15 @@ export function AgencyTeamSection({
                       required={user.role === "AGENCY_STAFF"}
                     />
                   </TableCell>
+                  {isSuperAdmin && (
+                    <TableCell>
+                      <EditableCashflowAccess
+                        userId={user.id}
+                        hasCashflowAccess={user.hasCashflowAccess}
+                        lockedOn={user.department === "EXECUTIVE" || user.email.toLowerCase() === "lukas@kanzlei-brands.de"}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <ActivationStatus userId={user.id} isActive={!!user.passwordHash} activationLink={activationLink} />
                   </TableCell>
@@ -94,7 +106,7 @@ export function AgencyTeamSection({
             })}
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center text-muted-foreground">
                   Noch keine Mitarbeiter angelegt.
                 </TableCell>
               </TableRow>
