@@ -41,7 +41,7 @@ function CheckboxTile({
       />
       <span
         className={cn(
-          "flex size-5 flex-shrink-0 items-center justify-center rounded-full border transition-colors",
+          "flex size-5 flex-shrink-0 items-center justify-center rounded border transition-colors",
           checked ? "border-primary bg-primary" : "border-input bg-background",
         )}
       >
