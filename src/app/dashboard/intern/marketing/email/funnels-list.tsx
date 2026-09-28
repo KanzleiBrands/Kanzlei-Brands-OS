@@ -19,6 +19,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { EmailAiAssistant } from "@/app/dashboard/pipelines/[pipelineId]/email-ai-assistant";
+import { BodyTextToolbar } from "@/components/funnels/body-text-toolbar";
+import { EmailStepPreviewDialog } from "@/components/funnels/email-step-preview-dialog";
 
 const NONE = "__none__";
 
@@ -79,16 +81,25 @@ function StepRow({ step, index, canManage, onEdit, onDelete }: { step: StepData;
           {step.sentCount} gesendet · {pct(step.openCount, step.sentCount)} Öffnungsrate · {pct(step.clickCount, step.sentCount)} Klickrate
         </p>
       </div>
-      {canManage && (
-        <div className="flex shrink-0 gap-1">
-          <button type="button" aria-label="Bearbeiten" onClick={onEdit} className="flex size-7 items-center justify-center text-muted-foreground hover:text-foreground">
-            <PencilIcon className="size-3.5" />
-          </button>
-          <button type="button" aria-label="Löschen" onClick={onDelete} className="flex size-7 items-center justify-center text-muted-foreground hover:text-destructive">
-            <TrashIcon className="size-3.5" />
-          </button>
-        </div>
-      )}
+      <div className="flex shrink-0 gap-1">
+        <EmailStepPreviewDialog
+          subject={step.subject}
+          preheader={step.preheader}
+          bodyText={step.bodyText}
+          ctaLabel={step.ctaLabel}
+          ctaUrl={step.ctaUrl}
+        />
+        {canManage && (
+          <>
+            <button type="button" aria-label="Bearbeiten" onClick={onEdit} className="flex size-7 items-center justify-center text-muted-foreground hover:text-foreground">
+              <PencilIcon className="size-3.5" />
+            </button>
+            <button type="button" aria-label="Löschen" onClick={onDelete} className="flex size-7 items-center justify-center text-muted-foreground hover:text-destructive">
+              <TrashIcon className="size-3.5" />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -142,10 +153,11 @@ function StepForm({ funnelId, step, onDone }: { funnelId: string; step?: StepDat
           </button>
         ))}
       </div>
+      <BodyTextToolbar textareaRef={bodyRef} value={bodyText} onChange={setBodyText} />
       <Textarea
         ref={bodyRef}
         name="bodyText"
-        placeholder={"Text der E-Mail. Links: [Linktext](https://...)"}
+        placeholder={"Text der E-Mail. Fett/Kursiv/Link über die Leiste oben, oder von Hand: **fett**, *kursiv*, [Linktext](https://...)"}
         rows={6}
         value={bodyText}
         onChange={(e) => setBodyText(e.target.value)}
@@ -158,6 +170,14 @@ function StepForm({ funnelId, step, onDone }: { funnelId: string; step?: StepDat
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex justify-end gap-2">
+        <EmailStepPreviewDialog
+          subject={subject}
+          preheader={step?.preheader}
+          bodyText={bodyText}
+          ctaLabel={step?.ctaLabel}
+          ctaUrl={step?.ctaUrl}
+          label="Vorschau"
+        />
         <Button type="button" variant="outline" size="sm" onClick={onDone}>
           Abbrechen
         </Button>
