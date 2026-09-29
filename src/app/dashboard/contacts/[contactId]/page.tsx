@@ -24,6 +24,7 @@ import { CustomFieldRow } from "./custom-field-row";
 import { AddCustomFieldDialog } from "./add-custom-field-dialog";
 import { CvUploadForm } from "./cv-upload-form";
 import { AdditionalContactDialog } from "./additional-contact-dialog";
+import { MergeDuplicatesDialog } from "@/components/contacts/merge-duplicates-dialog";
 import { CompanyInfoForm } from "./company-info-form";
 import { RemoveAdditionalContactButton } from "./remove-additional-contact-button";
 import { NewTaskForm } from "./new-task-form";
@@ -80,6 +81,28 @@ export default async function ContactDetailPage({
 
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unbenannt";
   const displayName = contactDisplayName(contact);
+
+  // Gleiche Prüfung wie findDuplicateContacts/getDuplicateCandidates
+  // (E-Mail oder Telefon teilt sich ein anderer Kontakt in derselben
+  // Kampagne) - Kanban-Board und Tabellen-Ansicht zeigen die Warnung
+  // schon, die Detailseite bisher nicht, obwohl man von dort aus genauso
+  // zusammenführen können soll.
+  const duplicateEmail = contact.email?.trim().toLowerCase();
+  const duplicatePhone = contact.phone?.trim();
+  const isDuplicate =
+    contact.pipeline.showDuplicateWarning &&
+    (!!duplicateEmail || !!duplicatePhone) &&
+    (await prisma.contact.findFirst({
+      where: {
+        pipelineId: contact.pipelineId,
+        id: { not: contact.id },
+        OR: [
+          ...(duplicateEmail ? [{ email: { equals: duplicateEmail, mode: "insensitive" as const } }] : []),
+          ...(duplicatePhone ? [{ phone: duplicatePhone }] : []),
+        ],
+      },
+      select: { id: true },
+    })) !== null;
   const isB2BLead = contact.pipeline.kind === "LEADS" && !!contact.companyName;
   const finalId = finalStageId(contact.pipeline.stages);
   const showDealOutcome =
@@ -145,7 +168,10 @@ export default async function ContactDetailPage({
       <Card className="mt-2 mb-6">
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">{displayName}</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              {displayName}
+              {isDuplicate && <MergeDuplicatesDialog contactId={contact.id} contactName={fullName} label="⚠ Mögliches Duplikat" />}
+            </h1>
             <p className="text-muted-foreground">
               {isB2BLead && `${fullName} · `}
               {contact.email ?? "Keine E-Mail"} · {contact.phone ? formatPhoneDisplay(contact.phone) : "Kein Telefon"}

@@ -82,6 +82,7 @@ function CompareView({
   const [fieldChoice, setFieldChoice] = useState<Record<MergeField, string>>(fieldSource);
   const [error, formAction, isPending] = useActionState(mergeContacts, undefined);
   const wasPending = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {
@@ -93,7 +94,7 @@ function CompareView({
   }, [isPending, error]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="keepContactId" value={primaryId} />
       <input type="hidden" name="mergeContactId" value={otherId} />
       {(Object.keys(FIELD_LABELS) as MergeField[]).map((field) => (
@@ -157,7 +158,20 @@ function CompareView({
         <Button type="button" variant="outline" size="sm" onClick={onDone}>
           Abbrechen
         </Button>
-        <Button type="submit" size="sm" disabled={isPending}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={isPending}
+          // Dieser Dialog wird über dem Kanban-Board (dnd-kit) geöffnet - dessen
+          // globale Pointer-Sensoren schlucken irgendwo auf dem Weg das native
+          // "Klick auf type=submit löst form.submit aus"-Verhalten, ohne dass ein
+          // Fehler auftritt (form.requestSubmit() funktioniert aber zuverlässig).
+          // Explizit submitten umgeht das, statt sich auf den nativen Klick zu verlassen.
+          onClick={(e) => {
+            e.preventDefault();
+            formRef.current?.requestSubmit();
+          }}
+        >
           {isPending ? "Wird zusammengeführt..." : "Zusammenführen"}
         </Button>
       </div>
