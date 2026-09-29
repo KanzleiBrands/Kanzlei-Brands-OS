@@ -20,6 +20,7 @@ type Contact = {
   source: string;
   rating: number | null;
   createdAt: Date;
+  updatedAt: Date;
   customFields: unknown;
   rejectionReason: string | null;
   talentPoolId: string | null;
