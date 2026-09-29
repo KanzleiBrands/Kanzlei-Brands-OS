@@ -60,15 +60,20 @@ function CompareView({
   // Standard: der ältere Kontakt (früher angelegt) bleibt erhalten - meist
   // der, an dem schon Notizen/Aktivität hängt - der Nutzer kann das umkehren.
   const [primaryId, setPrimaryId] = useState(() => (new Date(a.createdAt) <= new Date(b.createdAt) ? a.id : b.id));
-  const byId = useMemo(() => new Map([[a.id, a], [b.id, b]]), [a, b]);
   const otherId = primaryId === a.id ? b.id : a.id;
 
+  // Feld-Vergleich zeigt a immer links, b immer rechts - genau wie die
+  // Kontakt-Karten oben - unabhängig davon, welcher der beiden gerade als
+  // Hauptkontakt markiert ist. Würde man hier stattdessen primary/other
+  // verwenden, würden beim Umschalten des Hauptkontakts die Werte
+  // scheinbar die Spalte wechseln (bzw. "verschwinden"), obwohl sich an
+  // der eigentlichen Auswahl nichts geändert hat - das war die Ursache der
+  // ursprünglichen Verwirrung.
   const fieldSource = useMemo(() => {
-    const primary = byId.get(primaryId)!;
-    const other = byId.get(otherId)!;
     const initial: Record<MergeField, string> = {} as Record<MergeField, string>;
     for (const field of Object.keys(FIELD_LABELS) as MergeField[]) {
-      initial[field] = primary[field] ? primary.id : other[field] ? other.id : primary.id;
+      const primaryValue = primaryId === a.id ? a[field] : b[field];
+      initial[field] = primaryValue ? primaryId : otherId;
     }
     return initial;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,9 +92,6 @@ function CompareView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPending, error]);
 
-  const primary = byId.get(primaryId)!;
-  const other = byId.get(otherId)!;
-
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="keepContactId" value={primaryId} />
@@ -105,39 +107,41 @@ function CompareView({
 
       <div className="flex flex-col gap-1.5 rounded-lg border p-2">
         {(Object.keys(FIELD_LABELS) as MergeField[]).map((field) => {
-          const primaryValue = primary[field];
-          const otherValue = other[field];
-          if (!primaryValue && !otherValue) return null;
+          const aValue = a[field];
+          const bValue = b[field];
+          if (!aValue && !bValue) return null;
           return (
             <div key={field} className="grid grid-cols-[80px_1fr_1fr] items-center gap-2 text-sm">
               <span className="text-xs text-muted-foreground">{FIELD_LABELS[field]}</span>
               <label
                 className={`flex cursor-pointer items-center gap-1.5 truncate rounded-md border px-2 py-1 ${
-                  fieldChoice[field] === primary.id ? "border-primary bg-primary/5" : "text-muted-foreground"
+                  fieldChoice[field] === a.id ? "border-primary bg-primary/5" : "text-muted-foreground"
                 }`}
               >
                 <input
                   type="radio"
+                  name={`choice-${field}`}
                   className="shrink-0"
-                  checked={fieldChoice[field] === primary.id}
-                  onChange={() => setFieldChoice((prev) => ({ ...prev, [field]: primary.id }))}
-                  disabled={!primaryValue}
+                  checked={fieldChoice[field] === a.id}
+                  onChange={() => setFieldChoice((prev) => ({ ...prev, [field]: a.id }))}
+                  disabled={!aValue}
                 />
-                <span className="truncate">{primaryValue || "–"}</span>
+                <span className="truncate">{aValue || "–"}</span>
               </label>
               <label
                 className={`flex cursor-pointer items-center gap-1.5 truncate rounded-md border px-2 py-1 ${
-                  fieldChoice[field] === other.id ? "border-primary bg-primary/5" : "text-muted-foreground"
+                  fieldChoice[field] === b.id ? "border-primary bg-primary/5" : "text-muted-foreground"
                 }`}
               >
                 <input
                   type="radio"
+                  name={`choice-${field}`}
                   className="shrink-0"
-                  checked={fieldChoice[field] === other.id}
-                  onChange={() => setFieldChoice((prev) => ({ ...prev, [field]: other.id }))}
-                  disabled={!otherValue}
+                  checked={fieldChoice[field] === b.id}
+                  onChange={() => setFieldChoice((prev) => ({ ...prev, [field]: b.id }))}
+                  disabled={!bValue}
                 />
-                <span className="truncate">{otherValue || "–"}</span>
+                <span className="truncate">{bValue || "–"}</span>
               </label>
             </div>
           );

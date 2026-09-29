@@ -102,7 +102,7 @@ export async function getDuplicateCandidates(contactId: string): Promise<Duplica
 export async function mergeContacts(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
   if (session.user.role !== "AGENCY_ADMIN") {
-    throw new AccessDeniedError("Nur die Agentur kann Kontakte zusammenführen.");
+    return "Nur die Agentur kann Kontakte zusammenführen.";
   }
 
   const keepContactId = String(formData.get("keepContactId") ?? "");
@@ -116,7 +116,11 @@ export async function mergeContacts(_prevState: string | undefined, formData: Fo
   if (!keep || !merge) return "Kontakt nicht gefunden.";
   if (keep.pipelineId !== merge.pipelineId) return "Kontakte gehören zu unterschiedlichen Kampagnen.";
 
-  await assertPipelineAccess(session, keep.pipelineId);
+  try {
+    await assertPipelineAccess(session, keep.pipelineId);
+  } catch (error) {
+    return error instanceof AccessDeniedError ? error.message : "Kein Zugriff.";
+  }
 
   const data: Prisma.ContactUpdateInput = {};
   for (const field of MERGE_FIELDS) {

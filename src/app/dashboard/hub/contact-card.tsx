@@ -2,6 +2,7 @@ import { CalendarIcon, MailIcon, PhoneIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { initialsOf, avatarColorFor } from "@/lib/avatar";
+import { telHref } from "@/lib/phone-format";
 
 export const OFFICE_PHONE = "+4940238359780";
 export const OFFICE_PHONE_LABEL = "040 238 359 780";
@@ -52,7 +53,7 @@ export function ContactCard({
 
         <div className="flex flex-wrap gap-2">
           {contact?.phone && (
-            <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
+            <Button variant="outline" size="sm" nativeButton={false} render={<a href={telHref(contact.phone)} />}>
               <PhoneIcon className="size-3.5" />
               Anrufen
             </Button>

@@ -9,6 +9,7 @@ import { customFieldEntries } from "@/lib/format-custom-fields";
 import { CONTACT_SOURCE_LABELS } from "@/lib/contact-source-labels";
 import { contactDisplayName } from "@/lib/contact-display";
 import { finalStageId } from "@/lib/final-stage";
+import { formatPhoneDisplay, telHref } from "@/lib/phone-format";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,7 +148,7 @@ export default async function ContactDetailPage({
             <h1 className="text-2xl font-semibold">{displayName}</h1>
             <p className="text-muted-foreground">
               {isB2BLead && `${fullName} · `}
-              {contact.email ?? "Keine E-Mail"} · {contact.phone ?? "Kein Telefon"}
+              {contact.email ?? "Keine E-Mail"} · {contact.phone ? formatPhoneDisplay(contact.phone) : "Kein Telefon"}
             </p>
             <div className="mt-1">
               <StarRating contactId={contact.id} rating={contact.rating} size="default" />
@@ -180,7 +181,7 @@ export default async function ContactDetailPage({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {contact.phone && (
-              <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />}>
+              <Button variant="outline" size="sm" nativeButton={false} render={<a href={telHref(contact.phone)} />}>
                 Anrufen
               </Button>
             )}
@@ -278,7 +279,9 @@ export default async function ContactDetailPage({
                         <div>
                           <p className="font-medium">{person.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {[person.role, person.email, person.phone].filter(Boolean).join(" · ")}
+                            {[person.role, person.email, person.phone ? formatPhoneDisplay(person.phone) : null]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -288,7 +291,7 @@ export default async function ContactDetailPage({
                               size="icon-sm"
                               nativeButton={false}
                               aria-label={`${person.name} anrufen`}
-                              render={<a href={`tel:${person.phone}`} />}
+                              render={<a href={telHref(person.phone)} />}
                             >
                               <PhoneIcon className="size-4 text-muted-foreground" />
                             </Button>
