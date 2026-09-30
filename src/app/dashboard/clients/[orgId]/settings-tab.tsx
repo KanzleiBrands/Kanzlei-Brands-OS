@@ -162,7 +162,8 @@ export function SettingsTab({
             <CardContent className="flex flex-col gap-2">
               <p className="text-sm text-muted-foreground">
                 Automatischer Performance-Report per E-Mail an die Admins dieses Kunden, immer am letzten Tag des
-                Monats.
+                Monats. Standardmäßig aus - erst aktivieren, sobald die Kampagne für diesen Kunden tatsächlich
+                gestartet ist, sonst bekommt er einen Report über eine leere Kampagne.
               </p>
               <MonthlyReportToggle organizationId={organizationId} enabled={monthlyReportEnabled} />
             </CardContent>

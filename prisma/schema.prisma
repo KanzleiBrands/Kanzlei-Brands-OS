@@ -119,9 +119,12 @@ model Organization {
   // Monatlicher Performance-Report per E-Mail an die Kunden-Admins - läuft
   // immer am letzten Kalendertag des Monats, unabhängig davon wann der
   // Kunde angelegt wurde (ein Kunde von Mitte des Monats bekommt dadurch
-  // automatisch seinen ersten Report nach ~2 Wochen). Default an, damit die
-  // Agentur es bewusst pro Kunde abschalten muss statt es aktivieren zu müssen.
-  monthlyReportEnabled Boolean   @default(true)
+  // automatisch seinen ersten Report nach ~2 Wochen). Default AUS: ein neu
+  // angelegter Kunde ist i.d.R. noch nicht aktiv eingepflegt/gestartet - die
+  // Agentur muss es pro Kunde bewusst aktivieren, sobald die Kampagne läuft,
+  // statt dass jeder Kunde ungefragt Reports über eine leere/inaktive
+  // Kampagne bekommt.
+  monthlyReportEnabled Boolean   @default(false)
   lastReportSentAt     DateTime?
 
   // DSGVO: Kontakte in einer Ungeeignet-/Verloren-Stufe (Stage.isRejected)
