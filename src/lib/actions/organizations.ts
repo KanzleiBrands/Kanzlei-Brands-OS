@@ -611,6 +611,15 @@ export async function createPipeline(_prevState: string | undefined, formData: F
     isFinal?: boolean;
   }[];
 
+  // Fallback, falls die Vorlage selbst keine Erfolgs-Stufe markiert hat: die
+  // namensgleiche Standard-Erfolgs-Stufe je Kampagnentyp automatisch setzen
+  // (Eingestellt bei Recruiting, Gewonnen bei Mandatsakquise), damit niemand
+  // nach dem Anlegen erst manuell im Kampagnen-Reiter "Einstellungen" eine
+  // Erfolgs-Stufe nachtragen muss. Eine in der Vorlage explizit gesetzte
+  // Erfolgs-Stufe hat immer Vorrang.
+  const hasExplicitFinalStage = templateStages.some((stage) => stage.isFinal);
+  const defaultFinalStageName = kind === "APPLICANTS" ? "eingestellt" : "gewonnen";
+
   const pipeline = await prisma.pipeline.create({
     data: {
       name,
@@ -622,7 +631,9 @@ export async function createPipeline(_prevState: string | undefined, formData: F
           order: stage.order,
           color: stage.color,
           isRejected: Boolean(stage.isRejected),
-          isFinal: Boolean(stage.isFinal),
+          isFinal:
+            Boolean(stage.isFinal) ||
+            (!hasExplicitFinalStage && stage.name.trim().toLowerCase() === defaultFinalStageName),
         })),
       },
     },

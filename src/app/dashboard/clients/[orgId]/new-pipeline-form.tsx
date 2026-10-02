@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 
 export function NewPipelineForm({
   organizationId,
@@ -23,6 +24,15 @@ export function NewPipelineForm({
   useSaveToast(error, isPending, "Kampagne angelegt.");
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
+
+  // Vorlage, deren Name zum Kampagnentyp passt (z.B. "Recruiting" bei
+  // APPLICANTS), ist der sinnvollste Default - sonst stand hier immer
+  // schlicht die erstangelegte Vorlage, egal in welchem Reiter man "Kampagne
+  // anlegen" geklickt hat.
+  const matchingTemplate = templates.find(
+    (t) => t.name.trim().toLowerCase() === CAMPAIGN_KIND_LABELS[kind].toLowerCase(),
+  );
+  const defaultTemplateId = matchingTemplate?.id ?? templates[0]?.id;
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {
@@ -41,7 +51,7 @@ export function NewPipelineForm({
         <Label htmlFor="new-pipeline-template" className="text-xs text-muted-foreground">
           Statusvorlage
         </Label>
-        <Select name="templateId" defaultValue={templates[0]?.id}>
+        <Select name="templateId" defaultValue={defaultTemplateId}>
           <SelectTrigger id="new-pipeline-template" className="w-48">
             <SelectValue>{(value: string) => templates.find((t) => t.id === value)?.name ?? "Statusvorlage"}</SelectValue>
           </SelectTrigger>
