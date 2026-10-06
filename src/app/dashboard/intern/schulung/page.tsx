@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,27 +14,25 @@ import { isSuperAdmin } from "@/lib/super-admin";
  * Kunden-Schulung vermischt. Kurs-/Modul-/Lektionsansicht selbst bleibt
  * dieselbe geteilte Implementierung unter /dashboard/courses/[courseId] -
  * Verbesserungen dort gelten also für beide Instanzen.
+ *
+ * Der Super-Admin hat hier keine eigene Lernansicht (er nimmt nicht an den
+ * internen Schulungen teil) - für ihn landet der Sidebar-Link "Schulung"
+ * deshalb direkt auf der Verwaltungsübersicht statt auf einem für ihn
+ * ohnehin leeren Lernfortschritt-Screen.
  */
 export default async function InternalSchulungPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
+  if (isSuperAdmin(session.user.email)) redirect("/dashboard/intern/schulung/verwaltung");
 
-  const viewerIsSuperAdmin = isSuperAdmin(session.user.email);
-
-  // Nur der Super-Admin sieht alle internen Kurse (Überblick über jede
-  // Abteilung). Jeder andere - auch AGENCY_ADMIN, das ist hier bewusst KEIN
+  // Jeder Mitarbeiter - auch AGENCY_ADMIN, das ist hier bewusst KEIN
   // Freifahrtschein - sieht nur Kurse seiner eigenen zugewiesenen
   // Abteilung(en), sonst könnte z.B. ein Fulfillment-Mitarbeiter eine
   // interne Vertriebsschulung sehen, die nicht für ihn bestimmt ist.
-  let courseWhere: Prisma.CourseWhereInput;
-  if (viewerIsSuperAdmin) {
-    courseWhere = { published: true, audience: "INTERNAL" };
-  } else {
-    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
-    courseWhere = viewer?.departments.length
-      ? { published: true, audience: "INTERNAL", departmentAssignments: { some: { department: { in: viewer.departments } } } }
-      : { id: "__none__" };
-  }
+  const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
+  const courseWhere = viewer?.departments.length
+    ? { published: true as const, audience: "INTERNAL" as const, departmentAssignments: { some: { department: { in: viewer.departments } } } }
+    : { id: "__none__" };
 
   const courses = await prisma.course.findMany({
     where: courseWhere,
@@ -50,14 +47,6 @@ export default async function InternalSchulungPage() {
     <div className="p-4 sm:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Schulung</h1>
-        {viewerIsSuperAdmin && (
-          <Link
-            href="/dashboard/intern/schulung/verwaltung"
-            className="text-sm text-muted-foreground underline underline-offset-2"
-          >
-            Kurse verwalten
-          </Link>
-        )}
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
         {courses.map((course) => {
