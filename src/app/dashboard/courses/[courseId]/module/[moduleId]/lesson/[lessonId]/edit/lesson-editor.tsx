@@ -55,6 +55,7 @@ function SortableBlock({
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoFallbackFile, setVideoFallbackFile] = useState<File | null>(null);
   const videoFallbackInputRef = useRef<HTMLInputElement>(null);
+  const [videoUrlInput, setVideoUrlInput] = useState("");
 
   useEffect(() => {
     if (videoFallbackFile && videoFallbackInputRef.current) {
@@ -224,18 +225,47 @@ function SortableBlock({
                 <VideoTrimmer videoUrl={block.url} fileName="zugeschnitten.mp4" onTrimmed={handleVideoFile} />
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-                  <UploadCloudIcon className="size-4 shrink-0" />
-                  Video auswählen - jede Dateigröße, lädt direkt hoch
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={(e) => handleVideoFile(e.target.files?.[0])}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                    <UploadCloudIcon className="size-4 shrink-0" />
+                    Video auswählen - jede Dateigröße, lädt direkt hoch
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => handleVideoFile(e.target.files?.[0])}
+                    />
+                  </label>
+                  <VideoRecorder onCaptured={handleVideoFile} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">oder</span>
+                  <Input
+                    value={videoUrlInput}
+                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || !videoUrlInput.trim()) return;
+                      e.preventDefault();
+                      onChange({ ...block, url: videoUrlInput.trim() });
+                      setVideoUrlInput("");
+                    }}
+                    placeholder="Video-URL einfügen (z.B. schon selbst zu Vercel Blob hochgeladen)"
+                    className="h-8 flex-1 text-xs"
                   />
-                </label>
-                <VideoRecorder onCaptured={handleVideoFile} />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!videoUrlInput.trim()}
+                    onClick={() => {
+                      onChange({ ...block, url: videoUrlInput.trim() });
+                      setVideoUrlInput("");
+                    }}
+                  >
+                    Übernehmen
+                  </Button>
+                </div>
               </div>
             )}
             {videoFallbackFile && (
