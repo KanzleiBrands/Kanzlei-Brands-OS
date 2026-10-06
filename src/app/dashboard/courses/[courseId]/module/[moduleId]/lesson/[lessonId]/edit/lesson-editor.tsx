@@ -5,10 +5,12 @@ import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import {
   ArrowLeftIcon,
+  AudioLinesIcon,
   GripVerticalIcon,
   HeadingIcon,
   ImageIcon,
   Loader2Icon,
+  Music2Icon,
   PilcrowIcon,
   PlayCircleIcon,
   TrashIcon,
@@ -56,6 +58,11 @@ function SortableBlock({
   const [videoFallbackFile, setVideoFallbackFile] = useState<File | null>(null);
   const videoFallbackInputRef = useRef<HTMLInputElement>(null);
   const [videoUrlInput, setVideoUrlInput] = useState("");
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioFallbackFile, setAudioFallbackFile] = useState<File | null>(null);
+  const audioFallbackInputRef = useRef<HTMLInputElement>(null);
+  const [audioUrlInput, setAudioUrlInput] = useState("");
 
   useEffect(() => {
     if (videoFallbackFile && videoFallbackInputRef.current) {
@@ -64,6 +71,14 @@ function SortableBlock({
       videoFallbackInputRef.current.files = dataTransfer.files;
     }
   }, [videoFallbackFile]);
+
+  useEffect(() => {
+    if (audioFallbackFile && audioFallbackInputRef.current) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(audioFallbackFile);
+      audioFallbackInputRef.current.files = dataTransfer.files;
+    }
+  }, [audioFallbackFile]);
 
   async function handleImageFile(file: File | undefined) {
     if (!file || block.type !== "image") return;
@@ -100,6 +115,26 @@ function SortableBlock({
       setVideoFallbackFile(file);
     } finally {
       setVideoUploading(false);
+    }
+  }
+
+  async function handleAudioFile(file: File | undefined) {
+    if (!file || block.type !== "audio") return;
+    setAudioUploading(true);
+    setAudioProgress(0);
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/uploads/audio",
+        onUploadProgress: (event) => setAudioProgress(Math.round(event.percentage)),
+      });
+      onChange({ ...block, url: blob.url });
+      setAudioFallbackFile(null);
+    } catch {
+      // Same direct-upload fallback as handleVideoFile - see there for why.
+      setAudioFallbackFile(file);
+    } finally {
+      setAudioUploading(false);
     }
   }
 
@@ -279,6 +314,93 @@ function SortableBlock({
             )}
           </div>
         )}
+
+        {block.type === "audio" && (
+          <div className="flex flex-col gap-2">
+            {audioUploading ? (
+              <div className="rounded-md border p-3">
+                <div className="mb-1.5 flex items-center gap-2 text-sm">
+                  <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" />
+                  <span>Wird hochgeladen...</span>
+                  <span className="ml-auto font-medium">{audioProgress}%</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-150"
+                    style={{ width: `${audioProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : block.url ? (
+              <div className="flex flex-col gap-2 rounded-md border p-2">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Music2Icon className="size-5 shrink-0 text-primary" />
+                  <span className="flex-1 font-medium">Audio vorhanden</span>
+                  <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted">
+                    <UploadCloudIcon className="size-3.5" />
+                    Ersetzen
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => handleAudioFile(e.target.files?.[0])}
+                    />
+                  </label>
+                </div>
+                <audio src={block.url} controls className="w-full" />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                  <UploadCloudIcon className="size-4 shrink-0" />
+                  Audiodatei auswählen - jede Dateigröße, lädt direkt hoch
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => handleAudioFile(e.target.files?.[0])}
+                  />
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">oder</span>
+                  <Input
+                    value={audioUrlInput}
+                    onChange={(e) => setAudioUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || !audioUrlInput.trim()) return;
+                      e.preventDefault();
+                      onChange({ ...block, url: audioUrlInput.trim() });
+                      setAudioUrlInput("");
+                    }}
+                    placeholder="Audio-URL einfügen (z.B. schon selbst zu Vercel Blob hochgeladen)"
+                    className="h-8 flex-1 text-xs"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!audioUrlInput.trim()}
+                    onClick={() => {
+                      onChange({ ...block, url: audioUrlInput.trim() });
+                      setAudioUrlInput("");
+                    }}
+                  >
+                    Übernehmen
+                  </Button>
+                </div>
+              </div>
+            )}
+            {audioFallbackFile && (
+              <>
+                <input ref={audioFallbackInputRef} type="file" name={`audioBlockFile_${block.id}`} className="hidden" />
+                <p className="text-xs text-muted-foreground">
+                  Direkter Upload nicht verfügbar - &bdquo;{audioFallbackFile.name}&ldquo; wird beim Speichern
+                  hochgeladen.
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <button
@@ -330,6 +452,7 @@ export function LessonEditor({
     if (type === "heading") setBlocks((b) => [...b, { id, type: "heading", level: 2, text: "" }]);
     else if (type === "paragraph") setBlocks((b) => [...b, { id, type: "paragraph", text: "" }]);
     else if (type === "image") setBlocks((b) => [...b, { id, type: "image", url: "", caption: "" }]);
+    else if (type === "audio") setBlocks((b) => [...b, { id, type: "audio", url: "" }]);
     else setBlocks((b) => [...b, { id, type: "video", url: "" }]);
   }
 
@@ -410,6 +533,10 @@ export function LessonEditor({
               <Button type="button" variant="outline" size="sm" onClick={() => addBlock("video")}>
                 <VideoIcon className="size-4" />
                 Video
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addBlock("audio")}>
+                <AudioLinesIcon className="size-4" />
+                Audio
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => addBlock("heading")}>
                 <HeadingIcon className="size-4" />

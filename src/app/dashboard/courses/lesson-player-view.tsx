@@ -129,6 +129,12 @@ export function LessonPlayerView({
                     </div>
                   );
                 }
+                if (block.type === "audio") {
+                  if (!block.url) return null;
+                  return (
+                    <audio key={block.id} src={block.url} controls className="w-full" />
+                  );
+                }
                 if (block.type === "image") {
                   if (!block.url) return null;
                   return (

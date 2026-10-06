@@ -3,7 +3,8 @@ export type LessonBlock =
   | { id: string; type: "heading"; level: 2 | 3; text: string }
   | { id: string; type: "paragraph"; text: string }
   | { id: string; type: "image"; url: string; caption: string }
-  | { id: string; type: "video"; url: string };
+  | { id: string; type: "video"; url: string }
+  | { id: string; type: "audio"; url: string };
 
 /** Parses Lesson.content (unknown JSON from the DB) back into a safe LessonBlock[], dropping anything malformed. */
 export function parseLessonBlocks(content: unknown): LessonBlock[] {
@@ -21,6 +22,8 @@ export function parseLessonBlocks(content: unknown): LessonBlock[] {
       blocks.push({ id: b.id, type: "image", url: b.url, caption: typeof b.caption === "string" ? b.caption : "" });
     } else if (b.type === "video" && typeof b.url === "string") {
       blocks.push({ id: b.id, type: "video", url: b.url });
+    } else if (b.type === "audio" && typeof b.url === "string") {
+      blocks.push({ id: b.id, type: "audio", url: b.url });
     }
   }
   return blocks;

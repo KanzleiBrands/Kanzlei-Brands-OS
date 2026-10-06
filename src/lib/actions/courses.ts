@@ -395,10 +395,18 @@ export async function updateLesson(_prevState: string | undefined, formData: For
   if (content) {
     for (let i = 0; i < content.length; i++) {
       const block = content[i];
-      if (block.type !== "video" || block.url) continue;
-      const fallbackFile = formData.get(`videoBlockFile_${block.id}`);
-      if (fallbackFile instanceof File && fallbackFile.size > 0) {
-        content[i] = { ...block, url: await storeFile(fallbackFile, "lessons") };
+      if (block.type !== "video" && block.type !== "audio") continue;
+      if (block.url) continue;
+      if (block.type === "video") {
+        const fallbackFile = formData.get(`videoBlockFile_${block.id}`);
+        if (fallbackFile instanceof File && fallbackFile.size > 0) {
+          content[i] = { ...block, url: await storeFile(fallbackFile, "lessons") };
+        }
+      } else if (block.type === "audio") {
+        const fallbackFile = formData.get(`audioBlockFile_${block.id}`);
+        if (fallbackFile instanceof File && fallbackFile.size > 0) {
+          content[i] = { ...block, url: await storeFile(fallbackFile, "lessons") };
+        }
       }
     }
   }
