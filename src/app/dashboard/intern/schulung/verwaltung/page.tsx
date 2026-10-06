@@ -3,13 +3,10 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CourseThumbnail } from "@/app/dashboard/courses/course-thumbnail";
 import { NewCourseForm } from "@/app/dashboard/courses/new-course-form";
 import { PublishToggle } from "@/app/dashboard/courses/publish-toggle";
 import { isSuperAdmin } from "@/lib/super-admin";
-
-const CATEGORY_LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
 
 /**
  * Verwaltung der internen Mitarbeiterschulungen (audience=INTERNAL) -
@@ -57,12 +54,9 @@ export default async function InternalCourseAdminPage() {
                 </Link>
               </div>
               <CardHeader>
-                <div className="flex min-w-0 items-start justify-between gap-2">
-                  <CardTitle className="min-w-0 flex-1 truncate" title={course.title}>
-                    {course.title}
-                  </CardTitle>
-                  <Badge variant="secondary" className="shrink-0">{CATEGORY_LABELS[course.category]}</Badge>
-                </div>
+                <CardTitle className="truncate" title={course.title}>
+                  {course.title}
+                </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <p className="text-sm text-muted-foreground">

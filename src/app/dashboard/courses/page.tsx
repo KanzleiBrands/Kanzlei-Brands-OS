@@ -4,13 +4,10 @@ import type { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "./course-thumbnail";
 import { NewCourseForm } from "./new-course-form";
 import { PublishToggle } from "./publish-toggle";
-
-const CATEGORY_LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
 
 export default async function CoursesPage() {
   const session = await getSession();
@@ -52,12 +49,9 @@ export default async function CoursesPage() {
                   </Link>
                 </div>
                 <CardHeader>
-                  <div className="flex min-w-0 items-start justify-between gap-2">
-                    <CardTitle className="min-w-0 flex-1 truncate" title={course.title}>
-                      {course.title}
-                    </CardTitle>
-                    <Badge variant="secondary" className="shrink-0">{CATEGORY_LABELS[course.category]}</Badge>
-                  </div>
+                  <CardTitle className="truncate" title={course.title}>
+                    {course.title}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">
@@ -101,7 +95,7 @@ export default async function CoursesPage() {
         include: { progress: true },
       },
     },
-    orderBy: { category: "asc" },
+    orderBy: { title: "asc" },
   });
 
   return (

@@ -5,24 +5,19 @@ import { PencilIcon } from "lucide-react";
 import { updateCourse } from "@/lib/actions/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { ThumbnailGenerator } from "../thumbnail-generator";
-
-const LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
 
 export function EditCourseDialog({
   courseId,
   title,
   description,
-  category,
   thumbnailUrl,
 }: {
   courseId: string;
   title: string;
   description: string | null;
-  category: string;
   thumbnailUrl: string | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,15 +80,6 @@ export function EditCourseDialog({
             />
             <ThumbnailGenerator seedTitle={titleValue} fileInputRef={thumbnailInputRef} onGenerate={setGeneratedPreview} />
           </div>
-          <Select name="category" defaultValue={category}>
-            <SelectTrigger>
-              <SelectValue>{(value: string) => LABELS[value] ?? value}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ONBOARDING">Onboarding</SelectItem>
-              <SelectItem value="TRAINING">Training</SelectItem>
-            </SelectContent>
-          </Select>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
             {isPending ? "Wird gespeichert..." : "Speichern"}

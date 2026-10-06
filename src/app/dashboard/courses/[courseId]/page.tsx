@@ -74,10 +74,7 @@ export default async function CourseDetailPage({
           <div className="flex w-full items-start gap-4 sm:w-auto">
             <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="w-24 shrink-0 rounded-lg sm:w-40" />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold break-words sm:text-2xl">{course.title}</h1>
-                <Badge variant="secondary">{course.category === "ONBOARDING" ? "Onboarding" : "Training"}</Badge>
-              </div>
+              <h1 className="text-xl font-semibold break-words sm:text-2xl">{course.title}</h1>
               {course.description && <p className="mt-1 text-muted-foreground">{course.description}</p>}
               <p className="mt-1 text-sm text-muted-foreground">{assignmentCount} Kunden zugewiesen</p>
             </div>
@@ -108,7 +105,6 @@ export default async function CourseDetailPage({
               courseId={course.id}
               title={course.title}
               description={course.description}
-              category={course.category}
               thumbnailUrl={course.thumbnailUrl}
             />
             <DeleteCourseButton courseId={course.id} courseTitle={course.title} />

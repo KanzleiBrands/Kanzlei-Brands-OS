@@ -124,7 +124,6 @@ async function main() {
       id: "seed-onboarding-course",
       title: "Plattform-Onboarding",
       description: "Erste Schritte auf der Kanzlei Brands Plattform.",
-      category: "ONBOARDING",
       published: true,
       modules: {
         create: [

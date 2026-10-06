@@ -40,7 +40,7 @@ export default async function InternalSchulungPage() {
       modules: { select: { lessons: { select: { id: true } } } },
       enrollments: { where: { userId: session.user.id }, include: { progress: true } },
     },
-    orderBy: { category: "asc" },
+    orderBy: { title: "asc" },
   });
 
   return (

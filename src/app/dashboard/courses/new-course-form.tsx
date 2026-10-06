@@ -5,7 +5,6 @@ import { PlusIcon } from "lucide-react";
 import { createCourse } from "@/lib/actions/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { ThumbnailGenerator } from "./thumbnail-generator";
-
-const LABELS: Record<string, string> = { ONBOARDING: "Onboarding", TRAINING: "Training" };
 
 /**
  * `audience` ist fest vom Aufrufer vorgegeben statt frei wählbar - Kunden-
@@ -80,15 +77,6 @@ export function NewCourseForm({ audience }: { audience: "CLIENT" | "INTERNAL" })
             />
             <ThumbnailGenerator seedTitle={titleValue} fileInputRef={thumbnailInputRef} onGenerate={setGeneratedPreview} />
           </div>
-          <Select name="category" defaultValue="TRAINING">
-            <SelectTrigger>
-              <SelectValue>{(value: string) => LABELS[value] ?? value}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ONBOARDING">Onboarding</SelectItem>
-              <SelectItem value="TRAINING">Training</SelectItem>
-            </SelectContent>
-          </Select>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
             {isPending ? "Wird angelegt..." : "Kurs anlegen"}

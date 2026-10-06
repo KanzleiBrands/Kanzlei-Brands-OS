@@ -1130,11 +1130,6 @@ model EmailMessage {
 // Schulung / LMS
 // ---------------------------------------------------------------------------
 
-enum CourseCategory {
-  ONBOARDING // Required platform onboarding for new customers/staff
-  TRAINING // General knowledge-transfer courses
-}
-
 // Legt fest, wo ein Kurs überhaupt auftauchen kann: im Kunden-Schulungsbereich
 // (zugewiesen per CourseAssignment/Organization) oder im internen Portal
 // (zugewiesen per CourseDepartmentAssignment/AgencyDepartment) - nie in
@@ -1150,7 +1145,6 @@ model Course {
   id           String         @id @default(cuid())
   title        String
   description  String?
-  category     CourseCategory
   audience     CourseAudience @default(CLIENT)
   thumbnailUrl String?
   published    Boolean        @default(false)

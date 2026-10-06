@@ -27,10 +27,8 @@ export async function createCourse(_prevState: string | undefined, formData: For
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const category = String(formData.get("category") ?? "TRAINING");
   const audience = String(formData.get("audience") ?? "CLIENT");
   if (!title) return "Titel ist erforderlich.";
-  if (category !== "ONBOARDING" && category !== "TRAINING") return "Ungültige Kategorie.";
   if (audience !== "CLIENT" && audience !== "INTERNAL") return "Ungültige Zielgruppe.";
   // Interne Kurse (Mitarbeiterschulung) sind vom Kunden-Kursbereich
   // entkoppelt - sonst könnte jeder Fulfillment-AGENCY_ADMIN eine interne
@@ -47,7 +45,7 @@ export async function createCourse(_prevState: string | undefined, formData: For
   }
 
   await prisma.course.create({
-    data: { title, description: description || null, category, audience, thumbnailUrl },
+    data: { title, description: description || null, audience, thumbnailUrl },
   });
 
   revalidatePath("/dashboard/courses");
@@ -61,9 +59,7 @@ export async function updateCourse(_prevState: string | undefined, formData: For
   const courseId = String(formData.get("courseId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const category = String(formData.get("category") ?? "TRAINING");
   if (!title) return "Titel ist erforderlich.";
-  if (category !== "ONBOARDING" && category !== "TRAINING") return "Ungültige Kategorie.";
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return "Kurs nicht gefunden.";
@@ -88,7 +84,6 @@ export async function updateCourse(_prevState: string | undefined, formData: For
     data: {
       title,
       description: description || null,
-      category,
       audience,
       ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
     },
