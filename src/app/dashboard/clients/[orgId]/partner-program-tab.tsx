@@ -10,7 +10,7 @@ import { useSaveToast } from "@/hooks/use-save-toast";
 type PartnerActionOption = { id: string; title: string; points: number };
 type TransactionRow = {
   id: string;
-  kind: "EARNED" | "REDEEMED" | "ADJUSTMENT";
+  kind: "EARNED" | "REDEEMED" | "ADJUSTMENT" | "REQUESTED";
   points: number;
   note: string | null;
   actionTitle: string | null;
@@ -23,6 +23,7 @@ const KIND_LABELS: Record<TransactionRow["kind"], string> = {
   EARNED: "Gutgeschrieben",
   REDEEMED: "Eingelöst",
   ADJUSTMENT: "Korrektur",
+  REQUESTED: "Kostenlos angefragt",
 };
 
 function CreditActionButton({ organizationId, action }: { organizationId: string; action: PartnerActionOption }) {

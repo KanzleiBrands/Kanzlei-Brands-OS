@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
-import { GiftIcon } from "lucide-react";
+import { CheckIcon, GiftIcon } from "lucide-react";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { getPartnerPointsBalance } from "@/lib/actions/partner-program";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContactCard } from "../hub/contact-card";
 import { PartnerActionFormDialog } from "./partner-action-form-dialog";
@@ -94,6 +95,7 @@ export default async function PartnerProgramPage() {
                   <TableRow>
                     <TableHead className="w-10"></TableHead>
                     <TableHead>Prämie</TableHead>
+                    <TableHead>Produkt-Tag</TableHead>
                     <TableHead>Kosten</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-24 text-right">Aktionen</TableHead>
@@ -113,10 +115,18 @@ export default async function PartnerProgramPage() {
                               <img src={reward.imageUrl} alt="" className="size-full object-cover" />
                             </div>
                           )}
-                          {reward.title}
+                          <div className="flex flex-col">
+                            <span>{reward.title}</span>
+                            {reward.badge && (
+                              <Badge variant="outline" className="mt-0.5 w-fit text-[0.65rem]">
+                                {reward.badge}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>{reward.pointsCost} Punkte</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{reward.productTag ?? "-"}</TableCell>
+                      <TableCell>{reward.pointsCost == null ? "Kostenlos" : `${reward.pointsCost} Punkte`}</TableCell>
                       <TableCell>
                         <PartnerActiveToggle kind="reward" id={reward.id} active={reward.active} />
                       </TableCell>
@@ -145,7 +155,7 @@ export default async function PartnerProgramPage() {
   }
 
   // --- Client-facing view -------------------------------------------------
-  const [organization, balance, actions, rewards] = await Promise.all([
+  const [organization, balance, actions, allRewards] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: session.user.organizationId },
       include: { accountManager: { select: { name: true, phone: true, calendlyUrl: true, avatarUrl: true } } },
@@ -155,6 +165,13 @@ export default async function PartnerProgramPage() {
     prisma.partnerReward.findMany({ where: { active: true }, orderBy: { order: "asc" } }),
   ]);
   if (!organization) redirect("/login");
+
+  // Prämien mit passendem Produkt-Tag werden Kunden ausgeblendet, die dieses
+  // Produkt laut Organization.bookedProductTags bereits gebucht haben (siehe
+  // PartnerReward.productTag) - ehemals die Offer-Suppressionslogik.
+  const rewards = allRewards.filter(
+    (reward) => !reward.productTag || !organization.bookedProductTags.includes(reward.productTag),
+  );
 
   return (
     <div className="p-4 sm:p-8">
@@ -221,34 +238,63 @@ export default async function PartnerProgramPage() {
       </div>
 
       <h2 className="mb-3 text-lg font-semibold">Prämien-Punkte einlösen:</h2>
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {rewards.map((reward) => {
-          const missingPoints = Math.max(0, reward.pointsCost - balance);
-          return (
-            <Card key={reward.id} className="flex flex-col overflow-hidden py-0">
-              {reward.imageUrl && (
-                <div className="aspect-video w-full bg-black">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={reward.imageUrl} alt="" className="size-full object-cover" />
-                </div>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {rewards.map((reward) => (
+          <Card key={reward.id} className="flex flex-col overflow-hidden py-0">
+            {reward.imageUrl && (
+              <div className="relative aspect-video w-full bg-black">
+                {reward.badge && <Badge className="absolute top-2 left-2 z-10">{reward.badge}</Badge>}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={reward.imageUrl} alt={reward.title} className="size-full object-cover" />
+              </div>
+            )}
+            {reward.galleryUrls.length > 0 && (
+              <div className="flex gap-1.5 overflow-x-auto p-2 pb-0">
+                {reward.galleryUrls.map((url) => (
+                  <div key={url} className="h-12 w-20 shrink-0 overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="size-full object-contain" />
+                  </div>
+                ))}
+              </div>
+            )}
+            <CardHeader className="pt-4">
+              {!reward.imageUrl && reward.badge && <Badge className="mb-1 w-fit">{reward.badge}</Badge>}
+              <Badge variant="outline" className="w-fit gap-1">
+                <GiftIcon className="size-3" />
+                {reward.pointsCost == null ? "Kostenlos anfragbar" : `für ${reward.pointsCost} Prämien-Punkte`}
+              </Badge>
+              <CardTitle>{reward.title}</CardTitle>
+              {reward.description && <CardDescription>{reward.description}</CardDescription>}
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col gap-3 pb-4">
+              {reward.highlights.length > 0 && (
+                <ul className="flex flex-1 flex-col gap-1.5 text-sm">
+                  {reward.highlights.map((highlight, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-emerald-500" />
+                      <span>{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
-              <CardContent className="flex flex-1 flex-col gap-2 py-4">
-                <Badge variant="outline" className="w-fit gap-1">
-                  <GiftIcon className="size-3" />
-                  für {reward.pointsCost} Prämien-Punkte
-                </Badge>
-                <p className="font-medium">{reward.title}</p>
-                {reward.description && <p className="flex-1 text-sm text-muted-foreground">{reward.description}</p>}
-                <RedeemRewardButton
-                  rewardId={reward.id}
-                  ctaLabel={reward.ctaLabel}
-                  affordable={missingPoints === 0}
-                  missingPoints={missingPoints}
-                />
-              </CardContent>
-            </Card>
-          );
-        })}
+              {reward.ctaType === "LINK" ? (
+                reward.ctaUrl && (
+                  <a
+                    href={reward.ctaUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonVariants({ size: "sm", className: "w-fit" })}
+                  >
+                    {reward.ctaLabel}
+                  </a>
+                )
+              ) : (
+                <RedeemRewardButton rewardId={reward.id} ctaLabel={reward.ctaLabel} pointsCost={reward.pointsCost} balance={balance} />
+              )}
+            </CardContent>
+          </Card>
+        ))}
         {rewards.length === 0 && <p className="text-sm text-muted-foreground">Aktuell keine Prämien verfügbar.</p>}
       </div>
 

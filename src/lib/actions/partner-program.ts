@@ -14,6 +14,17 @@ function requireAgency(session: Awaited<ReturnType<typeof requireSession>>) {
   if (session.user.role !== "AGENCY_ADMIN") throw new AccessDeniedError("Nur Agentur-Admins können das Partnerprogramm bearbeiten.");
 }
 
+function parseStringArray(raw: FormDataEntryValue | null): string[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
 export async function getPartnerPointsBalance(organizationId: string): Promise<number> {
   const result = await prisma.partnerPointsTransaction.aggregate({
     where: { organizationId },
@@ -111,7 +122,12 @@ export async function movePartnerAction(formData: FormData) {
   revalidatePath(PATHS[0]);
 }
 
-// --- PartnerReward (Punkte einlösen) ------------------------------------
+// --- PartnerReward (Punkte einlösen / Angebote) -------------------------
+//
+// Eine Prämie ist entweder gegen Prämien-Punkte einlösbar (pointsCost
+// gesetzt) oder kostenlos anfragbar (pointsCost = null) - letzteres war
+// früher ein eigenes "Offer"-Modell, ist konzeptionell aber dasselbe und
+// wurde deshalb hier zusammengeführt statt doppelt gepflegt.
 
 export async function uploadPartnerRewardImage(formData: FormData): Promise<{ url: string } | { error: string }> {
   const session = await requireSession();
@@ -123,6 +139,24 @@ export async function uploadPartnerRewardImage(formData: FormData): Promise<{ ur
   return { url };
 }
 
+function readPartnerRewardFields(formData: FormData) {
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
+  const badge = String(formData.get("badge") ?? "").trim() || null;
+  const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Prämien-Punkte einlösen";
+  const ctaType: "LINK" | "ACCOUNT_MANAGER_REQUEST" =
+    String(formData.get("ctaType") ?? "ACCOUNT_MANAGER_REQUEST") === "LINK" ? "LINK" : "ACCOUNT_MANAGER_REQUEST";
+  const ctaUrl = ctaType === "LINK" ? String(formData.get("ctaUrl") ?? "").trim() || null : null;
+  const productTag = String(formData.get("productTag") ?? "").trim().toLowerCase() || null;
+  const highlights = parseStringArray(formData.get("highlights"));
+  const galleryUrls = parseStringArray(formData.get("galleryUrls"));
+  const pointsCostRaw = String(formData.get("pointsCost") ?? "").trim();
+  const pointsCost = pointsCostRaw ? Math.max(1, Number(pointsCostRaw) || 1) : null;
+
+  return { title, description, imageUrl, badge, ctaLabel, ctaType, ctaUrl, productTag, highlights, galleryUrls, pointsCost };
+}
+
 export async function createPartnerReward(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
   try {
@@ -132,19 +166,16 @@ export async function createPartnerReward(_prevState: string | undefined, formDa
     throw error;
   }
 
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) return "Titel ist erforderlich.";
-  const description = String(formData.get("description") ?? "").trim() || null;
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
-  const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Prämien-Punkte einlösen";
-  const pointsCost = Math.max(1, Number(formData.get("pointsCost") ?? 1) || 1);
+  const fields = readPartnerRewardFields(formData);
+  if (!fields.title) return "Titel ist erforderlich.";
 
   const last = await prisma.partnerReward.findFirst({ orderBy: { order: "desc" } });
   await prisma.partnerReward.create({
-    data: { title, description, imageUrl, ctaLabel, pointsCost, order: (last?.order ?? 0) + 1 },
+    data: { ...fields, order: (last?.order ?? 0) + 1 },
   });
 
   revalidatePath(PATHS[0]);
+  revalidatePath("/dashboard/hub");
   return undefined;
 }
 
@@ -158,18 +189,15 @@ export async function updatePartnerReward(_prevState: string | undefined, formDa
   }
 
   const rewardId = String(formData.get("rewardId") ?? "");
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) return "Titel ist erforderlich.";
-  const description = String(formData.get("description") ?? "").trim() || null;
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
-  const ctaLabel = String(formData.get("ctaLabel") ?? "").trim() || "Prämien-Punkte einlösen";
-  const pointsCost = Math.max(1, Number(formData.get("pointsCost") ?? 1) || 1);
+  const fields = readPartnerRewardFields(formData);
+  if (!fields.title) return "Titel ist erforderlich.";
 
   const reward = await prisma.partnerReward.findUnique({ where: { id: rewardId } });
   if (!reward) return "Prämie nicht gefunden.";
 
-  await prisma.partnerReward.update({ where: { id: rewardId }, data: { title, description, imageUrl, ctaLabel, pointsCost } });
+  await prisma.partnerReward.update({ where: { id: rewardId }, data: fields });
   revalidatePath(PATHS[0]);
+  revalidatePath("/dashboard/hub");
   return undefined;
 }
 
@@ -179,6 +207,7 @@ export async function deletePartnerReward(formData: FormData) {
   const rewardId = String(formData.get("rewardId") ?? "");
   await prisma.partnerReward.deleteMany({ where: { id: rewardId } });
   revalidatePath(PATHS[0]);
+  revalidatePath("/dashboard/hub");
 }
 
 export async function togglePartnerRewardActive(formData: FormData) {
@@ -189,6 +218,7 @@ export async function togglePartnerRewardActive(formData: FormData) {
   if (!reward) return;
   await prisma.partnerReward.update({ where: { id: rewardId }, data: { active: !reward.active } });
   revalidatePath(PATHS[0]);
+  revalidatePath("/dashboard/hub");
 }
 
 export async function movePartnerReward(formData: FormData) {
@@ -313,16 +343,52 @@ export async function adjustPartnerPoints(_prevState: string | undefined, formDa
   return undefined;
 }
 
-/** Kunde löst eine Prämie gegen sein Punkteguthaben ein. */
+/**
+ * Kunde fordert eine Prämie an - entweder durch Einlösen von
+ * Prämien-Punkten (pointsCost gesetzt) oder, bei einer kostenlos
+ * anfragbaren Prämie (pointsCost = null, ehemals ein "Angebot"), durch
+ * eine reine Anfrage an den Account-Manager ohne Punkteabzug.
+ */
 export async function redeemPartnerReward(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
   if (session.user.role === "AGENCY_ADMIN") return "Diese Aktion ist für Kunden gedacht.";
 
   const rewardId = String(formData.get("rewardId") ?? "");
   const reward = await prisma.partnerReward.findUnique({ where: { id: rewardId } });
-  if (!reward || !reward.active) return "Prämie nicht gefunden.";
+  if (!reward || !reward.active || reward.ctaType !== "ACCOUNT_MANAGER_REQUEST") return "Prämie nicht gefunden.";
 
   const organizationId = session.user.organizationId;
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+
+  if (reward.pointsCost == null) {
+    await prisma.partnerPointsTransaction.create({
+      data: {
+        kind: "REQUESTED",
+        points: 0,
+        organizationId,
+        rewardId,
+        userId: session.user.id,
+        note: `Angefragt: "${reward.title}"`,
+      },
+    });
+
+    await logAudit({
+      action: "partner_points.requested",
+      entityType: "PartnerReward",
+      entityId: rewardId,
+      organizationId,
+      userId: session.user.id,
+    });
+
+    const subject = `${organization?.name ?? "Ein Kunde"} hat "${reward.title}" angefragt`;
+    const text = `${session.user.name} (${session.user.email}) hat bei "${reward.title}" auf "${reward.ctaLabel}" geklickt.`;
+    await notifyAccountManager(organizationId, subject, text);
+
+    revalidatePath(PATHS[0]);
+    revalidatePath("/dashboard/hub");
+    return undefined;
+  }
+
   const balance = await getPartnerPointsBalance(organizationId);
   if (balance < reward.pointsCost) return "Nicht genug Prämien-Punkte.";
 
@@ -346,11 +412,11 @@ export async function redeemPartnerReward(_prevState: string | undefined, formDa
     metadata: { pointsCost: reward.pointsCost },
   });
 
-  const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
   const subject = `${organization?.name ?? "Ein Kunde"} hat "${reward.title}" eingelöst`;
   const text = `${session.user.name} (${session.user.email}) hat ${reward.pointsCost} Prämien-Punkte gegen "${reward.title}" eingelöst. Bitte die Umsetzung einplanen.`;
   await notifyAccountManager(organizationId, subject, text);
 
   revalidatePath(PATHS[0]);
+  revalidatePath("/dashboard/hub");
   return undefined;
 }

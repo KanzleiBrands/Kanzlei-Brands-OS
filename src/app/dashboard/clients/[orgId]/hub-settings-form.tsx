@@ -177,8 +177,8 @@ export function HubSettingsForm({
       <div className="flex flex-col gap-1.5">
         <Label>Bereits gebuchte Produkte</Label>
         <p className="text-sm text-muted-foreground">
-          Angebote mit passendem Tag werden diesem Kunden im Kunden-Hub nicht mehr als Upsell vorgeschlagen (siehe
-          Angebote-Verwaltung, Feld &bdquo;Produkt-Tag&ldquo;).
+          Prämien mit passendem Tag werden diesem Kunden im Partnerprogramm nicht mehr als Upsell vorgeschlagen (siehe
+          Partnerprogramm-Verwaltung, Feld &bdquo;Produkt-Tag&ldquo;).
         </p>
         {availableProductTags.length > 0 ? (
           <div className="flex flex-wrap gap-3">
@@ -201,7 +201,7 @@ export function HubSettingsForm({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Noch keine Angebote mit Produkt-Tag angelegt (siehe Angebote-Verwaltung).
+            Noch keine Prämien mit Produkt-Tag angelegt (siehe Partnerprogramm-Verwaltung).
           </p>
         )}
       </div>

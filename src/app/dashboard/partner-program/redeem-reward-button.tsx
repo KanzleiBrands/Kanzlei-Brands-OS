@@ -8,18 +8,23 @@ import { useSaveToast } from "@/hooks/use-save-toast";
 export function RedeemRewardButton({
   rewardId,
   ctaLabel,
-  affordable,
-  missingPoints,
+  pointsCost,
+  balance,
 }: {
   rewardId: string;
   ctaLabel: string;
-  affordable: boolean;
-  missingPoints: number;
+  pointsCost: number | null;
+  balance: number;
 }) {
   const [error, formAction, isPending] = useActionState(redeemPartnerReward, undefined);
-  useSaveToast(error, isPending, "Prämie eingelöst - wir melden uns bei dir.");
+  useSaveToast(
+    error,
+    isPending,
+    pointsCost == null ? "Anfrage an euren Account-Manager gesendet." : "Prämie eingelöst - wir melden uns bei dir.",
+  );
 
-  if (!affordable) {
+  if (pointsCost != null && balance < pointsCost) {
+    const missingPoints = pointsCost - balance;
     return (
       <Button type="button" size="sm" disabled variant="outline">
         Noch {missingPoints} Punkt{missingPoints === 1 ? "" : "e"} nötig
@@ -31,7 +36,7 @@ export function RedeemRewardButton({
     <form action={formAction}>
       <input type="hidden" name="rewardId" value={rewardId} />
       <Button type="submit" size="sm" disabled={isPending}>
-        {isPending ? "Wird eingelöst..." : ctaLabel}
+        {isPending ? "Wird gesendet..." : ctaLabel}
       </Button>
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </form>

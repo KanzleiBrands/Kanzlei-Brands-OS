@@ -28,6 +28,11 @@ export const ACTION_LABELS: Record<string, string> = {
   "system_email.new_applicant_notification": "Bewerbungs-Benachrichtigung gesendet",
   "social_post.approved": "Social-Media-Beitrag freigegeben",
   "social_post.changes_requested": "Änderung an Social-Media-Beitrag gewünscht",
+  "partner_action.requested": "Partnerprogramm-Aktion angefragt",
+  "partner_points.earned": "Prämien-Punkte gutgeschrieben",
+  "partner_points.adjusted": "Prämien-Punkte korrigiert",
+  "partner_points.redeemed": "Prämie eingelöst",
+  "partner_points.requested": "Prämie kostenlos angefragt",
 };
 
 /** For a "system_email.*" audit entry, the "an <to> - <subject>" subtitle shown under its action label. */

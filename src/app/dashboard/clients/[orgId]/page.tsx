@@ -126,13 +126,13 @@ export default async function ClientDetailPage({
   const availableProductTags =
     tab === "settings"
       ? (
-          await prisma.offer.findMany({
+          await prisma.partnerReward.findMany({
             where: { productTag: { not: null } },
             select: { productTag: true },
             distinct: ["productTag"],
             orderBy: { productTag: "asc" },
           })
-        ).map((o) => o.productTag!)
+        ).map((r) => r.productTag!)
       : [];
   const partnerData =
     tab === "partner"

@@ -28,7 +28,6 @@ export const PAGE_BLOCK_CATALOG: Record<DashboardPage, PageBlockDefinition[]> = 
     { key: "contact_cards", label: "Ansprechpartner (Account Manager, Backoffice, Erreichbarkeit)" },
     { key: "resources", label: "Ressourcen" },
     { key: "campaign_requests", label: "Neue Kampagne einreichen" },
-    { key: "offers", label: "Angebote" },
   ],
   SALES_HUB: DEPARTMENT_HUB_BLOCKS,
   BACKOFFICE_HUB: DEPARTMENT_HUB_BLOCKS,

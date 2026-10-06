@@ -143,15 +143,16 @@ async function main() {
     },
   });
 
-  // Offers are global and shown identically to every client.
-  const existingOffer = await prisma.offer.findFirst({
+  // Partnerprogramm-Prämien sind global und werden allen Kunden identisch angezeigt.
+  const existingReward = await prisma.partnerReward.findFirst({
     where: { title: "Performance-Marketing Paket" },
   });
-  if (!existingOffer) {
-    await prisma.offer.create({
+  if (!existingReward) {
+    await prisma.partnerReward.create({
       data: {
         title: "Performance-Marketing Paket",
         description: "Zusätzliche Meta & LinkedIn Kampagnen für mehr Leads.",
+        pointsCost: null,
       },
     });
   }

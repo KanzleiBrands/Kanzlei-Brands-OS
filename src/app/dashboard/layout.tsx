@@ -6,7 +6,6 @@ import {
   Inbox,
   CalendarClock,
   GraduationCap,
-  Package,
   ScrollText,
   LayoutDashboard,
   Megaphone,
@@ -47,7 +46,6 @@ function navFor(role: string, campaignKinds: Set<string>) {
       // Konfigurations-/Kontrollseiten statt Tagesgeschäft - eigene Sektion,
       // damit die Sidebar nicht wie eine einzige flache Liste wirkt.
       admin: [
-        { href: "/dashboard/offers", label: "Angebote", icon: <Package className={navIconClass} /> },
         { href: "/dashboard/partner-program", label: "Partnerprogramm", icon: <GiftIcon className={navIconClass} /> },
         { href: "/dashboard/audit-log", label: "Audit-Log", icon: <ScrollText className={navIconClass} /> },
       ],
