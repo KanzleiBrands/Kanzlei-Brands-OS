@@ -19,16 +19,18 @@ import { PublishToggle } from "../publish-toggle";
 import { hasCourseAccess } from "@/lib/courses-access";
 import { CourseDetailLearnerView } from "../course-detail-learner-view";
 import { isSuperAdmin } from "@/lib/super-admin";
+import { CourseDepartmentToggle } from "../../intern/course-department-toggle";
+import { AGENCY_DEPARTMENTS, DEPARTMENT_LABELS } from "@/lib/agency-departments";
 
 export default async function CourseDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams: Promise<{ preview?: string; manage?: string }>;
+  searchParams: Promise<{ preview?: string; manage?: string; tab?: string }>;
 }) {
   const { courseId } = await params;
-  const { preview, manage } = await searchParams;
+  const { preview, manage, tab } = await searchParams;
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
@@ -42,6 +44,7 @@ export default async function CourseDetailPage({
         include: { lessons: { orderBy: { order: "asc" } } },
       },
       _count: { select: { assignments: true } },
+      departmentAssignments: { select: { department: true } },
       enrollments: { where: { userId: session.user.id }, include: { progress: true } },
     },
   });
@@ -65,10 +68,28 @@ export default async function CourseDetailPage({
   if (!showBuilder && !isPreview && !(await hasCourseAccess(session, course))) notFound();
 
   if (showBuilder) {
-    const assignmentCount = course._count.assignments;
+    const isInternal = course.audience === "INTERNAL";
+    const activeTab = isInternal && tab === "mitglieder" ? "mitglieder" : "module";
+
+    const assignedDepartments = course.departmentAssignments.map((a) => a.department);
+    // Nur für die Mitglieder-Zuordnung geladen (interne Kurse, Super-Admin) -
+    // nicht bei jedem Aufruf der Seite, um unnötige Query-Last zu vermeiden.
+    const agencyUsers = isInternal
+      ? await prisma.user.findMany({
+          where: { organizationId: session.user.organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },
+          select: { id: true, name: true, departments: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
+    const memberCount = isInternal
+      ? agencyUsers.filter((u) => u.departments.some((d) => assignedDepartments.includes(d))).length
+      : 0;
+
     return (
       <div className="p-4 sm:p-8">
-        <BackLink href="/dashboard/courses">Zurück zur Kursverwaltung</BackLink>
+        <BackLink href={isInternal ? "/dashboard/intern/schulung/verwaltung" : "/dashboard/courses"}>
+          Zurück zur Kursverwaltung
+        </BackLink>
 
         <div className="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="flex w-full items-start gap-4 sm:w-auto">
@@ -76,7 +97,9 @@ export default async function CourseDetailPage({
             <div className="min-w-0">
               <h1 className="text-xl font-semibold break-words sm:text-2xl">{course.title}</h1>
               {course.description && <p className="mt-1 text-muted-foreground">{course.description}</p>}
-              <p className="mt-1 text-sm text-muted-foreground">{assignmentCount} Kunden zugewiesen</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isInternal ? `${memberCount} Mitarbeiter zugewiesen` : `${course._count.assignments} Kunden zugewiesen`}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -111,13 +134,76 @@ export default async function CourseDetailPage({
           </div>
         </div>
 
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Module</h2>
-          <AddModuleForm courseId={course.id} />
-        </div>
+        {isInternal && (
+          <div className="mb-6 flex gap-1 border-b">
+            <Link
+              href={`/dashboard/courses/${course.id}?manage=1`}
+              className={`flex-shrink-0 border-b-2 px-2.5 py-2 text-sm whitespace-nowrap ${
+                activeTab === "module" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Module
+            </Link>
+            <Link
+              href={`/dashboard/courses/${course.id}?manage=1&tab=mitglieder`}
+              className={`flex-shrink-0 border-b-2 px-2.5 py-2 text-sm whitespace-nowrap ${
+                activeTab === "mitglieder" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Mitglieder
+            </Link>
+          </div>
+        )}
 
-        <div className="flex flex-col gap-4">
-          {course.modules.map((courseModule, moduleIndex) => (
+        {activeTab === "mitglieder" ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Abteilungen auswählen, die Zugriff auf diese Schulung bekommen sollen - wer dazugehört, ergibt sich aus{" "}
+              <Link href="/dashboard/settings" className="underline">
+                Einstellungen → Mitarbeiter
+              </Link>
+              .
+            </p>
+            <div className="flex flex-col gap-3">
+              {AGENCY_DEPARTMENTS.map((department) => {
+                const members = agencyUsers.filter((u) => u.departments.includes(department));
+                return (
+                  <Card key={department}>
+                    <CardContent className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <CourseDepartmentToggle
+                          department={department}
+                          courseId={course.id}
+                          assigned={assignedDepartments.includes(department)}
+                        />
+                        {DEPARTMENT_LABELS[department]}
+                      </label>
+                      <div className="flex flex-wrap gap-1.5 pl-6">
+                        {members.length === 0 ? (
+                          <span className="text-sm text-muted-foreground">Noch niemand zugeordnet.</span>
+                        ) : (
+                          members.map((member) => (
+                            <Badge key={member.id} variant="secondary">
+                              {member.name}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Module</h2>
+              <AddModuleForm courseId={course.id} />
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {course.modules.map((courseModule, moduleIndex) => (
             <Card key={courseModule.id}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
@@ -206,10 +292,12 @@ export default async function CourseDetailPage({
               </CardContent>
             </Card>
           ))}
-          {course.modules.length === 0 && (
-            <p className="text-muted-foreground">Noch keine Module. Lege das erste Modul an, um Lektionen hinzuzufügen.</p>
-          )}
-        </div>
+              {course.modules.length === 0 && (
+                <p className="text-muted-foreground">Noch keine Module. Lege das erste Modul an, um Lektionen hinzuzufügen.</p>
+              )}
+            </div>
+          </>
+        )}
       </div>
     );
   }
