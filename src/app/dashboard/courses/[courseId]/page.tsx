@@ -19,8 +19,8 @@ import { PublishToggle } from "../publish-toggle";
 import { hasCourseAccess } from "@/lib/courses-access";
 import { CourseDetailLearnerView } from "../course-detail-learner-view";
 import { isSuperAdmin } from "@/lib/super-admin";
-import { CourseDepartmentToggle } from "../../intern/course-department-toggle";
-import { AGENCY_DEPARTMENTS, DEPARTMENT_LABELS } from "@/lib/agency-departments";
+import { CourseUserToggle } from "../../intern/course-user-toggle";
+import { DEPARTMENT_LABELS } from "@/lib/agency-departments";
 
 export default async function CourseDetailPage({
   params,
@@ -44,7 +44,7 @@ export default async function CourseDetailPage({
         include: { lessons: { orderBy: { order: "asc" } } },
       },
       _count: { select: { assignments: true } },
-      departmentAssignments: { select: { department: true } },
+      userAssignments: { select: { userId: true } },
       enrollments: { where: { userId: session.user.id }, include: { progress: true } },
     },
   });
@@ -71,7 +71,7 @@ export default async function CourseDetailPage({
     const isInternal = course.audience === "INTERNAL";
     const activeTab = isInternal && tab === "mitglieder" ? "mitglieder" : "module";
 
-    const assignedDepartments = course.departmentAssignments.map((a) => a.department);
+    const assignedUserIds = new Set(course.userAssignments.map((a) => a.userId));
     // Nur für die Mitglieder-Zuordnung geladen (interne Kurse, Super-Admin) -
     // nicht bei jedem Aufruf der Seite, um unnötige Query-Last zu vermeiden.
     const agencyUsers = isInternal
@@ -81,9 +81,7 @@ export default async function CourseDetailPage({
           orderBy: { name: "asc" },
         })
       : [];
-    const memberCount = isInternal
-      ? agencyUsers.filter((u) => u.departments.some((d) => assignedDepartments.includes(d))).length
-      : 0;
+    const memberCount = assignedUserIds.size;
 
     return (
       <div className="p-4 sm:p-8">
@@ -158,42 +156,33 @@ export default async function CourseDetailPage({
         {activeTab === "mitglieder" ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Abteilungen auswählen, die Zugriff auf diese Schulung bekommen sollen - wer dazugehört, ergibt sich aus{" "}
+              Mitarbeiter auswählen, die Zugriff auf diese Schulung bekommen sollen. Neue Mitarbeiter lädst du in{" "}
               <Link href="/dashboard/settings" className="underline">
                 Einstellungen → Mitarbeiter
               </Link>
               .
             </p>
-            <div className="flex flex-col gap-3">
-              {AGENCY_DEPARTMENTS.map((department) => {
-                const members = agencyUsers.filter((u) => u.departments.includes(department));
-                return (
-                  <Card key={department}>
-                    <CardContent className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <CourseDepartmentToggle
-                          department={department}
-                          courseId={course.id}
-                          assigned={assignedDepartments.includes(department)}
-                        />
+            <Card>
+              <CardContent className="flex flex-col gap-1">
+                {agencyUsers.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter angelegt.</p>
+                )}
+                {agencyUsers.map((user) => (
+                  <label
+                    key={user.id}
+                    className="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted/50"
+                  >
+                    <CourseUserToggle userId={user.id} courseId={course.id} assigned={assignedUserIds.has(user.id)} />
+                    <span className="min-w-0 flex-1 truncate">{user.name}</span>
+                    {user.departments.map((department) => (
+                      <Badge key={department} variant="outline" className="shrink-0 text-xs">
                         {DEPARTMENT_LABELS[department]}
-                      </label>
-                      <div className="flex flex-wrap gap-1.5 pl-6">
-                        {members.length === 0 ? (
-                          <span className="text-sm text-muted-foreground">Noch niemand zugeordnet.</span>
-                        ) : (
-                          members.map((member) => (
-                            <Badge key={member.id} variant="secondary">
-                              {member.name}
-                            </Badge>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      </Badge>
+                    ))}
+                  </label>
+                ))}
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <>

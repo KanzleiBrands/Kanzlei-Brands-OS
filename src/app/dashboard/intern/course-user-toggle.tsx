@@ -2,16 +2,15 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import type { AgencyDepartment } from "@prisma/client";
-import { setCourseDepartmentAssignment } from "@/lib/actions/courses";
+import { setCourseUserAssignment } from "@/lib/actions/courses";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export function CourseDepartmentToggle({
-  department,
+export function CourseUserToggle({
+  userId,
   courseId,
   assigned,
 }: {
-  department: AgencyDepartment;
+  userId: string;
   courseId: string;
   assigned: boolean;
 }) {
@@ -23,12 +22,12 @@ export function CourseDepartmentToggle({
       disabled={isPending}
       onCheckedChange={(checked) => {
         const formData = new FormData();
-        formData.set("department", department);
+        formData.set("userId", userId);
         formData.set("courseId", courseId);
         formData.set("assign", String(checked));
         startTransition(async () => {
           try {
-            await setCourseDepartmentAssignment(formData);
+            await setCourseUserAssignment(formData);
             toast.success("Gespeichert.");
           } catch {
             toast.error("Konnte nicht gespeichert werden.");

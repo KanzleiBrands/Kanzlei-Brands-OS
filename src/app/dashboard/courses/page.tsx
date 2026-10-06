@@ -74,17 +74,13 @@ export default async function CoursesPage() {
   }
 
   const isInternalStaff = session.user.role === "AGENCY_STAFF";
-  let courseWhere: Prisma.CourseWhereInput = {
-    published: true,
-    audience: "CLIENT",
-    assignments: { some: { organizationId: session.user.organizationId } },
-  };
-  if (isInternalStaff) {
-    const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
-    courseWhere = viewer?.departments.length
-      ? { published: true, audience: "INTERNAL", departmentAssignments: { some: { department: { in: viewer.departments } } } }
-      : { id: "__none__" }; // kein Fallback-Kurs ohne Abteilung anzeigen
-  }
+  const courseWhere: Prisma.CourseWhereInput = isInternalStaff
+    ? { published: true, audience: "INTERNAL", userAssignments: { some: { userId: session.user.id } } }
+    : {
+        published: true,
+        audience: "CLIENT",
+        assignments: { some: { organizationId: session.user.organizationId } },
+      };
 
   const courses = await prisma.course.findMany({
     where: courseWhere,

@@ -29,7 +29,7 @@ export async function DepartmentHubView({
     prisma.departmentResourceLink.findMany({ where: { department }, orderBy: { order: "asc" } }),
     getPageLayout(DEPARTMENT_HUB_PAGE[department]),
     prisma.course.findMany({
-      where: { audience: "INTERNAL", published: true, departmentAssignments: { some: { department } } },
+      where: { audience: "INTERNAL", published: true, userAssignments: { some: { userId } } },
       include: {
         modules: { select: { lessons: { select: { id: true } } } },
         enrollments: { where: { userId }, include: { progress: true } },

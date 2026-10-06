@@ -7,7 +7,6 @@ import { requireSession } from "@/lib/access";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { parseLessonBlocks, firstVideoBlockUrl, type LessonBlock } from "@/lib/lesson-blocks";
-import { isAgencyDepartment } from "@/lib/agency-departments";
 import { isSuperAdmin } from "@/lib/super-admin";
 
 // ---------------------------------------------------------------------------
@@ -94,28 +93,28 @@ export async function updateCourse(_prevState: string | undefined, formData: For
   return undefined;
 }
 
-/** Weist einen internen (audience=INTERNAL) Kurs einer Abteilung zu/ab - Pendant zu setCourseAssignment für Kunden. */
-export async function setCourseDepartmentAssignment(formData: FormData) {
+/** Weist einen internen (audience=INTERNAL) Kurs einem einzelnen Mitarbeiter zu/ab - Pendant zu setCourseAssignment für Kunden. */
+export async function setCourseUserAssignment(formData: FormData) {
   const session = await requireSession();
   if (!isSuperAdmin(session.user.email)) return;
 
   const courseId = String(formData.get("courseId") ?? "");
-  const department = String(formData.get("department") ?? "");
+  const userId = String(formData.get("userId") ?? "");
   const assign = formData.get("assign") === "true";
-  if (!isAgencyDepartment(department)) return;
+  if (!courseId || !userId) return;
 
   if (assign) {
-    await prisma.courseDepartmentAssignment.upsert({
-      where: { courseId_department: { courseId, department } },
+    await prisma.courseUserAssignment.upsert({
+      where: { courseId_userId: { courseId, userId } },
       update: {},
-      create: { courseId, department },
+      create: { courseId, userId },
     });
   } else {
-    await prisma.courseDepartmentAssignment.deleteMany({ where: { courseId, department } });
+    await prisma.courseUserAssignment.deleteMany({ where: { courseId, userId } });
   }
 
-  revalidatePath("/dashboard/intern/verwaltung");
-  revalidatePath("/dashboard/courses");
+  revalidatePath(`/dashboard/courses/${courseId}`);
+  revalidatePath("/dashboard/intern/schulung");
 }
 
 export async function deleteCourse(formData: FormData) {

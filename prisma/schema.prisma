@@ -272,6 +272,7 @@ model User {
   activities                Activity[]
   emailAccounts             EmailAccount[]
   enrollments               Enrollment[]
+  courseUserAssignments     CourseUserAssignment[]
   auditLogs                 AuditLog[]
   automationRules           AutomationRule[]
   managedOrganizations      Organization[]             @relation("AccountManagerFor")
@@ -1132,7 +1133,7 @@ model EmailMessage {
 
 // Legt fest, wo ein Kurs überhaupt auftauchen kann: im Kunden-Schulungsbereich
 // (zugewiesen per CourseAssignment/Organization) oder im internen Portal
-// (zugewiesen per CourseDepartmentAssignment/AgencyDepartment) - nie in
+// (zugewiesen per CourseUserAssignment/einzelnem Mitarbeiter) - nie in
 // beiden zugleich, damit Mitarbeiter-Schulungen nie im Kundenportal auftauchen.
 enum CourseAudience {
   CLIENT
@@ -1149,10 +1150,10 @@ model Course {
   thumbnailUrl String?
   published    Boolean        @default(false)
 
-  modules               Module[]
-  enrollments           Enrollment[]
-  assignments           CourseAssignment[]
-  departmentAssignments CourseDepartmentAssignment[]
+  modules         Module[]
+  enrollments     Enrollment[]
+  assignments     CourseAssignment[]
+  userAssignments CourseUserAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1173,20 +1174,23 @@ model CourseAssignment {
   @@index([organizationId])
 }
 
-// Wie CourseAssignment, aber für audience=INTERNAL Kurse: Zielgruppe ist eine
-// Abteilung (AgencyDepartment) statt einer Kunden-Organisation, da es nur die
-// eine Agentur-Organisation gibt und Vertrieb/Backoffice/... sich darin nicht
-// über organizationId unterscheiden lassen.
-model CourseDepartmentAssignment {
-  id         String           @id @default(cuid())
-  courseId   String
-  course     Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  department AgencyDepartment
+// Wie CourseAssignment, aber für audience=INTERNAL Kurse: Zielgruppe ist ein
+// einzelner Mitarbeiter statt einer Kunden-Organisation (es gibt nur die eine
+// Agentur-Organisation) - bewusst pro Person statt pro Abteilung, damit eine
+// Schulung z.B. auch abteilungsübergreifend oder gezielt an einzelne
+// Mitarbeiter zugewiesen werden kann, statt zwangsläufig an alle in einer
+// Abteilung.
+model CourseUserAssignment {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@unique([courseId, department])
-  @@index([department])
+  @@unique([courseId, userId])
+  @@index([userId])
 }
 
 // Grouping level between Course and Lesson (e.g. "Modul 1 - Theoretische

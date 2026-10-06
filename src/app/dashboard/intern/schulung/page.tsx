@@ -26,16 +26,11 @@ export default async function InternalSchulungPage() {
   if (isSuperAdmin(session.user.email)) redirect("/dashboard/intern/schulung/verwaltung");
 
   // Jeder Mitarbeiter - auch AGENCY_ADMIN, das ist hier bewusst KEIN
-  // Freifahrtschein - sieht nur Kurse seiner eigenen zugewiesenen
-  // Abteilung(en), sonst könnte z.B. ein Fulfillment-Mitarbeiter eine
-  // interne Vertriebsschulung sehen, die nicht für ihn bestimmt ist.
-  const viewer = await prisma.user.findUnique({ where: { id: session.user.id }, select: { departments: true } });
-  const courseWhere = viewer?.departments.length
-    ? { published: true as const, audience: "INTERNAL" as const, departmentAssignments: { some: { department: { in: viewer.departments } } } }
-    : { id: "__none__" };
-
+  // Freifahrtschein - sieht nur Kurse, die ihm direkt zugewiesen wurden, sonst
+  // könnte z.B. ein Fulfillment-Mitarbeiter eine interne Vertriebsschulung
+  // sehen, die nicht für ihn bestimmt ist.
   const courses = await prisma.course.findMany({
-    where: courseWhere,
+    where: { published: true, audience: "INTERNAL", userAssignments: { some: { userId: session.user.id } } },
     include: {
       modules: { select: { lessons: { select: { id: true } } } },
       enrollments: { where: { userId: session.user.id }, include: { progress: true } },

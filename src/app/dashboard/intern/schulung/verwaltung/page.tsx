@@ -23,7 +23,7 @@ export default async function InternalCourseAdminPage() {
   const courses = await prisma.course.findMany({
     where: { audience: "INTERNAL" },
     include: {
-      _count: { select: { departmentAssignments: true, modules: true } },
+      _count: { select: { userAssignments: true, modules: true } },
       modules: { select: { _count: { select: { lessons: true } } } },
     },
     orderBy: { createdAt: "desc" },
@@ -36,11 +36,7 @@ export default async function InternalCourseAdminPage() {
         <NewCourseForm audience="INTERNAL" />
       </div>
       <p className="mb-6 text-muted-foreground">
-        Abteilungszuweisung erfolgt unter{" "}
-        <Link href="/dashboard/intern/verwaltung" className="underline">
-          Abteilungen &amp; Mitarbeiter
-        </Link>
-        .
+        Mitarbeiterzuweisung erfolgt direkt auf der jeweiligen Schulung selbst (Tab &bdquo;Mitglieder&ldquo;).
       </p>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
@@ -60,7 +56,7 @@ export default async function InternalCourseAdminPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <p className="text-sm text-muted-foreground">
-                  {course._count.modules} Module · {lessonCount} Lektionen · {course._count.departmentAssignments} Abteilungen zugewiesen
+                  {course._count.modules} Module · {lessonCount} Lektionen · {course._count.userAssignments} Mitarbeiter zugewiesen
                 </p>
                 <div className="flex flex-col items-start gap-2">
                   <Link href={`/dashboard/courses/${course.id}?manage=1`} className="text-sm underline">
