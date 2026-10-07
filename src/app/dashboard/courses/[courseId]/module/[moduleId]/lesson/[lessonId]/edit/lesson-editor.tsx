@@ -477,7 +477,7 @@ export function LessonEditor({
   return (
     <div className="p-4 sm:p-8">
       <Link
-        href={`/dashboard/courses/${courseId}`}
+        href={`/dashboard/courses/${courseId}?manage=1`}
         className="inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
       >
         <ArrowLeftIcon className="size-4" />

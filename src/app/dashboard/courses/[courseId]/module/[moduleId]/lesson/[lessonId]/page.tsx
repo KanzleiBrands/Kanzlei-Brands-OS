@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { hasCourseAccess } from "@/lib/courses-access";
+import { canManageCourse } from "@/lib/actions/courses";
 import { LessonPlayerView } from "../../../../../lesson-player-view";
 
 export default async function LessonPlayerPage({
@@ -22,11 +23,10 @@ export default async function LessonPlayerPage({
   });
   if (!course) notFound();
 
-  const isAgency = session.user.role === "AGENCY_ADMIN";
-  // Siehe module/[moduleId]/page.tsx - gleiche CLIENT-vs-INTERNAL-Logik.
-  const isInternalCourse = course.audience === "INTERNAL";
-  const isPreview = isAgency && !isInternalCourse && preview === "1";
-  if (isAgency && !isInternalCourse && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
+  // Siehe module/[moduleId]/page.tsx - gleiche canManageCourse-Logik.
+  const canManage = await canManageCourse(session, course.audience);
+  const isPreview = canManage && preview === "1";
+  if (canManage && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
   if (!course.published && !isPreview) notFound();
 
   if (!isPreview && !(await hasCourseAccess(session, course))) notFound();

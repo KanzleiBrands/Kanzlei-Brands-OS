@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { parseLessonBlocks } from "@/lib/lesson-blocks";
+import { canManageCourse } from "@/lib/actions/courses";
 import { LessonEditor } from "./lesson-editor";
 
 export default async function LessonEditorPage({
@@ -12,13 +13,13 @@ export default async function LessonEditorPage({
   const { courseId, moduleId, lessonId } = await params;
   const session = await getSession();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "AGENCY_ADMIN") redirect(`/dashboard/courses/${courseId}`);
 
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { module: { include: { course: true } } },
   });
   if (!lesson || lesson.moduleId !== moduleId || lesson.module.courseId !== courseId) notFound();
+  if (!(await canManageCourse(session, lesson.module.course.audience))) redirect(`/dashboard/courses/${courseId}`);
 
   // Video used to be a fixed field outside the block system - for a lesson
   // that was never opened in the block editor since that change, seed one

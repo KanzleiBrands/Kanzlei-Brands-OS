@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/impersonation";
 import { prisma } from "@/lib/prisma";
 import { hasCourseAccess } from "@/lib/courses-access";
+import { canManageCourse } from "@/lib/actions/courses";
 import { ModuleDetailView } from "../../../module-detail-view";
 
 export default async function ModuleDetailPage({
@@ -25,14 +26,13 @@ export default async function ModuleDetailPage({
   });
   if (!courseModule || courseModule.courseId !== courseId) notFound();
 
-  const isAgency = session.user.role === "AGENCY_ADMIN";
-  // CLIENT-Kurse: Admins landen im Builder statt hier (Vorschau via ?preview=1
-  // ausgenommen). INTERNAL-Kurse laufen primär über
-  // /dashboard/intern/schulung/[courseId]/module/[moduleId] - diese Seite ist
-  // hier nur der Fallback für alte Links/Bookmarks.
-  const isInternalCourse = courseModule.course.audience === "INTERNAL";
-  const isPreview = isAgency && !isInternalCourse && preview === "1";
-  if (isAgency && !isInternalCourse && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
+  // Wer den Kurs verwalten darf (Agentur-Admin für CLIENT, Super-Admin/
+  // Kursmanager für INTERNAL - siehe canManageCourse) landet ohne ?preview=1
+  // im Builder statt hier; mit ?preview=1 sieht er dieselbe Lerner-Ansicht wie
+  // ein zugewiesener Nutzer, auch für einen noch unveröffentlichten Kurs.
+  const canManage = await canManageCourse(session, courseModule.course.audience);
+  const isPreview = canManage && preview === "1";
+  if (canManage && !isPreview) redirect(`/dashboard/courses/${courseId}?manage=1`);
   if (!courseModule.course.published && !isPreview) notFound();
 
   if (!isPreview && !(await hasCourseAccess(session, courseModule.course))) notFound();
