@@ -428,6 +428,42 @@ export async function updateAgencyUserDepartments(userId: string, departments: s
   return undefined;
 }
 
+/**
+ * Vergibt/entzieht die Kursmanager-Zusatzrolle (siehe
+ * src/lib/course-manager-access.ts) - unabhängig von role/departments, nur
+ * der Super-Admin selbst darf sie vergeben, genau wie bei
+ * updateAgencyUserDepartments/setCashflowAccess.
+ */
+export async function setCourseManagerRole(
+  userId: string,
+  isCourseManager: boolean,
+  allDepartments: boolean,
+  departments: string[],
+): Promise<string | undefined> {
+  const session = await requireSession();
+  if (!isSuperAdmin(session.user.email)) return "Nur der Super-Admin kann die Kursmanager-Rolle vergeben.";
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.organizationId !== session.user.organizationId || (user.role !== "AGENCY_ADMIN" && user.role !== "AGENCY_STAFF")) {
+    return "Ungültiger Mitarbeiter.";
+  }
+  if (!departments.every((d) => AGENCY_DEPARTMENTS.includes(d as AgencyDepartment))) {
+    return "Ungültige Abteilung.";
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      isCourseManager,
+      courseManagerAllDepartments: isCourseManager ? allDepartments : false,
+      courseManagerDepartments: isCourseManager && !allDepartments ? (departments as AgencyDepartment[]) : [],
+    },
+  });
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/intern/schulung");
+  return undefined;
+}
+
 export async function regenerateActivationLink(userId: string): Promise<CreateUserResult> {
   const session = await requireSession();
 

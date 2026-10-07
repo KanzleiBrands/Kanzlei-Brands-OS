@@ -219,6 +219,16 @@ model User {
   // Mitarbeiter:innen freizugeben (z.B. Backoffice), ohne deren Abteilung zu ändern.
   hasCashflowAccess Boolean @default(false)
 
+  // Zusätzliche, vom Super-Admin gezielt vergebene Rolle (siehe
+  // setCourseManagerRole): darf interne Schulungen genau wie der Super-Admin
+  // verwalten und neu bauen (/dashboard/intern/schulung/verwaltung), unabhängig
+  // von role/departments. courseManagerAllDepartments=true gibt uneingeschränkten
+  // Zugriff auf jede Abteilung bei der Mitglieder-Zuweisung einer Schulung,
+  // sonst nur auf die hier gelisteten.
+  isCourseManager             Boolean            @default(false)
+  courseManagerAllDepartments Boolean            @default(false)
+  courseManagerDepartments    AgencyDepartment[] @default([])
+
   // ---------------------------------------------------------------------
   // Personal (HR) - siehe /dashboard/intern/personal, Ersatz für Tellent HR.
   // Gilt für alle Agentur-Mitarbeiter (AGENCY_ADMIN + AGENCY_STAFF), nicht

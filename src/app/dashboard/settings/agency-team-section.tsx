@@ -9,6 +9,7 @@ import { NewAgencyUserForm } from "./new-agency-user-form";
 import { EditableUserDepartment } from "./editable-user-department";
 import { ImpersonateEmployeeButton } from "./impersonate-employee-button";
 import { EditableCashflowAccess } from "./editable-cashflow-access";
+import { EditableCourseManager } from "./editable-course-manager";
 
 type AgencyUser = {
   id: string;
@@ -17,6 +18,9 @@ type AgencyUser = {
   role: UserRole;
   departments: AgencyDepartment[];
   hasCashflowAccess: boolean;
+  isCourseManager: boolean;
+  courseManagerAllDepartments: boolean;
+  courseManagerDepartments: AgencyDepartment[];
   passwordHash: string | null;
   activationToken: string | null;
   activationTokenExpiresAt: Date | null;
@@ -53,6 +57,7 @@ export function AgencyTeamSection({
               <TableHead>Rolle</TableHead>
               <TableHead>Abteilung (internes Portal)</TableHead>
               {isSuperAdmin && <TableHead>Cashflow Cockpit</TableHead>}
+              {isSuperAdmin && <TableHead>Kursmanager</TableHead>}
               <TableHead>Zugang</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -90,6 +95,16 @@ export function AgencyTeamSection({
                       />
                     </TableCell>
                   )}
+                  {isSuperAdmin && (
+                    <TableCell>
+                      <EditableCourseManager
+                        userId={user.id}
+                        isCourseManager={user.isCourseManager}
+                        allDepartments={user.courseManagerAllDepartments}
+                        departments={user.courseManagerDepartments}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <ActivationStatus userId={user.id} isActive={!!user.passwordHash} activationLink={activationLink} />
                   </TableCell>
@@ -106,7 +121,7 @@ export function AgencyTeamSection({
             })}
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center text-muted-foreground">
+                <TableCell colSpan={isSuperAdmin ? 8 : 6} className="text-center text-muted-foreground">
                   Noch keine Mitarbeiter angelegt.
                 </TableCell>
               </TableRow>

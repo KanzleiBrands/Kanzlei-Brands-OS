@@ -18,7 +18,13 @@ import { DeleteCourseButton } from "./delete-course-button";
 import { PublishToggle } from "../publish-toggle";
 import { hasCourseAccess } from "@/lib/courses-access";
 import { CourseDetailLearnerView } from "../course-detail-learner-view";
-import { isSuperAdmin } from "@/lib/super-admin";
+import {
+  canManageInternalCourses,
+  getCourseManagerScope,
+  canAssignDepartment,
+  type CourseManagerScope,
+} from "@/lib/course-manager-access";
+import type { AgencyDepartment } from "@prisma/client";
 import { CourseUserToggle } from "../../intern/course-user-toggle";
 import { DEPARTMENT_LABELS } from "@/lib/agency-departments";
 
@@ -51,11 +57,11 @@ export default async function CourseDetailPage({
   if (!course) notFound();
 
   // Interne Kurse (audience=INTERNAL) sind vom Kunden-Kursbereich entkoppelt -
-  // hier verwalten/bearbeiten/vorschauen darf nur der Super-Admin, sonst
-  // könnte jeder Fulfillment-AGENCY_ADMIN eine interne Vertriebsschulung
-  // öffnen, die nicht für ihn bestimmt ist (siehe
-  // /dashboard/intern/schulung/verwaltung).
-  const canManage = course.audience === "INTERNAL" ? isSuperAdmin(session.user.email) : isAgency;
+  // hier verwalten/bearbeiten/vorschauen darf nur der Super-Admin oder ein
+  // dafür freigeschalteter Kursmanager, sonst könnte jeder Fulfillment-
+  // AGENCY_ADMIN eine interne Vertriebsschulung öffnen, die nicht für ihn
+  // bestimmt ist (siehe /dashboard/intern/schulung/verwaltung).
+  const canManage = course.audience === "INTERNAL" ? await canManageInternalCourses(session) : isAgency;
   const isPreview = canManage && preview === "1";
   // manage=1 kommt explizit aus der Kursverwaltung (/dashboard/courses bzw.
   // /dashboard/intern/schulung/verwaltung) - ohne das lädt diese Seite immer
@@ -64,7 +70,10 @@ export default async function CourseDetailPage({
   // statt zwangsweise im Builder zu landen.
   const showBuilder = canManage && manage === "1" && !isPreview;
 
-  if (!isAgency && !course.published) notFound();
+  // !isAgency allein würde einen AGENCY_STAFF-Kursmanager (keine CRM-Rolle,
+  // siehe canManageInternalCourses) von seiner eigenen, noch unveröffentlichten
+  // internen Schulung aussperren - canManage deckt genau diesen Fall mit ab.
+  if (!isAgency && !canManage && !course.published) notFound();
   if (!showBuilder && !isPreview && !(await hasCourseAccess(session, course))) notFound();
 
   if (showBuilder) {
@@ -72,15 +81,20 @@ export default async function CourseDetailPage({
     const activeTab = isInternal && tab === "mitglieder" ? "mitglieder" : "module";
 
     const assignedUserIds = new Set(course.userAssignments.map((a) => a.userId));
-    // Nur für die Mitglieder-Zuordnung geladen (interne Kurse, Super-Admin) -
-    // nicht bei jedem Aufruf der Seite, um unnötige Query-Last zu vermeiden.
-    const agencyUsers = isInternal
-      ? await prisma.user.findMany({
+    // Nur für die Mitglieder-Zuordnung geladen (interne Kurse) - nicht bei
+    // jedem Aufruf der Seite, um unnötige Query-Last zu vermeiden.
+    let agencyUsers: { id: string; name: string; departments: AgencyDepartment[] }[] = [];
+    let managerScope: CourseManagerScope | null = null;
+    if (isInternal) {
+      [agencyUsers, managerScope] = await Promise.all([
+        prisma.user.findMany({
           where: { organizationId: session.user.organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },
           select: { id: true, name: true, departments: true },
           orderBy: { name: "asc" },
-        })
-      : [];
+        }),
+        getCourseManagerScope(session),
+      ]);
+    }
     const memberCount = assignedUserIds.size;
 
     return (
@@ -167,20 +181,29 @@ export default async function CourseDetailPage({
                 {agencyUsers.length === 0 && (
                   <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter angelegt.</p>
                 )}
-                {agencyUsers.map((user) => (
-                  <label
-                    key={user.id}
-                    className="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted/50"
-                  >
-                    <CourseUserToggle userId={user.id} courseId={course.id} assigned={assignedUserIds.has(user.id)} />
-                    <span className="min-w-0 flex-1 truncate">{user.name}</span>
-                    {user.departments.map((department) => (
-                      <Badge key={department} variant="outline" className="shrink-0 text-xs">
-                        {DEPARTMENT_LABELS[department]}
-                      </Badge>
-                    ))}
-                  </label>
-                ))}
+                {agencyUsers.map((user) => {
+                  const assignable = managerScope ? canAssignDepartment(managerScope, user.departments) : true;
+                  return (
+                    <label
+                      key={user.id}
+                      className="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted/50"
+                      title={assignable ? undefined : "Außerhalb deiner Kursmanager-Abteilung(en)"}
+                    >
+                      <CourseUserToggle
+                        userId={user.id}
+                        courseId={course.id}
+                        assigned={assignedUserIds.has(user.id)}
+                        assignable={assignable}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{user.name}</span>
+                      {user.departments.map((department) => (
+                        <Badge key={department} variant="outline" className="shrink-0 text-xs">
+                          {DEPARTMENT_LABELS[department]}
+                        </Badge>
+                      ))}
+                    </label>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>

@@ -6,19 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CourseThumbnail } from "@/app/dashboard/courses/course-thumbnail";
 import { NewCourseForm } from "@/app/dashboard/courses/new-course-form";
 import { PublishToggle } from "@/app/dashboard/courses/publish-toggle";
-import { isSuperAdmin } from "@/lib/super-admin";
+import { canManageInternalCourses } from "@/lib/course-manager-access";
 
 /**
  * Verwaltung der internen Mitarbeiterschulungen (audience=INTERNAL) -
  * bewusst komplett getrennt von /dashboard/courses (Kunden-Kursverwaltung)
- * und nur für den Super-Admin sichtbar. Vorher konnte jeder Fulfillment-
- * AGENCY_ADMIN über die geteilte Kursverwaltung auch interne Kurse anderer
- * Abteilungen (z.B. eine Vertriebsschulung) einsehen und bearbeiten.
+ * und nur für Super-Admin und Kursmanager sichtbar (siehe
+ * canManageInternalCourses). Vorher konnte jeder Fulfillment-AGENCY_ADMIN
+ * über die geteilte Kursverwaltung auch interne Kurse anderer Abteilungen
+ * (z.B. eine Vertriebsschulung) einsehen und bearbeiten.
  */
 export default async function InternalCourseAdminPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
-  if (!isSuperAdmin(session.user.email)) redirect("/dashboard/intern/schulung");
+  if (!(await canManageInternalCourses(session))) redirect("/dashboard/intern/schulung");
 
   const courses = await prisma.course.findMany({
     where: { audience: "INTERNAL" },

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { CourseThumbnail } from "@/app/dashboard/courses/course-thumbnail";
 import { isSuperAdmin } from "@/lib/super-admin";
+import { canManageInternalCourses } from "@/lib/course-manager-access";
 
 /**
  * Eigene, vom Kundenportal getrennte Schulungsansicht fürs interne Portal -
@@ -18,12 +19,15 @@ import { isSuperAdmin } from "@/lib/super-admin";
  * Der Super-Admin hat hier keine eigene Lernansicht (er nimmt nicht an den
  * internen Schulungen teil) - für ihn landet der Sidebar-Link "Schulung"
  * deshalb direkt auf der Verwaltungsübersicht statt auf einem für ihn
- * ohnehin leeren Lernfortschritt-Screen.
+ * ohnehin leeren Lernfortschritt-Screen. Ein Kursmanager ohne Super-Admin
+ * nimmt dagegen selbst an internen Schulungen teil, bekommt hier zusätzlich
+ * nur einen Link zur Verwaltungsübersicht (siehe canManage unten).
  */
 export default async function InternalSchulungPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
   if (isSuperAdmin(session.user.email)) redirect("/dashboard/intern/schulung/verwaltung");
+  const canManage = await canManageInternalCourses(session);
 
   // Jeder Mitarbeiter - auch AGENCY_ADMIN, das ist hier bewusst KEIN
   // Freifahrtschein - sieht nur Kurse, die ihm direkt zugewiesen wurden, sonst
@@ -42,6 +46,11 @@ export default async function InternalSchulungPage() {
     <div className="p-4 sm:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Schulung</h1>
+        {canManage && (
+          <Link href="/dashboard/intern/schulung/verwaltung" className="text-sm underline">
+            Kurse verwalten
+          </Link>
+        )}
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
         {courses.map((course) => {

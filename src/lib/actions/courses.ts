@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/access";
 import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { parseLessonBlocks, firstVideoBlockUrl, type LessonBlock } from "@/lib/lesson-blocks";
-import { isSuperAdmin } from "@/lib/super-admin";
+import { canManageInternalCourses, canAssignCourseUser } from "@/lib/course-manager-access";
 
 // ---------------------------------------------------------------------------
 // Course
@@ -20,9 +20,24 @@ async function uploadImageField(formData: FormData, field: string): Promise<stri
   return storeFile(file, "course-images");
 }
 
+/**
+ * Darf dieser Nutzer einen Kurs dieser Zielgruppe (bzw. dessen Module/
+ * Lektionen) bearbeiten - Kunden-Kurse nur AGENCY_ADMIN, interne Kurse der
+ * Super-Admin oder ein dafür freigeschalteter Kursmanager (unabhängig von
+ * role, siehe src/lib/course-manager-access.ts - eine Zusatzrolle macht
+ * explizit auch AGENCY_STAFF-Mitarbeiter ohne sonstigen CRM-Zugriff
+ * berechtigt, interne Schulungen zu bauen).
+ */
+async function canManageCourse(
+  session: { user: { id: string; email: string; role: string } },
+  audience: "CLIENT" | "INTERNAL",
+): Promise<boolean> {
+  if (audience === "INTERNAL") return canManageInternalCourses(session);
+  return session.user.role === "AGENCY_ADMIN";
+}
+
 export async function createCourse(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Kurse anlegen.";
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -32,8 +47,10 @@ export async function createCourse(_prevState: string | undefined, formData: For
   // Interne Kurse (Mitarbeiterschulung) sind vom Kunden-Kursbereich
   // entkoppelt - sonst könnte jeder Fulfillment-AGENCY_ADMIN eine interne
   // Vertriebsschulung anlegen/einsehen, die nicht für ihn bestimmt ist.
-  if (audience === "INTERNAL" && !isSuperAdmin(session.user.email)) {
-    return "Nur der Super-Admin kann interne Kurse anlegen.";
+  if (!(await canManageCourse(session, audience))) {
+    return audience === "INTERNAL"
+      ? "Nur der Super-Admin oder ein Kursmanager kann interne Kurse anlegen."
+      : "Nur Agentur-Admins können Kurse anlegen.";
   }
 
   let thumbnailUrl: string | null = null;
@@ -53,7 +70,6 @@ export async function createCourse(_prevState: string | undefined, formData: For
 
 export async function updateCourse(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Kurse bearbeiten.";
 
   const courseId = String(formData.get("courseId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -62,8 +78,10 @@ export async function updateCourse(_prevState: string | undefined, formData: For
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return "Kurs nicht gefunden.";
-  if (course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) {
-    return "Nur der Super-Admin kann interne Kurse bearbeiten.";
+  if (!(await canManageCourse(session, course.audience))) {
+    return course.audience === "INTERNAL"
+      ? "Nur der Super-Admin oder ein Kursmanager kann interne Kurse bearbeiten."
+      : "Nur Agentur-Admins können Kurse bearbeiten.";
   }
 
   // Zielgruppe ist nach dem Anlegen bewusst nicht mehr änderbar - ein
@@ -96,12 +114,20 @@ export async function updateCourse(_prevState: string | undefined, formData: For
 /** Weist einen internen (audience=INTERNAL) Kurs einem einzelnen Mitarbeiter zu/ab - Pendant zu setCourseAssignment für Kunden. */
 export async function setCourseUserAssignment(formData: FormData) {
   const session = await requireSession();
-  if (!isSuperAdmin(session.user.email)) return;
 
   const courseId = String(formData.get("courseId") ?? "");
   const userId = String(formData.get("userId") ?? "");
   const assign = formData.get("assign") === "true";
   if (!courseId || !userId) return;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course || course.audience !== "INTERNAL") return;
+  if (!(await canManageInternalCourses(session))) return;
+  // Ein auf bestimmte Abteilungen beschränkter Kursmanager darf nur
+  // Mitarbeitern seiner eigenen Abteilung(en) Zugriff geben, sonst könnte
+  // z.B. ein für Vertrieb zuständiger Kursmanager Backoffice-Mitarbeiter
+  // einer Schulung hinzufügen.
+  if (!(await canAssignCourseUser(session, userId))) return;
 
   if (assign) {
     await prisma.courseUserAssignment.upsert({
@@ -119,12 +145,11 @@ export async function setCourseUserAssignment(formData: FormData) {
 
 export async function deleteCourse(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
 
   const courseId = String(formData.get("courseId") ?? "");
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return;
-  if (course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) return;
+  if (!(await canManageCourse(session, course.audience))) return;
 
   await prisma.course.delete({ where: { id: courseId } }).catch(() => null);
 
@@ -133,12 +158,11 @@ export async function deleteCourse(formData: FormData) {
 
 export async function togglePublish(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
 
   const courseId = String(formData.get("courseId") ?? "");
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return;
-  if (course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) return;
+  if (!(await canManageCourse(session, course.audience))) return;
 
   await prisma.course.update({ where: { id: courseId }, data: { published: !course.published } });
   revalidatePath("/dashboard/courses");
@@ -176,7 +200,6 @@ export async function setCourseAssignment(formData: FormData) {
 
 export async function createModule(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Module anlegen.";
 
   const courseId = String(formData.get("courseId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -185,8 +208,10 @@ export async function createModule(_prevState: string | undefined, formData: For
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return "Kurs nicht gefunden.";
-  if (course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) {
-    return "Nur der Super-Admin kann interne Kurse bearbeiten.";
+  if (!(await canManageCourse(session, course.audience))) {
+    return course.audience === "INTERNAL"
+      ? "Nur der Super-Admin oder ein Kursmanager kann interne Kurse bearbeiten."
+      : "Nur Agentur-Admins können Module anlegen.";
   }
 
   let thumbnailUrl: string | null = null;
@@ -207,7 +232,6 @@ export async function createModule(_prevState: string | undefined, formData: For
 
 export async function updateModule(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Module bearbeiten.";
 
   const moduleId = String(formData.get("moduleId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -216,8 +240,10 @@ export async function updateModule(_prevState: string | undefined, formData: For
 
   const courseModule = await prisma.module.findUnique({ where: { id: moduleId }, include: { course: true } });
   if (!courseModule) return "Modul nicht gefunden.";
-  if (courseModule.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) {
-    return "Nur der Super-Admin kann interne Kurse bearbeiten.";
+  if (!(await canManageCourse(session, courseModule.course.audience))) {
+    return courseModule.course.audience === "INTERNAL"
+      ? "Nur der Super-Admin oder ein Kursmanager kann interne Kurse bearbeiten."
+      : "Nur Agentur-Admins können Module bearbeiten.";
   }
 
   let thumbnailUrl: string | null | undefined;
@@ -242,12 +268,11 @@ export async function updateModule(_prevState: string | undefined, formData: For
 
 export async function deleteModule(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
 
   const moduleId = String(formData.get("moduleId") ?? "");
   const courseModule = await prisma.module.findUnique({ where: { id: moduleId }, include: { course: true } });
   if (!courseModule) return;
-  if (courseModule.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) return;
+  if (!(await canManageCourse(session, courseModule.course.audience))) return;
 
   await prisma.module.delete({ where: { id: moduleId } });
   revalidatePath(`/dashboard/courses/${courseModule.courseId}`);
@@ -255,13 +280,12 @@ export async function deleteModule(formData: FormData) {
 
 export async function moveModule(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
 
   const moduleId = String(formData.get("moduleId") ?? "");
   const direction = String(formData.get("direction") ?? "");
   const courseModule = await prisma.module.findUnique({ where: { id: moduleId }, include: { course: true } });
   if (!courseModule) return;
-  if (courseModule.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) return;
+  if (!(await canManageCourse(session, courseModule.course.audience))) return;
 
   const siblings = await prisma.module.findMany({
     where: { courseId: courseModule.courseId },
@@ -286,7 +310,6 @@ export async function moveModule(formData: FormData) {
 
 export async function createLesson(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Lektionen hinzufügen.";
 
   const moduleId = String(formData.get("moduleId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -297,8 +320,10 @@ export async function createLesson(_prevState: string | undefined, formData: For
 
   const courseModule = await prisma.module.findUnique({ where: { id: moduleId }, include: { course: true } });
   if (!courseModule) return "Modul nicht gefunden.";
-  if (courseModule.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) {
-    return "Nur der Super-Admin kann interne Kurse bearbeiten.";
+  if (!(await canManageCourse(session, courseModule.course.audience))) {
+    return courseModule.course.audience === "INTERNAL"
+      ? "Nur der Super-Admin oder ein Kursmanager kann interne Kurse bearbeiten."
+      : "Nur Agentur-Admins können Lektionen hinzufügen.";
   }
 
   let videoUrl: string | null = null;
@@ -341,7 +366,6 @@ export async function createLesson(_prevState: string | undefined, formData: For
 
 export async function updateLesson(_prevState: string | undefined, formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return "Nur Agentur-Admins können Lektionen bearbeiten.";
 
   const lessonId = String(formData.get("lessonId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -355,8 +379,10 @@ export async function updateLesson(_prevState: string | undefined, formData: For
     include: { module: { include: { course: true } } },
   });
   if (!lesson) return "Lektion nicht gefunden.";
-  if (lesson.module.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) {
-    return "Nur der Super-Admin kann interne Kurse bearbeiten.";
+  if (!(await canManageCourse(session, lesson.module.course.audience))) {
+    return lesson.module.course.audience === "INTERNAL"
+      ? "Nur der Super-Admin oder ein Kursmanager kann interne Kurse bearbeiten."
+      : "Nur Agentur-Admins können Lektionen bearbeiten.";
   }
 
   let thumbnailUrl: string | null | undefined;
@@ -442,7 +468,9 @@ export async function updateLesson(_prevState: string | undefined, formData: For
 /** Uploads a single image picked for a lesson content block, returning its URL for the block editor's client-side state. */
 export async function uploadLessonBlockImage(formData: FormData): Promise<{ url: string } | { error: string }> {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return { error: "Nur Agentur-Admins können Bilder hochladen." };
+  if (session.user.role !== "AGENCY_ADMIN" && !(await canManageInternalCourses(session))) {
+    return { error: "Keine Berechtigung, Bilder hochzuladen." };
+  }
 
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) return { error: "Keine Datei ausgewählt." };
@@ -454,7 +482,6 @@ export async function uploadLessonBlockImage(formData: FormData): Promise<{ url:
 
 export async function deleteLesson(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
 
   const lessonId = String(formData.get("lessonId") ?? "");
   const lesson = await prisma.lesson.findUnique({
@@ -462,7 +489,7 @@ export async function deleteLesson(formData: FormData) {
     include: { module: { include: { course: true } } },
   });
   if (!lesson) return;
-  if (lesson.module.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) return;
+  if (!(await canManageCourse(session, lesson.module.course.audience))) return;
 
   await prisma.lesson.delete({ where: { id: lessonId } });
   revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
@@ -470,7 +497,6 @@ export async function deleteLesson(formData: FormData) {
 
 export async function moveLesson(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "AGENCY_ADMIN") return;
 
   const lessonId = String(formData.get("lessonId") ?? "");
   const direction = String(formData.get("direction") ?? "");
@@ -479,7 +505,7 @@ export async function moveLesson(formData: FormData) {
     include: { module: { include: { course: true } } },
   });
   if (!lesson) return;
-  if (lesson.module.course.audience === "INTERNAL" && !isSuperAdmin(session.user.email)) return;
+  if (!(await canManageCourse(session, lesson.module.course.audience))) return;
 
   const siblings = await prisma.lesson.findMany({
     where: { moduleId: lesson.moduleId },
