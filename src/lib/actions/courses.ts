@@ -28,7 +28,7 @@ async function uploadImageField(formData: FormData, field: string): Promise<stri
  * explizit auch AGENCY_STAFF-Mitarbeiter ohne sonstigen CRM-Zugriff
  * berechtigt, interne Schulungen zu bauen).
  */
-async function canManageCourse(
+export async function canManageCourse(
   session: { user: { id: string; email: string; role: string } },
   audience: "CLIENT" | "INTERNAL",
 ): Promise<boolean> {

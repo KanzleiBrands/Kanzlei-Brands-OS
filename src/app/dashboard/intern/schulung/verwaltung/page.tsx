@@ -34,7 +34,12 @@ export default async function InternalCourseAdminPage() {
     <div className="p-4 sm:p-8">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Interne Schulungen verwalten</h1>
-        <NewCourseForm audience="INTERNAL" />
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/intern/schulung/verwaltung/video-import" className="text-sm underline">
+            Video-Import
+          </Link>
+          <NewCourseForm audience="INTERNAL" />
+        </div>
       </div>
       <p className="mb-6 text-muted-foreground">
         Mitarbeiterzuweisung erfolgt direkt auf der jeweiligen Schulung selbst (Tab &bdquo;Mitglieder&ldquo;).

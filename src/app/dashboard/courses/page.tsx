@@ -35,7 +35,12 @@ export default async function CoursesPage() {
       <div className="p-4 sm:p-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold">Schulung – Kundenkurse verwalten</h1>
-          <NewCourseForm audience="CLIENT" />
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/intern/schulung/verwaltung/video-import" className="text-sm underline">
+              Video-Import
+            </Link>
+            <NewCourseForm audience="CLIENT" />
+          </div>
         </div>
 
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,300px))] gap-4">
