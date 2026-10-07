@@ -7,7 +7,7 @@ import { checkEnvStatus } from "@/lib/env-status";
 export function AdsStatusCard() {
   const statuses = [
     checkEnvStatus("Meta", ["META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"]),
-    checkEnvStatus("Google", ["GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"]),
+    checkEnvStatus("Google", ["GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"]),
     checkEnvStatus("LinkedIn", ["LINKEDIN_ADS_ACCESS_TOKEN", "LINKEDIN_AD_ACCOUNT_ID"]),
   ];
 

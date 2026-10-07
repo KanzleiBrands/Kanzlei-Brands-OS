@@ -46,7 +46,7 @@ export default async function IntegrationsPage() {
   const calendlyToken = checkEnvStatus("Calendly-API-Token", ["CALENDLY_API_TOKEN"]);
   const calendly = checkEnvStatus("Calendly-Webhook", ["CALENDLY_WEBHOOK_SIGNING_KEY"]);
   const meta = checkEnvStatus("Meta Ads", ["META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"]);
-  const google = checkEnvStatus("Google Ads", ["GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"]);
+  const google = checkEnvStatus("Google Ads", ["GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"]);
   const linkedin = checkEnvStatus("LinkedIn Ads", ["LINKEDIN_ADS_ACCESS_TOKEN", "LINKEDIN_AD_ACCOUNT_ID"]);
 
   const [leadSourceTags, socialChannels] = await Promise.all([
@@ -76,7 +76,7 @@ export default async function IntegrationsPage() {
       <Card>
         <CardHeader><CardTitle>Werbeplattformen (Kampagnen-Reiter)</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <StatusRow {...google} hint="GOOGLE_ADS_CLIENT_ID/SECRET/REFRESH_TOKEN/DEVELOPER_TOKEN/CUSTOMER_ID - Setup-Schritte in .env.example." />
+          <StatusRow {...google} hint="GOOGLE_ADS_CLIENT_ID/SECRET/REFRESH_TOKEN/CUSTOMER_ID - Setup-Schritte in .env.example." />
           <StatusRow {...meta} hint="META_ADS_ACCESS_TOKEN/AD_ACCOUNT_ID (System-User mit ads_read) - getrennt von den Content-Publishing-Zugängen unten." />
           <StatusRow {...linkedin} hint="LINKEDIN_ADS_ACCESS_TOKEN/AD_ACCOUNT_ID (Ads-Reporting-Scope) - getrennt vom organischen Posten unten." />
         </CardContent>

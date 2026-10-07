@@ -4,10 +4,14 @@ const GOOGLE_ADS_API_VERSION = "v18";
 
 /**
  * Google Ads API (GAQL) - braucht einen einmalig erzeugten Refresh-Token
- * (siehe .env.example) plus einen von Google genehmigten Developer-Token.
- * Der Access-Token wird pro Aufruf frisch aus dem Refresh-Token geholt (kurz
- * gültig, kein eigenes Caching nötig bei täglichem Cron). Ohne vollständige
- * Konfiguration sauberes No-Op statt Crash.
+ * (siehe .env.example). Der Developer-Token wurde von Google zum 9.9.2026
+ * abgeschafft (Zugriffslevel hängt jetzt am Google-Cloud-Projekt statt am
+ * Token) - GOOGLE_ADS_DEVELOPER_TOKEN ist daher optional und wird, falls
+ * noch gesetzt, nur der Vollständigkeit halber mitgeschickt; Google ignoriert
+ * den Header mittlerweile ohnehin. Der Access-Token wird pro Aufruf frisch
+ * aus dem Refresh-Token geholt (kurz gültig, kein eigenes Caching nötig bei
+ * täglichem Cron). Ohne vollständige Konfiguration sauberes No-Op statt
+ * Crash.
  */
 async function getAccessToken(): Promise<string | null> {
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
@@ -26,10 +30,9 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 export async function fetchGoogleAdSpend(dateFrom: string, dateTo: string): Promise<AdSpendResult> {
-  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
-  if (!developerToken || !customerId) {
-    return { ok: false, error: "GOOGLE_ADS_DEVELOPER_TOKEN / GOOGLE_ADS_CUSTOMER_ID ist nicht konfiguriert." };
+  if (!customerId) {
+    return { ok: false, error: "GOOGLE_ADS_CUSTOMER_ID ist nicht konfiguriert." };
   }
 
   try {
@@ -42,7 +45,6 @@ export async function fetchGoogleAdSpend(dateFrom: string, dateTo: string): Prom
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
-      "developer-token": developerToken,
       "Content-Type": "application/json",
     };
     if (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID) headers["login-customer-id"] = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
