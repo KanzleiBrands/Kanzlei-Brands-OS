@@ -45,6 +45,7 @@ export default async function InternalSocialMediaPage() {
       canManageChannels={session.user.role === "AGENCY_ADMIN"}
       canManageFormats={session.user.role === "AGENCY_ADMIN"}
       showChannelList={false}
+      showBrandDnaDialog={true}
       contentFormats={contentFormats}
       contentBrandDna={organization?.contentBrandDna ?? ""}
       posts={posts.map((post) => ({

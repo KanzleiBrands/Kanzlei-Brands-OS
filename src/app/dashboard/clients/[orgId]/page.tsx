@@ -316,6 +316,7 @@ export default async function ClientDetailPage({
           jobsBooked={jobsBooked}
           leadsBooked={leadsBooked}
           inviteReadiness={inviteReadiness}
+          contentBrandDna={organization.contentBrandDna ?? ""}
         />
       )}
 

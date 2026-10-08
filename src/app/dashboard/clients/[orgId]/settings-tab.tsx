@@ -17,6 +17,7 @@ import { IntakeSettingsForm } from "./intake-settings-form";
 import { HubSettingsForm } from "./hub-settings-form";
 import { MonthlyReportToggle } from "./monthly-report-toggle";
 import { DataRetentionForm } from "./data-retention-form";
+import { ContentBrandDnaForm } from "./content-brand-dna";
 
 export type SettingsSubTab = "general" | "team" | "board" | "training" | "danger";
 
@@ -77,6 +78,7 @@ export function SettingsTab({
   jobsBooked,
   leadsBooked,
   inviteReadiness,
+  contentBrandDna,
 }: {
   organizationId: string;
   organizationName: string;
@@ -109,6 +111,7 @@ export function SettingsTab({
   jobsBooked: boolean;
   leadsBooked: boolean;
   inviteReadiness: { ready: boolean; missing: string[] };
+  contentBrandDna: string;
   subTab: SettingsSubTab;
 }) {
   return (
@@ -220,6 +223,15 @@ export function SettingsTab({
                 jobsBooked={jobsBooked}
                 leadsBooked={leadsBooked}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Marken-DNA für KI-Ideen-Generierung</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContentBrandDnaForm organizationId={organizationId} value={contentBrandDna} />
             </CardContent>
           </Card>
         </>

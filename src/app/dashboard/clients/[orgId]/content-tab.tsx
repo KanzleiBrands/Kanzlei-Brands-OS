@@ -11,7 +11,7 @@ import { SocialCsvImportDialog } from "./social-csv-import-dialog";
 import { SocialAnalytics, type AnalyticsPost } from "./social-analytics";
 import { GenerateContentIdeasDialog } from "./generate-content-ideas-dialog";
 import { ContentFormatManager, type ContentFormatItem } from "./content-format-manager";
-import { ContentBrandDna } from "./content-brand-dna";
+import { ContentBrandDnaDialog } from "./content-brand-dna-dialog";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type Pipeline = { id: string; name: string };
@@ -30,6 +30,7 @@ export function ContentTab({
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
+  showBrandDnaDialog = false,
 }: {
   organizationId: string;
   channels: Channel[];
@@ -46,6 +47,12 @@ export function ContentTab({
   canManageFormats?: boolean;
   /** false im internen Marketing-Center - dort lebt die Kanal-Verwaltung im Integrationen-Tab. */
   showChannelList?: boolean;
+  /**
+   * true im internen Marketing-Center, das keinen eigenen Einstellungen-Tab hat - zeigt dort
+   * die Marken-DNA als Dialog im Toolbar. Im Kundenbereich lebt sie stattdessen in den
+   * Kundeneinstellungen (settings-tab.tsx, Unterreiter "Kundenboard & Hub").
+   */
+  showBrandDnaDialog?: boolean;
 }) {
   const [view, setView] = useState<"board" | "calendar" | "community" | "analytics">("board");
   const commentInboxPosts: CommentInboxPost[] = posts.map((post) => ({
@@ -60,8 +67,6 @@ export function ContentTab({
   return (
     <div className="flex flex-col gap-4">
       {showChannelList && <SocialChannelList organizationId={organizationId} channels={channels} canManage={canManageChannels} />}
-
-      <ContentBrandDna organizationId={organizationId} value={contentBrandDna} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1.5">
@@ -79,6 +84,7 @@ export function ContentTab({
           </Button>
         </div>
         <div className="flex flex-wrap gap-1.5">
+          {showBrandDnaDialog && <ContentBrandDnaDialog organizationId={organizationId} value={contentBrandDna} />}
           {canManageFormats && <ContentFormatManager formats={contentFormats} />}
           <GenerateContentIdeasDialog organizationId={organizationId} formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))} />
           <SocialCsvImportDialog organizationId={organizationId} />
