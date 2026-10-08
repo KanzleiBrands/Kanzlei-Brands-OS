@@ -210,9 +210,6 @@ export async function ExecutiveDashboard({
           <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/intern/personal/${userId}`} />}>
             Mein Profil
           </Button>
-          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/dashboard/intern/verwaltung" />}>
-            Abteilungen &amp; Mitarbeiter
-          </Button>
         </CardContent>
       </Card>
     </div>

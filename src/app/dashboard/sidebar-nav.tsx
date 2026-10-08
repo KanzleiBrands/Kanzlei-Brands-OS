@@ -7,7 +7,6 @@ import {
   GraduationCap,
   LayoutDashboard,
   MegaphoneIcon,
-  Settings2Icon,
   TrendingUpIcon,
   UsersIcon,
   WalletIcon,
@@ -180,21 +179,6 @@ export function SidebarNav({
             </Link>
           ))}
         </div>
-
-        {isSuperAdmin(email) && (
-          <div className="mt-5 flex flex-col gap-1">
-            <p className="mb-1 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Verwaltung</p>
-            <Link
-              href="/dashboard/intern/verwaltung"
-              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
-                isActive("/dashboard/intern/verwaltung") ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <Settings2Icon className="size-4 flex-shrink-0" />
-              Abteilungen &amp; Mitarbeiter
-            </Link>
-          </div>
-        )}
       </nav>
     );
   }

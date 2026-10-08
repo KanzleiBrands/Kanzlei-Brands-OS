@@ -17,12 +17,10 @@ export default async function InternalPortalPage() {
   });
   const departments = user?.departments ?? [];
 
-  // Ohne zugewiesene Rolle(n) gibt es keinen eigenen Hub. Der Super-Admin
-  // landet auf der Verwaltungsseite (sein eigentliches Zuhause im internen
-  // Portal), alle anderen (typischerweise Fulfillment-AGENCY_ADMIN ohne
-  // internes Rollen-Tag) zurück ins Kundenportal.
+  // Ohne zugewiesene Rolle(n) gibt es keinen eigenen Hub - zurück ins
+  // Kundenportal (typischerweise Fulfillment-AGENCY_ADMIN ohne internes
+  // Rollen-Tag, oder der Super-Admin ohne eigene Abteilung).
   if (departments.length === 0) {
-    if (isSuperAdmin(session.user.email)) redirect("/dashboard/intern/verwaltung");
     redirect("/dashboard");
   }
 

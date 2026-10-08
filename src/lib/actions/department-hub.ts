@@ -33,7 +33,6 @@ export async function addDepartmentResourceLink(_prevState: string | undefined, 
   });
 
   revalidatePath("/dashboard/intern");
-  revalidatePath("/dashboard/intern/verwaltung");
   return undefined;
 }
 
@@ -44,5 +43,4 @@ export async function deleteDepartmentResourceLink(id: string) {
   await prisma.departmentResourceLink.delete({ where: { id } });
 
   revalidatePath("/dashboard/intern");
-  revalidatePath("/dashboard/intern/verwaltung");
 }
