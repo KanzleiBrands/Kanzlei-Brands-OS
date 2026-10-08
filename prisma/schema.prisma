@@ -145,6 +145,13 @@ model Organization {
   // (Art. 5 Abs. 1 lit. e DSGVO) - Empfehlung in der Praxis 6 Monate.
   leadDataRetentionMonths      Int?
 
+  // Einmalig im Onboarding erfasste Marken-DNA (Beschreibung, Angebot,
+  // Zielgruppen) - Kontext für jede KI-Ideen-Generierung dieses Kunden
+  // (src/lib/actions/content-ideas.ts), analog zum "Brands"-Onboarding im
+  // Stefan-Müller-Case. Frei formatierter Text statt mehrerer Einzelfelder,
+  // um das Onboarding nicht zu überladen.
+  contentBrandDna String?
+
   users                     User[]
   pipelines                 Pipeline[]
   courseAssignments         CourseAssignment[]
@@ -887,6 +894,16 @@ model SocialPost {
   mediaType SocialMediaType?
   status    SocialPostStatus @default(IDEA)
 
+  // Von der KI-Ideen-Generierung befüllt (src/lib/actions/content-ideas.ts) -
+  // title/topic entstehen in Phase 1 (Ideen generieren, caption bleibt noch
+  // leer), caption wird erst in Phase 2 ("Text mit KI erstellen") befüllt.
+  // Für manuell angelegte Beiträge bleiben beide Felder leer.
+  title String?
+  topic String?
+
+  contentFormatId String?
+  contentFormat   ContentFormat? @relation(fields: [contentFormatId], references: [id], onDelete: SetNull)
+
   scheduledAt    DateTime?
   publishedAt    DateTime?
   publishedUrl   String?
@@ -931,6 +948,23 @@ model SocialPost {
 
   @@index([organizationId])
   @@index([status, scheduledAt])
+}
+
+// Wiederverwendbare Content-Format-Vorlage für die KI-Ideen-Generierung
+// (src/lib/actions/content-ideas.ts) - agentur-weit statt pro Kunde, damit
+// einmal validierte Formate (Beschreibung + Beispielposts fürs Few-Shot-
+// Prompting) für alle Kunden nutzbar sind, analog zum "Formate"-Tab im
+// Stefan-Müller-Case (AI Content System).
+model ContentFormat {
+  id          String @id @default(cuid())
+  name        String
+  description String // Prompt-Anleitung: Struktur/Stilmittel/Hook-Regeln für dieses Format
+  examples    String // 1-3 Beispielposts als Few-Shot-Vorlage, frei formatiert
+
+  posts SocialPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // A comment on a published SocialPost, synced from the platform (webhook

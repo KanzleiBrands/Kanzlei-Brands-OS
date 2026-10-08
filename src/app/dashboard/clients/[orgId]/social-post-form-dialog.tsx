@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -12,10 +12,12 @@ import {
   Loader2Icon,
   PencilIcon,
   PlusIcon,
+  SparklesIcon,
   UploadCloudIcon,
   XIcon,
 } from "lucide-react";
 import { createSocialPost, updateSocialPost, uploadSocialPostImage } from "@/lib/actions/social-posts";
+import { generatePostTextFromIdea } from "@/lib/actions/content-ideas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +48,9 @@ export type SocialPostData = {
   platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
   status: SocialPostStatus;
   caption: string;
+  title: string | null;
+  topic: string | null;
+  contentFormatName: string | null;
   mediaUrl: string | null;
   mediaUrls: string[];
   mediaType: SocialMediaTypeValue | null;
@@ -233,8 +238,25 @@ export function SocialPostFormDialog({
   const [publishNow, setPublishNow] = useState(false);
   const [scheduledAtLocal, setScheduledAtLocal] = useState(toDatetimeLocalValue(post?.scheduledAt ?? null));
   const carouselSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [isGeneratingText, startGenerateTextTransition] = useTransition();
+  const [generateTextError, setGenerateTextError] = useState<string | null>(null);
 
   const channelsForPlatform = channels.filter((c) => c.platform === platform);
+
+  function handleGenerateText() {
+    if (!post) return;
+    setGenerateTextError(null);
+    startGenerateTextTransition(async () => {
+      const fd = new FormData();
+      fd.set("postId", post.id);
+      const result = await generatePostTextFromIdea(fd);
+      if ("error" in result) {
+        setGenerateTextError(result.error);
+      } else {
+        setCaption(result.caption);
+      }
+    });
+  }
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {
@@ -532,6 +554,24 @@ export function SocialPostFormDialog({
                 );
               })}
             </>
+          )}
+
+          {isEdit && post.title && (
+            <div className="flex flex-col gap-0.5 rounded-md border bg-muted/40 p-2 text-sm">
+              <p className="font-medium">{post.title}</p>
+              {post.contentFormatName && <p className="text-xs text-muted-foreground">Format: {post.contentFormatName}</p>}
+              {post.topic && <p className="mt-1 text-xs text-muted-foreground">{post.topic}</p>}
+            </div>
+          )}
+
+          {isEdit && !caption && post.topic && post.contentFormatName && (
+            <div className="flex flex-col gap-1.5">
+              <Button type="button" variant="outline" disabled={isGeneratingText} onClick={handleGenerateText}>
+                {isGeneratingText ? <Loader2Icon className="size-4 animate-spin" /> : <SparklesIcon className="size-4" />}
+                Text mit KI erstellen
+              </Button>
+              {generateTextError && <p className="text-xs text-destructive">{generateTextError}</p>}
+            </div>
           )}
 
           <Textarea

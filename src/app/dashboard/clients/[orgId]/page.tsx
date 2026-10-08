@@ -102,10 +102,11 @@ export default async function ClientDetailPage({
     tab === "content"
       ? await prisma.socialPost.findMany({
           where: { organizationId: orgId },
-          include: { responsible: { select: { name: true } } },
+          include: { responsible: { select: { name: true } }, contentFormat: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
         })
       : [];
+  const contentFormats = tab === "content" ? await prisma.contentFormat.findMany({ orderBy: { name: "asc" } }) : [];
   const socialComments =
     tab === "content"
       ? await prisma.socialComment.findMany({
@@ -324,11 +325,17 @@ export default async function ClientDetailPage({
           channels={socialChannels}
           pipelines={organization.pipelines.map((p) => ({ id: p.id, name: p.name }))}
           agencyUsers={agencyUsers}
+          contentFormats={contentFormats}
+          contentBrandDna={organization.contentBrandDna ?? ""}
           posts={socialPosts.map((post) => ({
             id: post.id,
             platform: post.platform,
             status: post.status,
             caption: post.caption,
+            title: post.title,
+            topic: post.topic,
+            contentFormatId: post.contentFormatId,
+            contentFormatName: post.contentFormat?.name ?? null,
             mediaUrl: post.mediaUrl,
             mediaUrls: post.mediaUrls,
             mediaType: post.mediaType,

@@ -9,6 +9,9 @@ import { SocialPostCalendar } from "./social-post-calendar";
 import { SocialCommentInbox, type CommentInboxPost, type CommentInboxComment } from "./social-comment-inbox";
 import { SocialCsvImportDialog } from "./social-csv-import-dialog";
 import { SocialAnalytics, type AnalyticsPost } from "./social-analytics";
+import { GenerateContentIdeasDialog } from "./generate-content-ideas-dialog";
+import { ContentFormatManager, type ContentFormatItem } from "./content-format-manager";
+import { ContentBrandDna } from "./content-brand-dna";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type Pipeline = { id: string; name: string };
@@ -22,7 +25,10 @@ export function ContentTab({
   agencyUsers,
   comments,
   analyticsPosts,
+  contentFormats,
+  contentBrandDna,
   canManageChannels = true,
+  canManageFormats = true,
   showChannelList = true,
 }: {
   organizationId: string;
@@ -32,8 +38,12 @@ export function ContentTab({
   agencyUsers: AgencyUser[];
   comments: CommentInboxComment[];
   analyticsPosts: AnalyticsPost[];
+  contentFormats: ContentFormatItem[];
+  contentBrandDna: string;
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
+  /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
+  canManageFormats?: boolean;
   /** false im internen Marketing-Center - dort lebt die Kanal-Verwaltung im Integrationen-Tab. */
   showChannelList?: boolean;
 }) {
@@ -51,6 +61,8 @@ export function ContentTab({
     <div className="flex flex-col gap-4">
       {showChannelList && <SocialChannelList organizationId={organizationId} channels={channels} canManage={canManageChannels} />}
 
+      <ContentBrandDna organizationId={organizationId} value={contentBrandDna} />
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1.5">
           <Button type="button" size="sm" variant={view === "board" ? "default" : "outline"} onClick={() => setView("board")}>
@@ -66,7 +78,9 @@ export function ContentTab({
             Analytics
           </Button>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
+          {canManageFormats && <ContentFormatManager formats={contentFormats} />}
+          <GenerateContentIdeasDialog organizationId={organizationId} formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))} />
           <SocialCsvImportDialog organizationId={organizationId} />
           <SocialPostFormDialog organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
         </div>

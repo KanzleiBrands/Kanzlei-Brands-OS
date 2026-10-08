@@ -10,11 +10,11 @@ export default async function InternalSocialMediaPage() {
 
   const organizationId = session.user.organizationId;
 
-  const [channels, posts, comments, pipelines, agencyUsers] = await Promise.all([
+  const [channels, posts, comments, pipelines, agencyUsers, contentFormats, organization] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
       where: { organizationId },
-      include: { responsible: { select: { name: true } } },
+      include: { responsible: { select: { name: true } }, contentFormat: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.socialComment.findMany({ where: { post: { organizationId } }, orderBy: { postedAt: "asc" } }),
@@ -24,6 +24,8 @@ export default async function InternalSocialMediaPage() {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.contentFormat.findMany({ orderBy: { name: "asc" } }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true } }),
   ]);
 
   return (
@@ -41,12 +43,19 @@ export default async function InternalSocialMediaPage() {
       pipelines={pipelines}
       agencyUsers={agencyUsers}
       canManageChannels={session.user.role === "AGENCY_ADMIN"}
+      canManageFormats={session.user.role === "AGENCY_ADMIN"}
       showChannelList={false}
+      contentFormats={contentFormats}
+      contentBrandDna={organization?.contentBrandDna ?? ""}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,
         status: post.status,
         caption: post.caption,
+        title: post.title,
+        topic: post.topic,
+        contentFormatId: post.contentFormatId,
+        contentFormatName: post.contentFormat?.name ?? null,
         mediaUrl: post.mediaUrl,
         mediaUrls: post.mediaUrls,
         mediaType: post.mediaType,

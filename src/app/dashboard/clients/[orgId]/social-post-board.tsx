@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { generatePostTextFromIdea } from "@/lib/actions/content-ideas";
 import {
   DndContext,
   DragOverlay,
@@ -12,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { CalendarIcon, Trash2Icon, UserIcon } from "lucide-react";
+import { CalendarIcon, SparklesIcon, Trash2Icon, UserIcon } from "lucide-react";
 import { moveSocialPostStatus, deleteSocialPost } from "@/lib/actions/social-posts";
 import { PlatformIcon } from "@/components/platform-icon";
 import { SocialPostFormDialog, type SocialPostData, type SocialPostStatus } from "./social-post-form-dialog";
@@ -52,6 +53,19 @@ function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: post.id });
   const [isPending, startTransition] = useTransition();
+  const [isGeneratingText, startGenerateTextTransition] = useTransition();
+  const [generateTextError, setGenerateTextError] = useState<string | null>(null);
+  const isBareIdea = !post.caption && !!post.topic && !!post.contentFormatName;
+
+  function handleGenerateText() {
+    setGenerateTextError(null);
+    startGenerateTextTransition(async () => {
+      const fd = new FormData();
+      fd.set("postId", post.id);
+      const result = await generatePostTextFromIdea(fd);
+      if ("error" in result) setGenerateTextError(result.error);
+    });
+  }
 
   return (
     <div
@@ -63,8 +77,30 @@ function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
     >
       <div className="flex items-start gap-2">
         <PlatformIcon platform={post.platform} className="mt-0.5 size-4 shrink-0" />
-        <p className="min-w-0 flex-1 line-clamp-3 whitespace-pre-line">{post.caption}</p>
+        <div className="min-w-0 flex-1">
+          {post.title && <p className="truncate font-medium">{post.title}</p>}
+          {post.contentFormatName && (
+            <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-primary">
+              {post.contentFormatName}
+            </span>
+          )}
+          {post.caption && <p className="line-clamp-3 whitespace-pre-line">{post.caption}</p>}
+        </div>
       </div>
+      {isBareIdea && (
+        <div onPointerDown={(e) => e.stopPropagation()} className="flex flex-col gap-1">
+          <button
+            type="button"
+            disabled={isGeneratingText}
+            onClick={handleGenerateText}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-60"
+          >
+            <SparklesIcon className="size-3.5" />
+            {isGeneratingText ? "Wird erstellt..." : "Text mit KI erstellen"}
+          </button>
+          {generateTextError && <p className="text-xs text-destructive">{generateTextError}</p>}
+        </div>
+      )}
       {post.mediaType === "CAROUSEL" && post.mediaUrls[0] ? (
         <div className="relative h-20 w-full overflow-hidden rounded-md bg-black" style={{ aspectRatio: "16 / 9" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
