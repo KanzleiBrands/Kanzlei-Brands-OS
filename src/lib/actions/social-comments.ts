@@ -64,49 +64,64 @@ export async function replySocialComment(_prevState: string | undefined, formDat
   return undefined;
 }
 
-async function setCommentHidden(commentId: string, hidden: boolean) {
-  const session = await requireSession();
+// Returns an error message instead of throwing: an uncaught Server Action
+// error gets redacted to a generic, useless message by Next.js in
+// production, which is exactly why "Verbergen" could fail against the Graph
+// API (e.g. a missing permission) with nothing useful shown to the user -
+// catching here and returning the real message mirrors replySocialComment
+// above, which already did this correctly.
+async function setCommentHidden(commentId: string, hidden: boolean): Promise<string | undefined> {
+  try {
+    const session = await requireSession();
+    const { comment, post, channel } = await loadCommentWithChannel(commentId);
+    await assertCanManageSocialContentFor(session, post.organizationId);
+    const accessToken = decryptToken(channel.accessTokenEnc);
 
-  const { comment, post, channel } = await loadCommentWithChannel(commentId);
-  await assertCanManageSocialContentFor(session, post.organizationId);
-  const accessToken = decryptToken(channel.accessTokenEnc);
+    if (post.platform === "FACEBOOK") {
+      await setFacebookCommentHidden(comment.externalId, accessToken, hidden);
+    } else if (post.platform === "INSTAGRAM") {
+      await setInstagramCommentHidden(comment.externalId, accessToken, hidden);
+    } else {
+      throw new Error("Kommentare auf LinkedIn können noch nicht verborgen werden.");
+    }
 
-  if (post.platform === "FACEBOOK") {
-    await setFacebookCommentHidden(comment.externalId, accessToken, hidden);
-  } else if (post.platform === "INSTAGRAM") {
-    await setInstagramCommentHidden(comment.externalId, accessToken, hidden);
-  } else {
-    throw new Error("Kommentare auf LinkedIn können noch nicht verborgen werden.");
+    await prisma.socialComment.update({ where: { id: commentId }, data: { isHidden: hidden } });
+    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/intern/marketing/social");
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Konnte nicht gespeichert werden.";
   }
-
-  await prisma.socialComment.update({ where: { id: commentId }, data: { isHidden: hidden } });
-  revalidatePath("/dashboard/social");
-  revalidatePath("/dashboard/intern/marketing/social");
 }
 
-export async function hideSocialComment(formData: FormData) {
-  await setCommentHidden(String(formData.get("commentId") ?? ""), true);
+export async function hideSocialComment(formData: FormData): Promise<string | undefined> {
+  return setCommentHidden(String(formData.get("commentId") ?? ""), true);
 }
 
-export async function unhideSocialComment(formData: FormData) {
-  await setCommentHidden(String(formData.get("commentId") ?? ""), false);
+export async function unhideSocialComment(formData: FormData): Promise<string | undefined> {
+  return setCommentHidden(String(formData.get("commentId") ?? ""), false);
 }
 
-export async function deleteSocialComment(formData: FormData) {
-  const session = await requireSession();
+export async function deleteSocialComment(formData: FormData): Promise<string | undefined> {
+  try {
+    const session = await requireSession();
 
-  const commentId = String(formData.get("commentId") ?? "");
-  const { comment, post, channel } = await loadCommentWithChannel(commentId);
-  await assertCanManageSocialContentFor(session, post.organizationId);
-  const accessToken = decryptToken(channel.accessTokenEnc);
+    const commentId = String(formData.get("commentId") ?? "");
+    const { comment, post, channel } = await loadCommentWithChannel(commentId);
+    await assertCanManageSocialContentFor(session, post.organizationId);
+    const accessToken = decryptToken(channel.accessTokenEnc);
 
-  if (post.platform === "FACEBOOK" || post.platform === "INSTAGRAM") {
-    await deleteMetaComment(comment.externalId, accessToken);
-  } else {
-    await deleteLinkedInComment(comment.externalId, accessToken);
+    if (post.platform === "FACEBOOK" || post.platform === "INSTAGRAM") {
+      await deleteMetaComment(comment.externalId, accessToken);
+    } else {
+      await deleteLinkedInComment(comment.externalId, accessToken);
+    }
+
+    await prisma.socialComment.delete({ where: { id: commentId } });
+    revalidatePath("/dashboard/social");
+    revalidatePath("/dashboard/intern/marketing/social");
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Konnte nicht gelöscht werden.";
   }
-
-  await prisma.socialComment.delete({ where: { id: commentId } });
-  revalidatePath("/dashboard/social");
-  revalidatePath("/dashboard/intern/marketing/social");
 }

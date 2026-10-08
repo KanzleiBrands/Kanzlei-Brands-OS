@@ -119,11 +119,8 @@ function CommentRow({
                 const fd = new FormData();
                 fd.set("commentId", comment.id);
                 startTransition(async () => {
-                  try {
-                    await (comment.isHidden ? unhideSocialComment(fd) : hideSocialComment(fd));
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Konnte nicht gespeichert werden.");
-                  }
+                  const error = await (comment.isHidden ? unhideSocialComment(fd) : hideSocialComment(fd));
+                  if (error) toast.error(error);
                 });
               }}
             >
@@ -140,11 +137,8 @@ function CommentRow({
               const fd = new FormData();
               fd.set("commentId", comment.id);
               startTransition(async () => {
-                try {
-                  await deleteSocialComment(fd);
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Konnte nicht gelöscht werden.");
-                }
+                const error = await deleteSocialComment(fd);
+                if (error) toast.error(error);
               });
             }}
           >

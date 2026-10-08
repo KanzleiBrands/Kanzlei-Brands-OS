@@ -5,7 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { encryptToken } from "@/lib/auth-encryption";
 import { readSocialPendingConnection, clearSocialPendingConnection } from "@/lib/meta/social-pending-connection";
-import { getMetaPage, getInstagramBusinessAccount, subscribePageToFeedWebhook, type MetaPage } from "@/lib/meta/graph";
+import {
+  getMetaPage,
+  getInstagramBusinessAccount,
+  subscribePageToFeedWebhook,
+  subscribeInstagramToCommentsWebhook,
+  type MetaPage,
+} from "@/lib/meta/graph";
 
 function requireAgencyAdmin(role: string) {
   if (role !== "AGENCY_ADMIN") throw new Error("Keine Berechtigung.");
@@ -87,6 +93,16 @@ export async function finalizeMetaSocialConnection(
         lastError: null,
       },
     });
+
+    // Best-effort - comments-sync.ts's 10-minute poll still picks comments up
+    // without this, and the app's Webhooks product also needs the
+    // "Instagram" object + "comments" field subscribed once in the Meta App
+    // Dashboard for events to arrive at all, which this call can't do.
+    try {
+      await subscribeInstagramToCommentsWebhook(igAccount.id, page.access_token);
+    } catch (error) {
+      console.error(`[meta] failed to subscribe Instagram account ${igAccount.id} to comments webhook:`, error);
+    }
   }
 
   await clearSocialPendingConnection();

@@ -676,6 +676,24 @@ export async function subscribePageToFeedWebhook(pageId: string, pageAccessToken
   await graphFetch(url.toString(), { method: "POST" });
 }
 
+/**
+ * Opts a connected Instagram professional account in to real-time comment
+ * webhooks - the Instagram-side equivalent of subscribePageToFeedWebhook.
+ * Without this call, Instagram never sends "comments" webhook events for
+ * this account even though src/app/api/webhooks/meta/comments/route.ts
+ * already knows how to process them - comments-sync.ts's 10-minute poll was
+ * the only way they'd ever show up. Also requires the app's Webhooks
+ * product to list the "Instagram" object with the "comments" field
+ * subscribed - a one-time setting in the Meta App Dashboard, not something
+ * this call can set.
+ */
+export async function subscribeInstagramToCommentsWebhook(igUserId: string, pageAccessToken: string): Promise<void> {
+  const url = new URL(`${GRAPH_BASE}/${igUserId}/subscribed_apps`);
+  url.searchParams.set("subscribed_fields", "comments");
+  url.searchParams.set("access_token", pageAccessToken);
+  await graphFetch(url.toString(), { method: "POST" });
+}
+
 // ---------------------------------------------------------------------------
 // WhatsApp Business Platform (Cloud API)
 // ---------------------------------------------------------------------------
