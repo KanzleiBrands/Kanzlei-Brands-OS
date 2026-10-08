@@ -54,6 +54,7 @@ export default async function InternalSocialMediaPage() {
       contentWebsiteUrl={organization?.contentWebsiteUrl ?? ""}
       contentReferenceDocs={contentReferenceDocs}
       contentIntention={organization?.contentIntention ?? null}
+      socialContentBooked={null}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,

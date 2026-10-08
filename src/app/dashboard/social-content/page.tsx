@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { SOCIAL_CONTENT_PRODUCT_TAG } from "@/lib/social-content/constants";
 import { SocialContentSection, type ClientSocialPost } from "../hub/social-content-section";
-import { SocialContentPaywall, SocialContentBookedToggle } from "./social-content-paywall";
+import { SocialContentPaywall } from "./social-content-paywall";
 
 /**
  * Kundenseitige Social-Media-Content-Seite - eigener Reiter in der Sidebar
@@ -12,6 +12,12 @@ import { SocialContentPaywall, SocialContentBookedToggle } from "./social-conten
  * aktiv zeigt statt es nur innerhalb der Übersicht zu verstecken. Per
  * Paywall gebunden an SOCIAL_CONTENT_PRODUCT_TAG (Organization.bookedProductTags),
  * analog zur E-Mail-Marketing-Paywall (siehe email-marketing-tab.tsx).
+ *
+ * Rein kundenseitig - zeigt NIE Admin-Controls (auch nicht während einer
+ * Agentur-Impersonation): das Freischalten/"gebucht"-Setzen passiert
+ * ausschließlich in der Agentur-Ansicht auf
+ * /dashboard/clients/[orgId]?tab=content (Konfiguration-Reiter), die ein
+ * echter Kunde nie erreichen kann (siehe assertCanManageSocialContentFor).
  */
 export default async function SocialContentPage() {
   const session = await getSession();
@@ -23,10 +29,6 @@ export default async function SocialContentPage() {
     select: { bookedProductTags: true },
   });
   const booked = organization?.bookedProductTags.includes(SOCIAL_CONTENT_PRODUCT_TAG) ?? false;
-  // Nur wahr, wenn ein Agentur-Admin diesen Kunden gerade impersoniert (siehe
-  // getSession in src/lib/impersonation.ts) - der direkte Agentur-Zugriff auf
-  // Social Media Content läuft über /dashboard/clients/[orgId]?tab=content.
-  const isAgency = !!session.impersonation;
 
   const socialPosts = booked
     ? await prisma.socialPost.findMany({
@@ -64,12 +66,6 @@ export default async function SocialContentPage() {
       <p className="mb-6 text-muted-foreground">
         Freigaben und veröffentlichte Beiträge für Instagram, Facebook und LinkedIn.
       </p>
-
-      {isAgency && (
-        <div className="mb-6">
-          <SocialContentBookedToggle organizationId={session.user.organizationId} booked={booked} />
-        </div>
-      )}
 
       {!booked ? (
         <SocialContentPaywall organizationId={session.user.organizationId} />

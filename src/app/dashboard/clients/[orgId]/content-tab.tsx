@@ -33,6 +33,7 @@ export function ContentTab({
   contentWebsiteUrl,
   contentIntention,
   contentReferenceDocs,
+  socialContentBooked,
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
@@ -49,6 +50,8 @@ export function ContentTab({
   contentWebsiteUrl: string;
   contentIntention: ContentIntentionValue | null;
   contentReferenceDocs: ContentReferenceDocItem[];
+  /** null im internen Marketing-Center, wo "für diesen Kunden gebucht" kein Konzept ist. */
+  socialContentBooked: boolean | null;
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
   /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
@@ -111,6 +114,7 @@ export function ContentTab({
           brandDna={contentBrandDna}
           intention={contentIntention}
           referenceDocs={contentReferenceDocs}
+          socialContentBooked={socialContentBooked}
         />
       )}
     </div>

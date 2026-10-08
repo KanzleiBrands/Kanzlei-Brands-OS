@@ -13,6 +13,7 @@ import { ContentTab } from "./content-tab";
 import { ReactivateOrganizationButton } from "./reactivate-organization-button";
 import { PartnerProgramTab } from "./partner-program-tab";
 import { getPartnerPointsBalance } from "@/lib/actions/partner-program";
+import { SOCIAL_CONTENT_PRODUCT_TAG } from "@/lib/social-content/constants";
 
 type Tab = "overview" | "jobs" | "leads" | "content" | "settings" | "log" | "partner";
 
@@ -334,6 +335,7 @@ export default async function ClientDetailPage({
           contentWebsiteUrl={organization.contentWebsiteUrl ?? ""}
           contentReferenceDocs={contentReferenceDocs}
           contentIntention={organization.contentIntention}
+          socialContentBooked={organization.bookedProductTags.includes(SOCIAL_CONTENT_PRODUCT_TAG)}
           posts={socialPosts.map((post) => ({
             id: post.id,
             platform: post.platform,
