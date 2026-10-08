@@ -1,7 +1,7 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { requireSession } from "@/lib/access";
+import { getAnthropicClient } from "@/lib/anthropic";
 
 const EMAIL_AI_MODES = ["generate", "rewrite", "shorten", "lengthen", "tone", "subjectIdeas"] as const;
 export type EmailAiMode = (typeof EMAIL_AI_MODES)[number];
@@ -68,7 +68,7 @@ export async function assistEmailContent(input: {
   }
 
   try {
-    const client = new Anthropic();
+    const client = getAnthropicClient();
     const response = await client.messages.create({
       model: "claude-opus-5",
       max_tokens: 2048,

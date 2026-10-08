@@ -1,9 +1,9 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertCanManageSocialContentFor } from "@/lib/access";
+import { getAnthropicClient } from "@/lib/anthropic";
 
 type Platform = "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
 type ContentIntentionValue = "RECRUITING" | "MANDATSAKQUISE" | "BEIDE";
@@ -120,7 +120,7 @@ ${GERMAN_ONLY} Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (keine Mark
 [{"title": "...", "topic": "...", "format": "..."}]`;
 
     try {
-      const client = new Anthropic();
+      const client = getAnthropicClient();
       const response = await client.messages.create({
         model: "claude-opus-5",
         max_tokens: 4096,
@@ -222,7 +222,7 @@ Worum es gehen soll: ${post.topic}
 Aufgabe: Schreibe auf dieser Basis den fertigen, vollständigen Beitragstext gemäß der Format-Anleitung. ${GERMAN_ONLY} Gib NUR den fertigen Beitragstext zurück, ohne Anführungszeichen, Überschriften oder Erklärungen davor oder danach.`;
 
   try {
-    const client = new Anthropic();
+    const client = getAnthropicClient();
     const response = await client.messages.create({
       model: "claude-opus-5",
       max_tokens: 1536,
