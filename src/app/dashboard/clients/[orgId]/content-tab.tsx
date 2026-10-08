@@ -11,11 +11,13 @@ import { SocialCsvImportDialog } from "./social-csv-import-dialog";
 import { SocialAnalytics, type AnalyticsPost } from "./social-analytics";
 import { GenerateContentIdeasDialog } from "./generate-content-ideas-dialog";
 import { ContentFormatManager, type ContentFormatItem } from "./content-format-manager";
-import { ContentBrandDnaDialog } from "./content-brand-dna-dialog";
+import { ContentConfigPanel } from "./content-config-panel";
+import { type ContentReferenceDocItem } from "./content-reference-docs-list";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type Pipeline = { id: string; name: string };
 type AgencyUser = { id: string; name: string };
+type View = "board" | "calendar" | "community" | "analytics" | "config";
 
 export function ContentTab({
   organizationId,
@@ -27,10 +29,12 @@ export function ContentTab({
   analyticsPosts,
   contentFormats,
   contentBrandDna,
+  contentWebsiteUrl,
+  contentReferenceDocs,
+  clientContext = null,
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
-  showBrandDnaDialog = false,
 }: {
   organizationId: string;
   channels: Channel[];
@@ -41,20 +45,18 @@ export function ContentTab({
   analyticsPosts: AnalyticsPost[];
   contentFormats: ContentFormatItem[];
   contentBrandDna: string;
+  contentWebsiteUrl: string;
+  contentReferenceDocs: ContentReferenceDocItem[];
+  /** null im internen Marketing-Center, wo Recruiting/Mandatsakquise-Buchungen kein Konzept sind. */
+  clientContext?: { jobsBooked: boolean; leadsBooked: boolean } | null;
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
   /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
   canManageFormats?: boolean;
   /** false im internen Marketing-Center - dort lebt die Kanal-Verwaltung im Integrationen-Tab. */
   showChannelList?: boolean;
-  /**
-   * true im internen Marketing-Center, das keinen eigenen Einstellungen-Tab hat - zeigt dort
-   * die Marken-DNA als Dialog im Toolbar. Im Kundenbereich lebt sie stattdessen in den
-   * Kundeneinstellungen (settings-tab.tsx, Unterreiter "Kundenboard & Hub").
-   */
-  showBrandDnaDialog?: boolean;
 }) {
-  const [view, setView] = useState<"board" | "calendar" | "community" | "analytics">("board");
+  const [view, setView] = useState<View>("board");
   const commentInboxPosts: CommentInboxPost[] = posts.map((post) => ({
     id: post.id,
     platform: post.platform,
@@ -82,9 +84,11 @@ export function ContentTab({
           <Button type="button" size="sm" variant={view === "analytics" ? "default" : "outline"} onClick={() => setView("analytics")}>
             Analytics
           </Button>
+          <Button type="button" size="sm" variant={view === "config" ? "default" : "outline"} onClick={() => setView("config")}>
+            Konfiguration
+          </Button>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {showBrandDnaDialog && <ContentBrandDnaDialog organizationId={organizationId} value={contentBrandDna} />}
           {canManageFormats && <ContentFormatManager formats={contentFormats} />}
           <GenerateContentIdeasDialog organizationId={organizationId} formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))} />
           <SocialCsvImportDialog organizationId={organizationId} />
@@ -100,6 +104,15 @@ export function ContentTab({
       )}
       {view === "community" && <SocialCommentInbox organizationId={organizationId} posts={commentInboxPosts} comments={comments} />}
       {view === "analytics" && <SocialAnalytics posts={analyticsPosts} />}
+      {view === "config" && (
+        <ContentConfigPanel
+          organizationId={organizationId}
+          websiteUrl={contentWebsiteUrl}
+          brandDna={contentBrandDna}
+          referenceDocs={contentReferenceDocs}
+          clientContext={clientContext}
+        />
+      )}
     </div>
   );
 }

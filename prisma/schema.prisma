@@ -151,6 +151,10 @@ model Organization {
   // Stefan-Müller-Case. Frei formatierter Text statt mehrerer Einzelfelder,
   // um das Onboarding nicht zu überladen.
   contentBrandDna String?
+  // Webseite des Kunden für die KI-Ideen-Generierung - bewusst getrennt von
+  // companyWebsite (nur AGENCY-Organisation, Personal-Bereich) und
+  // landingPageUrl (Kunden-Hub-Kampagnenressource).
+  contentWebsiteUrl String?
 
   users                     User[]
   pipelines                 Pipeline[]
@@ -159,6 +163,7 @@ model Organization {
   metaLeadFormConnections   MetaLeadFormConnection[]
   socialChannels            SocialChannel[]
   socialPosts               SocialPost[]
+  contentReferenceDocs      ContentReferenceDoc[]
   whatsAppChannels          WhatsAppChannel[]
   auditLogs                 AuditLog[]
   messageTemplates          MessageTemplate[]
@@ -965,6 +970,23 @@ model ContentFormat {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Wachsende Liste von Referenzlinks pro Kunde (Kunden-Onboarding-Formular,
+// Stellen-Onboardings, Mandatsakquise-Briefings, Fireflies-Transkripte aus
+// Content-Interviews etc.) - v1 speichert bewusst nur den Link als
+// menschliche Referenz, kein automatisches Auslesen des Dokumentinhalts;
+// die eigentliche KI-Grundlage bleibt vorerst Organization.contentBrandDna.
+model ContentReferenceDoc {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  label          String
+  url            String
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
 }
 
 // A comment on a published SocialPost, synced from the platform (webhook

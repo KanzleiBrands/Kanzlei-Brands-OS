@@ -225,18 +225,23 @@ Aufgabe: Schreibe auf dieser Basis den fertigen, vollständigen Beitragstext gem
   }
 }
 
-export async function updateContentBrandDna(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
+/** Speichert Marken-DNA + Webseite zusammen - die "Firma"-Grundlagen im Konfiguration-Reiter des Content Boards. */
+export async function updateContentConfig(_prevState: string | undefined, formData: FormData): Promise<string | undefined> {
   const session = await requireSession();
   const organizationId = String(formData.get("organizationId") ?? "");
   if (!organizationId) return "Kunde ist erforderlich.";
   try {
     await assertCanManageSocialContentFor(session, organizationId);
   } catch {
-    return "Nur Agentur-Admins oder Marketing-Mitarbeiter können die Marken-DNA bearbeiten.";
+    return "Nur Agentur-Admins oder Marketing-Mitarbeiter können die Konfiguration bearbeiten.";
   }
 
   const contentBrandDna = String(formData.get("contentBrandDna") ?? "").trim();
-  await prisma.organization.update({ where: { id: organizationId }, data: { contentBrandDna: contentBrandDna || null } });
+  const contentWebsiteUrl = String(formData.get("contentWebsiteUrl") ?? "").trim();
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { contentBrandDna: contentBrandDna || null, contentWebsiteUrl: contentWebsiteUrl || null },
+  });
 
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${organizationId}`);

@@ -10,7 +10,7 @@ export default async function InternalSocialMediaPage() {
 
   const organizationId = session.user.organizationId;
 
-  const [channels, posts, comments, pipelines, agencyUsers, contentFormats, organization] = await Promise.all([
+  const [channels, posts, comments, pipelines, agencyUsers, contentFormats, organization, contentReferenceDocs] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
       where: { organizationId },
@@ -25,7 +25,8 @@ export default async function InternalSocialMediaPage() {
       orderBy: { name: "asc" },
     }),
     prisma.contentFormat.findMany({ orderBy: { name: "asc" } }),
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true } }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true, contentWebsiteUrl: true } }),
+    prisma.contentReferenceDoc.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
   ]);
 
   return (
@@ -45,9 +46,11 @@ export default async function InternalSocialMediaPage() {
       canManageChannels={session.user.role === "AGENCY_ADMIN"}
       canManageFormats={session.user.role === "AGENCY_ADMIN"}
       showChannelList={false}
-      showBrandDnaDialog={true}
       contentFormats={contentFormats}
       contentBrandDna={organization?.contentBrandDna ?? ""}
+      contentWebsiteUrl={organization?.contentWebsiteUrl ?? ""}
+      contentReferenceDocs={contentReferenceDocs}
+      clientContext={null}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,

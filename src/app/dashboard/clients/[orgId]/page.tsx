@@ -107,6 +107,10 @@ export default async function ClientDetailPage({
         })
       : [];
   const contentFormats = tab === "content" ? await prisma.contentFormat.findMany({ orderBy: { name: "asc" } }) : [];
+  const contentReferenceDocs =
+    tab === "content"
+      ? await prisma.contentReferenceDoc.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } })
+      : [];
   const socialComments =
     tab === "content"
       ? await prisma.socialComment.findMany({
@@ -316,7 +320,6 @@ export default async function ClientDetailPage({
           jobsBooked={jobsBooked}
           leadsBooked={leadsBooked}
           inviteReadiness={inviteReadiness}
-          contentBrandDna={organization.contentBrandDna ?? ""}
         />
       )}
 
@@ -328,6 +331,9 @@ export default async function ClientDetailPage({
           agencyUsers={agencyUsers}
           contentFormats={contentFormats}
           contentBrandDna={organization.contentBrandDna ?? ""}
+          contentWebsiteUrl={organization.contentWebsiteUrl ?? ""}
+          contentReferenceDocs={contentReferenceDocs}
+          clientContext={{ jobsBooked, leadsBooked }}
           posts={socialPosts.map((post) => ({
             id: post.id,
             platform: post.platform,
