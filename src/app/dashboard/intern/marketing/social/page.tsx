@@ -10,7 +10,7 @@ export default async function InternalSocialMediaPage() {
 
   const organizationId = session.user.organizationId;
 
-  const [channels, posts, comments, pipelines, agencyUsers, contentFormats, organization, contentReferenceDocs] = await Promise.all([
+  const [channels, posts, comments, agencyUsers, contentFormats, organization, contentReferenceDocs] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
       where: { organizationId },
@@ -18,7 +18,6 @@ export default async function InternalSocialMediaPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.socialComment.findMany({ where: { post: { organizationId } }, orderBy: { postedAt: "asc" } }),
-    prisma.pipeline.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.user.findMany({
       where: { organizationId, role: { in: ["AGENCY_ADMIN", "AGENCY_STAFF"] } },
       select: { id: true, name: true },
@@ -44,7 +43,6 @@ export default async function InternalSocialMediaPage() {
       <ContentTab
       organizationId={organizationId}
       channels={channels}
-      pipelines={pipelines}
       agencyUsers={agencyUsers}
       canManageChannels={session.user.role === "AGENCY_ADMIN"}
       canManageFormats={session.user.role === "AGENCY_ADMIN"}
@@ -64,12 +62,12 @@ export default async function InternalSocialMediaPage() {
         topic: post.topic,
         contentFormatId: post.contentFormatId,
         contentFormatName: post.contentFormat?.name ?? null,
+        format: post.format,
+        script: post.script,
         mediaUrl: post.mediaUrl,
         mediaUrls: post.mediaUrls,
         mediaType: post.mediaType,
-        utmCampaign: post.utmCampaign,
         channelId: post.channelId,
-        pipelineId: post.pipelineId,
         responsibleUserId: post.responsibleUserId,
         responsibleName: post.responsible?.name ?? null,
         scheduledAt: post.scheduledAt?.toISOString() ?? null,

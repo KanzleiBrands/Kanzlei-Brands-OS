@@ -28,7 +28,7 @@ async function publishOneSocialPost(post: PostWithChannel): Promise<{ success: b
     }
     const accessToken =
       post.platform === "LINKEDIN" ? await getValidLinkedInAccessToken(post.channel) : decryptToken(post.channel.accessTokenEnc);
-    const caption = appendUtmParams(post.caption, post.platform, post.utmCampaign);
+    const caption = appendUtmParams(post.caption, post.platform, post.id);
     const isCarousel = post.mediaType === "CAROUSEL" && post.mediaUrls.length > 0;
     let result: { id: string; permalink?: string };
 

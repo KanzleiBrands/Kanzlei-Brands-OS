@@ -6,7 +6,6 @@ import { SocialPostFormDialog } from "./social-post-form-dialog";
 import type { BoardPost } from "./social-post-board";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
-type Pipeline = { id: string; name: string };
 type AgencyUser = { id: string; name: string };
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -19,13 +18,11 @@ export function SocialPostCalendar({
   organizationId,
   posts,
   channels,
-  pipelines,
   agencyUsers,
 }: {
   organizationId: string;
   posts: BoardPost[];
   channels: Channel[];
-  pipelines: Pipeline[];
   agencyUsers: AgencyUser[];
 }) {
   const [cursor, setCursor] = useState(() => {
@@ -106,7 +103,6 @@ export function SocialPostCalendar({
                   key={post.id}
                   organizationId={organizationId}
                   channels={channels}
-                  pipelines={pipelines}
                   agencyUsers={agencyUsers}
                   post={post}
                   variant="calendarChip"

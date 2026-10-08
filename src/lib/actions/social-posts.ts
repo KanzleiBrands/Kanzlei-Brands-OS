@@ -53,6 +53,10 @@ function isValidPlatform(value: string): value is "FACEBOOK" | "INSTAGRAM" | "LI
   return value === "FACEBOOK" || value === "INSTAGRAM" || value === "LINKEDIN";
 }
 
+function isValidFormat(value: string): value is "REEL" | "IMAGE_POST" | "CAROUSEL" | "THOUGHT_LEADERSHIP" {
+  return value === "REEL" || value === "IMAGE_POST" || value === "CAROUSEL" || value === "THOUGHT_LEADERSHIP";
+}
+
 /** {platform, channelId}[] fürs gleichzeitige Anlegen eines Beitrags auf mehreren Plattformen (Beitrag-anlegen-Dialog). */
 function parseSelections(raw: FormDataEntryValue | null): { platform: string; channelId: string }[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -86,8 +90,9 @@ export async function createSocialPost(_prevState: string | undefined, formData:
   const mediaUrl = String(formData.get("mediaUrl") ?? "").trim();
   const mediaType = String(formData.get("mediaType") ?? "").trim();
   const mediaUrls = parseMediaUrls(formData.get("mediaUrls"));
-  const utmCampaign = String(formData.get("utmCampaign") ?? "").trim();
-  const pipelineId = String(formData.get("pipelineId") ?? "").trim();
+  const formatRaw = String(formData.get("format") ?? "").trim();
+  const format = isValidFormat(formatRaw) ? formatRaw : null;
+  const script = String(formData.get("script") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
   const publishNow = formData.get("publishNow") === "1";
   const scheduledAt = publishNow ? new Date() : parseScheduledAt(formData.get("scheduledAt"));
@@ -127,9 +132,9 @@ export async function createSocialPost(_prevState: string | undefined, formData:
           mediaUrl: mediaType === "CAROUSEL" ? null : mediaUrl || null,
           mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
           mediaType: isValidMediaType(mediaType) ? mediaType : null,
-          utmCampaign: utmCampaign || null,
+          format,
+          script: script || null,
           channelId: sel.channelId || null,
-          pipelineId: pipelineId || null,
           responsibleUserId: responsibleUserId || null,
           scheduledAt,
         },
@@ -159,17 +164,31 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
   const mediaUrl = String(formData.get("mediaUrl") ?? "").trim();
   const mediaType = String(formData.get("mediaType") ?? "").trim();
   const mediaUrls = parseMediaUrls(formData.get("mediaUrls"));
-  const utmCampaign = String(formData.get("utmCampaign") ?? "").trim();
+  const formatRaw = String(formData.get("format") ?? "").trim();
+  const format = isValidFormat(formatRaw) ? formatRaw : null;
+  const script = String(formData.get("script") ?? "").trim();
   const channelId = String(formData.get("channelId") ?? "").trim();
-  const pipelineId = String(formData.get("pipelineId") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
   const publishNow = formData.get("publishNow") === "1";
   const scheduledAt = publishNow ? new Date() : parseScheduledAt(formData.get("scheduledAt"));
+
+  // Zusätzlich beim Bearbeiten ausgewählte, neue Plattformen (siehe
+  // social-post-form-dialog.tsx) - legt dafür je einen neuen Beitrag an statt
+  // den bestehenden umzuwandeln, analog zu "selections" bei createSocialPost.
+  const extraSelections = parseSelections(formData.get("extraSelections"));
 
   if (platform !== "FACEBOOK" && platform !== "INSTAGRAM" && platform !== "LINKEDIN") return "Plattform ist erforderlich.";
   if (!caption) return "Text ist erforderlich.";
   if (mediaType === "CAROUSEL" && mediaUrls.length < 2) return "Karussell benötigt mindestens 2 Bilder.";
   if (publishNow && !channelId) return "Für sofortiges Veröffentlichen muss ein Kanal ausgewählt sein.";
+  const validExtraSelections: { platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; channelId: string }[] = [];
+  for (const sel of extraSelections) {
+    if (!isValidPlatform(sel.platform)) continue;
+    validExtraSelections.push({ platform: sel.platform, channelId: sel.channelId });
+  }
+  if (publishNow && validExtraSelections.some((sel) => !sel.channelId)) {
+    return "Für sofortiges Veröffentlichen muss für jede zusätzliche Plattform ein Kanal ausgewählt sein.";
+  }
 
   const post = await prisma.socialPost.findUnique({ where: { id: postId } });
   if (!post) return "Beitrag nicht gefunden.";
@@ -187,22 +206,43 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
       mediaUrl: mediaType === "CAROUSEL" ? null : mediaUrl || null,
       mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
       mediaType: isValidMediaType(mediaType) ? mediaType : null,
-      utmCampaign: utmCampaign || null,
+      format,
+      script: script || null,
       channelId: channelId || null,
-      pipelineId: pipelineId || null,
       responsibleUserId: responsibleUserId || null,
       scheduledAt,
     },
   });
+
+  const createdExtra = await Promise.all(
+    validExtraSelections.map((sel) =>
+      prisma.socialPost.create({
+        data: {
+          organizationId: post.organizationId,
+          platform: sel.platform,
+          caption,
+          mediaUrl: mediaType === "CAROUSEL" ? null : mediaUrl || null,
+          mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
+          mediaType: isValidMediaType(mediaType) ? mediaType : null,
+          format,
+          script: script || null,
+          channelId: sel.channelId || null,
+          responsibleUserId: responsibleUserId || null,
+          scheduledAt,
+        },
+      }),
+    ),
+  );
 
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${post.organizationId}`);
   revalidateInternalMarketing();
 
   if (publishNow) {
-    const result = await publishSocialPostById(postId);
-    if (!result.success) {
-      return `Beitrag gespeichert, aber Veröffentlichung fehlgeschlagen: ${result.error}`;
+    const results = await Promise.all([postId, ...createdExtra.map((p) => p.id)].map((id) => publishSocialPostById(id)));
+    const failures = results.filter((r) => !r.success);
+    if (failures.length > 0) {
+      return `Beitrag gespeichert, aber Veröffentlichung fehlgeschlagen: ${failures.map((f) => f.error).join("; ")}`;
     }
   }
 }
@@ -329,7 +369,7 @@ function parseCsvScheduledAt(raw: string): Date | null {
  * Columns (German or English header names, case-insensitive):
  * Plattform/Platform (required), Text/Caption (required), Bild-URL/MediaUrl
  * (optional, single image), Veröffentlichung/ScheduledAt (optional),
- * Kanal/Channel (optional - matched by display name), UTM-Kampagne (optional).
+ * Kanal/Channel (optional - matched by display name).
  * Imported posts always land as IDEA regardless of a given schedule date,
  * since a CSV row can't assign a connected channel by itself - the agency
  * reviews and schedules each one from the board after checking it over.
@@ -375,7 +415,6 @@ export async function importSocialPostsCsv(_prevState: string | undefined, formD
     const scheduledAt = parseCsvScheduledAt(
       normalized.scheduledat ?? normalized.veroeffentlichung ?? normalized.geplante_veroeffentlichung ?? normalized.datum ?? "",
     );
-    const utmCampaign = (normalized.utmcampaign ?? normalized.utm_campaign ?? normalized.utmkampagne ?? "").trim();
     const channelName = (normalized.channel ?? normalized.kanal ?? "").trim();
     const channel = channelName
       ? channels.find((c) => c.platform === platform && c.displayName.toLowerCase() === channelName.toLowerCase())
@@ -388,7 +427,6 @@ export async function importSocialPostsCsv(_prevState: string | undefined, formD
         caption,
         mediaUrl: mediaUrl || null,
         mediaType: mediaUrl ? "IMAGE" : null,
-        utmCampaign: utmCampaign || null,
         channelId: channel?.id ?? null,
         scheduledAt,
       },
@@ -397,7 +435,7 @@ export async function importSocialPostsCsv(_prevState: string | undefined, formD
   }
 
   if (imported === 0) {
-    return "Keine gültigen Zeilen gefunden. Spalten: Plattform, Text (Bild-URL, Veröffentlichung, Kanal, UTM-Kampagne optional).";
+    return "Keine gültigen Zeilen gefunden. Spalten: Plattform, Text (Bild-URL, Veröffentlichung, Kanal optional).";
   }
 
   await logAudit({

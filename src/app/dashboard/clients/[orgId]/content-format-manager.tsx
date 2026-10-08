@@ -15,7 +15,7 @@ export type ContentFormatItem = { id: string; name: string; description: string;
 function FormatForm({ format, onDone }: { format?: ContentFormatItem; onDone: () => void }) {
   const isEdit = !!format;
   const [error, formAction, isPending] = useActionState(isEdit ? updateContentFormat : createContentFormat, undefined);
-  useSaveToast(error, isPending, isEdit ? "Format gespeichert." : "Format angelegt.");
+  useSaveToast(error, isPending, isEdit ? "Copywriting-Framework gespeichert." : "Copywriting-Framework angelegt.");
   const wasPending = useRef(false);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export function ContentFormatManager({ formats }: { formats: ContentFormatItem[]
   function handleDelete(id: string) {
     if (
       !window.confirm(
-        "Format wirklich löschen? Beiträge, die dieses Format nutzen, behalten ihren Text, verlieren aber die Format-Zuordnung.",
+        "Copywriting-Framework wirklich löschen? Beiträge, die es nutzen, behalten ihren Text, verlieren aber die Zuordnung.",
       )
     )
       return;
@@ -84,14 +84,14 @@ export function ContentFormatManager({ formats }: { formats: ContentFormatItem[]
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button type="button" size="sm" variant="outline" />}>
         <Settings2Icon className="size-4" />
-        Formate verwalten
+        Copywriting-Frameworks verwalten
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Format-Bibliothek</DialogTitle>
+          <DialogTitle>Copywriting-Framework-Bibliothek</DialogTitle>
           <DialogDescription>
-            Agenturweite Copywriting-Formate für die KI-Ideen-Generierung - Anleitung und Beispiel steuern, wie die KI
-            Ideen und Texte in diesem Format erstellt.
+            Agenturweite Copywriting-Frameworks für die KI-Ideen-Generierung - Anleitung und Beispiel steuern, wie die
+            KI Ideen und Texte in diesem Framework erstellt.
           </DialogDescription>
         </DialogHeader>
 
@@ -99,7 +99,7 @@ export function ContentFormatManager({ formats }: { formats: ContentFormatItem[]
           <div className="flex flex-col gap-2">
             <Button type="button" size="sm" onClick={() => setMode({ kind: "create" })}>
               <PlusIcon className="size-4" />
-              Neues Format
+              Neues Copywriting-Framework
             </Button>
             <div className="flex flex-col gap-1.5">
               {formats.map((f) => (
@@ -124,7 +124,7 @@ export function ContentFormatManager({ formats }: { formats: ContentFormatItem[]
                   </button>
                 </div>
               ))}
-              {formats.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Formate angelegt.</p>}
+              {formats.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Copywriting-Frameworks angelegt.</p>}
             </div>
           </div>
         )}

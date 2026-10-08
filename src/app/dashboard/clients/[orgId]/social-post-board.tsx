@@ -19,7 +19,6 @@ import { PlatformIcon } from "@/components/platform-icon";
 import { SocialPostFormDialog, type SocialPostData, type SocialPostStatus } from "./social-post-form-dialog";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
-type Pipeline = { id: string; name: string };
 type AgencyUser = { id: string; name: string };
 
 export type BoardPost = SocialPostData & {
@@ -44,11 +43,10 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
+function PostCard({ post, organizationId, channels, agencyUsers }: {
   post: BoardPost;
   organizationId: string;
   channels: Channel[];
-  pipelines: Pipeline[];
   agencyUsers: AgencyUser[];
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: post.id });
@@ -141,7 +139,7 @@ function PostCard({ post, organizationId, channels, pipelines, agencyUsers }: {
           </span>
         )}
         <div className="ml-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
-          <SocialPostFormDialog organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} post={post} />
+          <SocialPostFormDialog organizationId={organizationId} channels={channels} agencyUsers={agencyUsers} post={post} />
           <button
             type="button"
             aria-label="Löschen"
@@ -188,13 +186,11 @@ export function SocialPostBoard({
   organizationId,
   posts,
   channels,
-  pipelines,
   agencyUsers,
 }: {
   organizationId: string;
   posts: BoardPost[];
   channels: Channel[];
-  pipelines: Pipeline[];
   agencyUsers: AgencyUser[];
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -230,7 +226,7 @@ export function SocialPostBoard({
             {posts
               .filter((p) => p.status === col.status)
               .map((post) => (
-                <PostCard key={post.id} post={post} organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
+                <PostCard key={post.id} post={post} organizationId={organizationId} channels={channels} agencyUsers={agencyUsers} />
               ))}
           </Column>
         ))}

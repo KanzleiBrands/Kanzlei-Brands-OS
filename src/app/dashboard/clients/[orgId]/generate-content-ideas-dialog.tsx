@@ -81,8 +81,8 @@ export function GenerateContentIdeasDialog({
         <DialogHeader>
           <DialogTitle>Post-Ideen mit KI generieren</DialogTitle>
           <DialogDescription>
-            Aus einem Transkript, Notizen oder Stichpunkten entstehen Post-Ideen je Format - Volltext wird danach pro
-            Idee einzeln erstellt, damit du vorher aussortieren kannst.
+            Aus einem Transkript, Notizen oder Stichpunkten entstehen Post-Ideen je Copywriting-Framework - Volltext
+            wird danach pro Idee einzeln erstellt, damit du vorher aussortieren kannst.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,10 +113,10 @@ export function GenerateContentIdeasDialog({
           </div>
 
           <div className="flex flex-col gap-1">
-            <Label>Format(e)</Label>
+            <Label>Copywriting-Framework(s)</Label>
             {formats.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Noch keine Formate angelegt - unter &bdquo;Formate verwalten&ldquo; mindestens eines anlegen.
+                Noch keine Copywriting-Frameworks angelegt - unter &bdquo;Copywriting-Frameworks verwalten&ldquo; mindestens eines anlegen.
               </p>
             ) : (
               <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border p-2">

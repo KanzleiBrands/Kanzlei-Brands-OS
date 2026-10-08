@@ -328,7 +328,6 @@ export default async function ClientDetailPage({
         <ContentTab
           organizationId={organization.id}
           channels={socialChannels}
-          pipelines={organization.pipelines.map((p) => ({ id: p.id, name: p.name }))}
           agencyUsers={agencyUsers}
           contentFormats={contentFormats}
           contentBrandDna={organization.contentBrandDna ?? ""}
@@ -345,12 +344,12 @@ export default async function ClientDetailPage({
             topic: post.topic,
             contentFormatId: post.contentFormatId,
             contentFormatName: post.contentFormat?.name ?? null,
+            format: post.format,
+            script: post.script,
             mediaUrl: post.mediaUrl,
             mediaUrls: post.mediaUrls,
             mediaType: post.mediaType,
-            utmCampaign: post.utmCampaign,
             channelId: post.channelId,
-            pipelineId: post.pipelineId,
             responsibleUserId: post.responsibleUserId,
             responsibleName: post.responsible?.name ?? null,
             scheduledAt: post.scheduledAt?.toISOString() ?? null,

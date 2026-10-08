@@ -29,7 +29,6 @@ import { useSaveToast } from "@/hooks/use-save-toast";
 import { AiCaptionAssistant } from "./ai-caption-assistant";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
-type Pipeline = { id: string; name: string };
 type AgencyUser = { id: string; name: string };
 
 export type SocialPostStatus =
@@ -43,6 +42,27 @@ export type SocialPostStatus =
 
 export type SocialMediaTypeValue = "IMAGE" | "VIDEO" | "CAROUSEL";
 
+const FORMAT_OPTIONS = [
+  { value: "REEL", label: "Reel" },
+  { value: "IMAGE_POST", label: "Bild-Post" },
+  { value: "CAROUSEL", label: "Karussell" },
+  { value: "THOUGHT_LEADERSHIP", label: "Thought Leadership" },
+] as const;
+export type SocialPostFormatValue = (typeof FORMAT_OPTIONS)[number]["value"];
+
+/** Welches Format auf welcher Plattform überwiegend Sinn ergibt - nur eine Empfehlung, keine Einschränkung. */
+const PLATFORM_FORMAT_HINT: Record<Channel["platform"], string> = {
+  INSTAGRAM: "Instagram: meist Reel",
+  FACEBOOK: "Facebook: meist Reel",
+  LINKEDIN: "LinkedIn: meist Thought Leadership",
+};
+
+const PLATFORM_FORMAT_DEFAULT: Record<Channel["platform"], SocialPostFormatValue> = {
+  INSTAGRAM: "REEL",
+  FACEBOOK: "REEL",
+  LINKEDIN: "THOUGHT_LEADERSHIP",
+};
+
 export type SocialPostData = {
   id: string;
   platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
@@ -51,17 +71,33 @@ export type SocialPostData = {
   title: string | null;
   topic: string | null;
   contentFormatName: string | null;
+  format: SocialPostFormatValue | null;
+  script: string | null;
   mediaUrl: string | null;
   mediaUrls: string[];
   mediaType: SocialMediaTypeValue | null;
-  utmCampaign: string | null;
   channelId: string | null;
-  pipelineId: string | null;
   responsibleUserId: string | null;
   scheduledAt: string | null; // ISO
   publishedAt: string | null; // ISO
   publishedUrl: string | null;
 };
+
+/**
+ * Leitet für einen bestehenden Beitrag ohne gespeichertes Format (ältere
+ * Beiträge, oder von der KI-Ideen-Generierung angelegte Entwürfe) eine
+ * plausible Vorbelegung aus dem bereits hochgeladenen Medientyp ab - ohne
+ * Daten zu verändern. Ein Beitrag ganz ohne Medium bleibt bewusst ohne
+ * Format-Vorschlag, statt zu raten.
+ */
+function inferFormat(post: SocialPostData | undefined): SocialPostFormatValue | "" {
+  if (!post) return "";
+  if (post.format) return post.format;
+  if (post.mediaType === "IMAGE") return "IMAGE_POST";
+  if (post.mediaType === "CAROUSEL") return "CAROUSEL";
+  if (post.mediaType === "VIDEO") return "REEL";
+  return "";
+}
 
 function newId() {
   return Math.random().toString(36).slice(2, 10);
@@ -73,11 +109,9 @@ const IMAGE_ASPECTS = [
 ] as const;
 type ImageAspect = (typeof IMAGE_ASPECTS)[number]["value"];
 
-const VIDEO_ASPECTS = [
-  { value: "16:9", label: "16:9 (Feed-Video)", ratio: 16 / 9 },
-  { value: "9:16", label: "9:16 (Reel / Story)", ratio: 9 / 16 },
-] as const;
-type VideoAspect = (typeof VIDEO_ASPECTS)[number]["value"];
+// Reels sind immer Hochformat - anders als beim alten generischen "Video"
+// gibt es hier keine Auswahl mehr (siehe SocialPostFormatValue).
+const REEL_ASPECT_RATIO = 9 / 16;
 
 const ASPECT_TOLERANCE = 0.04;
 
@@ -195,14 +229,12 @@ function localDatetimeToIso(local: string): string {
 export function SocialPostFormDialog({
   organizationId,
   channels,
-  pipelines,
   agencyUsers,
   post,
   variant = "default",
 }: {
   organizationId: string;
   channels: Channel[];
-  pipelines: Pipeline[];
   agencyUsers: AgencyUser[];
   post?: SocialPostData;
   /** "calendarChip" renders the trigger as a small platform-icon + caption chip for the calendar view, instead of the default edit-pencil/create-button. */
@@ -215,19 +247,24 @@ export function SocialPostFormDialog({
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
-  // Edit-Modus: ein Beitrag bleibt bei genau einer Plattform/Kanal (nachträglich
-  // die Plattform wechseln würde einen anderen Beitrag daraus machen).
-  const [platform, setPlatform] = useState<Channel["platform"]>(post?.platform ?? "FACEBOOK");
-  const [channelId, setChannelId] = useState(post?.channelId ?? "");
-  // Create-Modus: mehrere Plattformen gleichzeitig auswählbar, ein Kanal pro
-  // ausgewählter Plattform - legt beim Absenden einen Beitrag pro Plattform an.
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Channel["platform"][]>(["FACEBOOK"]);
-  const [channelByPlatform, setChannelByPlatform] = useState<Record<string, string>>({});
+  // Mehrere Plattformen gleichzeitig auswählbar - sowohl beim Anlegen als auch
+  // beim Bearbeiten (ein bestehender Beitrag kann nachträglich auf weitere
+  // Plattformen ausgeweitet werden). Die ursprüngliche Plattform eines
+  // bearbeiteten Beitrags bleibt dabei fix (siehe togglePlatform) - für sie
+  // wird der bestehende Beitrag aktualisiert, für jede zusätzlich gewählte
+  // Plattform legt die Server Action einen neuen Beitrag an.
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Channel["platform"][]>(post ? [post.platform] : ["FACEBOOK"]);
+  const [channelByPlatform, setChannelByPlatform] = useState<Record<string, string>>(
+    post ? { [post.platform]: post.channelId ?? "" } : {},
+  );
+  const [format, setFormat] = useState<SocialPostFormatValue | "">(
+    isEdit ? inferFormat(post) : PLATFORM_FORMAT_DEFAULT[selectedPlatforms[0]],
+  );
+  const [script, setScript] = useState(post?.script ?? "");
   const [caption, setCaption] = useState(post?.caption ?? "");
   const [mediaUrl, setMediaUrl] = useState(post?.mediaUrl ?? "");
   const [mediaType, setMediaType] = useState<SocialMediaTypeValue | "">(post?.mediaType ?? "");
   const [imageAspect, setImageAspect] = useState<ImageAspect>("1:1");
-  const [videoAspect, setVideoAspect] = useState<VideoAspect>("16:9");
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaProgress, setMediaProgress] = useState(0);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -240,8 +277,6 @@ export function SocialPostFormDialog({
   const carouselSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const [isGeneratingText, startGenerateTextTransition] = useTransition();
   const [generateTextError, setGenerateTextError] = useState<string | null>(null);
-
-  const channelsForPlatform = channels.filter((c) => c.platform === platform);
 
   function handleGenerateText() {
     if (!post) return;
@@ -265,6 +300,27 @@ export function SocialPostFormDialog({
     wasPending.current = isPending;
   }, [isPending, error]);
 
+  // Das Format bestimmt den Medientyp - beim Wechseln also konsistent nach-
+  // ziehen. Löst für bereits geladene Daten eines bestehenden Beitrags nichts
+  // aus, weil der Medientyp dann schon zum (ggf. hergeleiteten) Format passt.
+  function selectFormat(next: SocialPostFormatValue) {
+    setFormat(next);
+    if (next === "REEL") {
+      setMediaType("VIDEO");
+      setCarousel([]);
+    } else if (next === "IMAGE_POST") {
+      setMediaType("IMAGE");
+      setCarousel([]);
+    } else if (next === "CAROUSEL") {
+      setMediaType("CAROUSEL");
+      setMediaUrl("");
+    } else if (next === "THOUGHT_LEADERSHIP") {
+      setMediaType("");
+      setMediaUrl("");
+      setCarousel([]);
+    }
+  }
+
   function togglePlatform(p: Channel["platform"]) {
     setSelectedPlatforms((prev) => {
       if (prev.includes(p)) {
@@ -285,13 +341,12 @@ export function SocialPostFormDialog({
       setMediaUrl("");
       setMediaType("");
       setImageAspect("1:1");
-      setVideoAspect("16:9");
       setMediaError(null);
       setCarousel([]);
-      setChannelId("");
-      setPlatform("FACEBOOK");
       setSelectedPlatforms(["FACEBOOK"]);
       setChannelByPlatform({});
+      setFormat(PLATFORM_FORMAT_DEFAULT.FACEBOOK);
+      setScript("");
       setPublishNow(false);
       setScheduledAtLocal("");
     }
@@ -370,13 +425,10 @@ export function SocialPostFormDialog({
   async function handleVideoFile(file: File | undefined) {
     if (!file) return;
     setMediaError(null);
-    const target = VIDEO_ASPECTS.find((a) => a.value === videoAspect)!;
     try {
       const { width, height } = await readVideoDimensions(file);
-      if (!matchesAspect(width, height, target.ratio)) {
-        setMediaError(
-          `Video hat ${width}×${height}px - erwartet wird ${target.label}. Bitte im gewählten Format zuschneiden und erneut hochladen.`,
-        );
+      if (!matchesAspect(width, height, REEL_ASPECT_RATIO)) {
+        setMediaError(`Video hat ${width}×${height}px - Reels brauchen ein Hochformat-Video (9:16). Bitte zuschneiden und erneut hochladen.`);
         return;
       }
     } catch {
@@ -444,7 +496,19 @@ export function SocialPostFormDialog({
         <form ref={formRef} action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="organizationId" value={organizationId} />
           {isEdit && <input type="hidden" name="postId" value={post.id} />}
-          {isEdit && <input type="hidden" name="platform" value={platform} />}
+          {isEdit && <input type="hidden" name="platform" value={post.platform} />}
+          {isEdit && <input type="hidden" name="channelId" value={channelByPlatform[post.platform] ?? ""} />}
+          {isEdit && (
+            <input
+              type="hidden"
+              name="extraSelections"
+              value={JSON.stringify(
+                selectedPlatforms
+                  .filter((p) => p !== post.platform)
+                  .map((p) => ({ platform: p, channelId: channelByPlatform[p] ?? "" })),
+              )}
+            />
+          )}
           {!isEdit && (
             <input
               type="hidden"
@@ -455,37 +519,48 @@ export function SocialPostFormDialog({
           <input type="hidden" name="mediaUrl" value={mediaUrl} />
           <input type="hidden" name="mediaType" value={mediaType} />
           <input type="hidden" name="mediaUrls" value={JSON.stringify(carousel.map((c) => c.url))} />
+          <input type="hidden" name="format" value={format} />
+          <input type="hidden" name="script" value={format === "REEL" ? script : ""} />
 
-          {isEdit ? (
-            <>
-              <div className="flex flex-col gap-1">
-                <Label>Plattform</Label>
-                <div className="flex gap-1.5">
-                  {(["FACEBOOK", "INSTAGRAM", "LINKEDIN"] as const).map((p) => (
-                    <Button
-                      key={p}
-                      type="button"
-                      size="sm"
-                      variant={platform === p ? "default" : "outline"}
-                      onClick={() => {
-                        setPlatform(p);
-                        setChannelId("");
-                      }}
-                    >
-                      {PLATFORM_LABELS[p]}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+          <div className="flex flex-col gap-1">
+            <Label>Plattform{selectedPlatforms.length > 1 || !isEdit ? " (mehrere gleichzeitig möglich)" : ""}</Label>
+            <div className="flex gap-1.5">
+              {(["FACEBOOK", "INSTAGRAM", "LINKEDIN"] as const).map((p) => (
+                <Button
+                  key={p}
+                  type="button"
+                  size="sm"
+                  variant={selectedPlatforms.includes(p) ? "default" : "outline"}
+                  disabled={isEdit && p === post.platform}
+                  onClick={() => togglePlatform(p)}
+                >
+                  {PLATFORM_LABELS[p]}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isEdit
+                ? `${PLATFORM_LABELS[post.platform]} ist die Plattform dieses Beitrags - zusätzliche Plattformen auswählen, um denselben Beitrag auch dort anzulegen.`
+                : "Legt beim Speichern einen Beitrag pro ausgewählter Plattform an (gleicher Text/Medien/Termin)."}
+            </p>
+          </div>
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="social-post-channel">Kanal</Label>
-                <Select name="channelId" value={channelId} onValueChange={(value) => setChannelId(value ?? "")}>
-                  <SelectTrigger id="social-post-channel">
-                    <SelectValue>{() => channelsForPlatform.find((c) => c.id === channelId)?.displayName ?? "Kanal wählen"}</SelectValue>
+          {selectedPlatforms.map((p) => {
+            const channelsForP = channels.filter((c) => c.platform === p);
+            return (
+              <div key={p} className="flex flex-col gap-1">
+                <Label>Kanal ({PLATFORM_LABELS[p]})</Label>
+                <Select
+                  value={channelByPlatform[p] ?? ""}
+                  onValueChange={(value) => setChannelByPlatform((prev) => ({ ...prev, [p]: value ?? "" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {() => channelsForP.find((c) => c.id === channelByPlatform[p])?.displayName ?? "Kanal wählen"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {channelsForPlatform.map((c) => (
+                    {channelsForP.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.displayName}
                         {!c.active ? " (Verbindung abgelaufen)" : ""}
@@ -493,73 +568,39 @@ export function SocialPostFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {channelsForPlatform.length === 0 && (
+                {channelsForP.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Noch kein {PLATFORM_LABELS[platform]}-Kanal verbunden - unten unter &bdquo;Kanäle&ldquo; verbinden.
+                    Noch kein {PLATFORM_LABELS[p]}-Kanal verbunden - unten unter &bdquo;Kanäle&ldquo; verbinden.
                   </p>
                 )}
               </div>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col gap-1">
-                <Label>Plattform (mehrere gleichzeitig möglich)</Label>
-                <div className="flex gap-1.5">
-                  {(["FACEBOOK", "INSTAGRAM", "LINKEDIN"] as const).map((p) => (
-                    <Button
-                      key={p}
-                      type="button"
-                      size="sm"
-                      variant={selectedPlatforms.includes(p) ? "default" : "outline"}
-                      onClick={() => togglePlatform(p)}
-                    >
-                      {PLATFORM_LABELS[p]}
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Legt beim Speichern einen Beitrag pro ausgewählter Plattform an (gleicher Text/Medien/Termin).
-                </p>
-              </div>
+            );
+          })}
 
-              {selectedPlatforms.map((p) => {
-                const channelsForP = channels.filter((c) => c.platform === p);
-                return (
-                  <div key={p} className="flex flex-col gap-1">
-                    <Label>Kanal ({PLATFORM_LABELS[p]})</Label>
-                    <Select
-                      value={channelByPlatform[p] ?? ""}
-                      onValueChange={(value) => setChannelByPlatform((prev) => ({ ...prev, [p]: value ?? "" }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue>
-                          {() => channelsForP.find((c) => c.id === channelByPlatform[p])?.displayName ?? "Kanal wählen"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {channelsForP.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.displayName}
-                            {!c.active ? " (Verbindung abgelaufen)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {channelsForP.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Noch kein {PLATFORM_LABELS[p]}-Kanal verbunden - unten unter &bdquo;Kanäle&ldquo; verbinden.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </>
-          )}
+          <div className="flex flex-col gap-1">
+            <Label>Format</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {FORMAT_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={format === option.value ? "default" : "outline"}
+                  onClick={() => selectFormat(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{selectedPlatforms.map((p) => PLATFORM_FORMAT_HINT[p]).join(" · ")}</p>
+          </div>
 
           {isEdit && post.title && (
             <div className="flex flex-col gap-0.5 rounded-md border bg-muted/40 p-2 text-sm">
               <p className="font-medium">{post.title}</p>
-              {post.contentFormatName && <p className="text-xs text-muted-foreground">Format: {post.contentFormatName}</p>}
+              {post.contentFormatName && (
+                <p className="text-xs text-muted-foreground">Copywriting-Framework: {post.contentFormatName}</p>
+              )}
               {post.topic && <p className="mt-1 text-xs text-muted-foreground">{post.topic}</p>}
             </div>
           )}
@@ -574,62 +615,34 @@ export function SocialPostFormDialog({
             </div>
           )}
 
-          <Textarea
-            name="caption"
-            placeholder="Text / Caption"
-            rows={4}
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            required
-          />
-          <AiCaptionAssistant caption={caption} platform={isEdit ? platform : selectedPlatforms[0]} onInsert={(text) => setCaption(text)} />
-
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="social-post-utm">UTM-Kampagne (optional)</Label>
-            <Input
-              id="social-post-utm"
-              name="utmCampaign"
-              placeholder="z.B. fruehjahrsverkauf_2026"
-              defaultValue={post?.utmCampaign ?? ""}
-            />
-            <p className="text-xs text-muted-foreground">
-              Wird an jeden Link in der Caption angehängt (utm_source=
-              {PLATFORM_LABELS[isEdit ? platform : selectedPlatforms[0]].toLowerCase()}, utm_medium=social).
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <Label>Format</Label>
-            <div className="flex gap-1.5">
-              {(
-                [
-                  { value: "IMAGE", label: "Bild" },
-                  { value: "VIDEO", label: "Video" },
-                  { value: "CAROUSEL", label: "Karussell" },
-                ] as const
-              ).map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={mediaType === option.value ? "default" : "outline"}
-                  onClick={() => {
-                    setMediaType(option.value);
-                    setMediaError(null);
-                    if (option.value === "CAROUSEL") {
-                      setMediaUrl("");
-                    } else {
-                      setCarousel([]);
-                    }
-                  }}
-                >
-                  {option.label}
-                </Button>
-              ))}
+          {format === "REEL" && (
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="social-post-script">Skript (Reel)</Label>
+              <Textarea
+                id="social-post-script"
+                rows={5}
+                placeholder="Szene für Szene: was ist zu sehen, was wird gesagt/eingeblendet..."
+                value={script}
+                onChange={(e) => setScript(e.target.value)}
+              />
             </div>
-          </div>
+          )}
 
-          {(mediaType === "IMAGE" || mediaType === "CAROUSEL") && (
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="social-post-caption">{format === "REEL" ? "Hook / Kurz-Caption" : "Beitragstext"}</Label>
+            <Textarea
+              id="social-post-caption"
+              name="caption"
+              placeholder={format === "REEL" ? "Kurze, starke Hook zum Reel-Inhalt - kein langer Text" : "Text / Caption"}
+              rows={format === "REEL" ? 2 : format === "THOUGHT_LEADERSHIP" ? 8 : 4}
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              required
+            />
+          </div>
+          <AiCaptionAssistant caption={caption} platform={selectedPlatforms[0]} onInsert={(text) => setCaption(text)} />
+
+          {(format === "IMAGE_POST" || format === "CAROUSEL") && (
             <div className="flex flex-col gap-1">
               <Label>Seitenverhältnis</Label>
               <div className="flex gap-1.5">
@@ -648,27 +661,7 @@ export function SocialPostFormDialog({
             </div>
           )}
 
-          {mediaType === "VIDEO" && (
-            <div className="flex flex-col gap-1">
-              <Label>Seitenverhältnis</Label>
-              <div className="flex gap-1.5">
-                {VIDEO_ASPECTS.map((a) => (
-                  <Button
-                    key={a.value}
-                    type="button"
-                    size="sm"
-                    variant={videoAspect === a.value ? "default" : "outline"}
-                    onClick={() => setVideoAspect(a.value)}
-                  >
-                    {a.label}
-                  </Button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">Reels/Stories im Hochformat (9:16), normale Feed-Videos im 16:9-Format.</p>
-            </div>
-          )}
-
-          {mediaType === "CAROUSEL" ? (
+          {format === "CAROUSEL" && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <Label>Karussell-Bilder (2-10)</Label>
@@ -702,53 +695,58 @@ export function SocialPostFormDialog({
               )}
               {mediaError && <p className="text-xs text-destructive">{mediaError}</p>}
             </div>
-          ) : (
+          )}
+
+          {(format === "IMAGE_POST" || format === "REEL") && (
             <div className="flex flex-col gap-1.5">
-            {mediaUploading ? (
-              <div className="rounded-md border p-3">
-                <div className="mb-1.5 flex items-center gap-2 text-sm">
-                  <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" />
-                  <span>Wird hochgeladen...</span>
-                  {mediaProgress > 0 && <span className="ml-auto font-medium">{mediaProgress}%</span>}
+              {mediaUploading ? (
+                <div className="rounded-md border p-3">
+                  <div className="mb-1.5 flex items-center gap-2 text-sm">
+                    <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" />
+                    <span>Wird hochgeladen...</span>
+                    {mediaProgress > 0 && <span className="ml-auto font-medium">{mediaProgress}%</span>}
+                  </div>
                 </div>
-              </div>
-            ) : mediaUrl ? (
-              <div className="flex flex-col gap-2">
-                <div className="overflow-hidden rounded-lg border bg-black" style={{ aspectRatio: "16 / 9" }}>
-                  {mediaType === "VIDEO" ? (
-                    <video src={mediaUrl} controls className="size-full object-contain" />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={mediaUrl} alt="" className="size-full object-contain" />
+              ) : mediaUrl ? (
+                <div className="flex flex-col gap-2">
+                  <div className="overflow-hidden rounded-lg border bg-black" style={{ aspectRatio: "16 / 9" }}>
+                    {mediaType === "VIDEO" ? (
+                      <video src={mediaUrl} controls className="size-full object-contain" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={mediaUrl} alt="" className="size-full object-contain" />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMediaUrl("");
+                    }}
+                    className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    <XIcon className="size-3.5" />
+                    Entfernen
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {format === "IMAGE_POST" && (
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                      <ImageIcon className="size-4" />
+                      Bild auswählen
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageFile(e.target.files?.[0])} />
+                    </label>
+                  )}
+                  {format === "REEL" && (
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                      <UploadCloudIcon className="size-4" />
+                      Video auswählen (Hochformat 9:16)
+                      <input type="file" accept="video/*" className="hidden" onChange={(e) => handleVideoFile(e.target.files?.[0])} />
+                    </label>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMediaUrl("");
-                    setMediaType("");
-                  }}
-                  className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-                >
-                  <XIcon className="size-3.5" />
-                  Entfernen
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-                  <ImageIcon className="size-4" />
-                  Bild auswählen
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageFile(e.target.files?.[0])} />
-                </label>
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-                  <UploadCloudIcon className="size-4" />
-                  Video auswählen
-                  <input type="file" accept="video/*" className="hidden" onChange={(e) => handleVideoFile(e.target.files?.[0])} />
-                </label>
-              </div>
-            )}
-            {mediaError && <p className="text-xs text-destructive">{mediaError}</p>}
+              )}
+              {mediaError && <p className="text-xs text-destructive">{mediaError}</p>}
             </div>
           )}
 
@@ -779,25 +777,6 @@ export function SocialPostFormDialog({
               </p>
             )}
           </div>
-
-          {pipelines.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="social-post-pipeline">Kampagne (optional)</Label>
-              <Select name="pipelineId" defaultValue={post?.pipelineId ?? ""}>
-                <SelectTrigger id="social-post-pipeline">
-                  <SelectValue>{(value: string) => pipelines.find((p) => p.id === value)?.name ?? "Keine"}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Keine</SelectItem>
-                  {pipelines.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           {agencyUsers.length > 0 && (
             <div className="flex flex-col gap-1">

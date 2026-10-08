@@ -386,7 +386,6 @@ model Pipeline {
   webhookEndpoints        WebhookEndpoint[]
   metaLeadFormConnections MetaLeadFormConnection[]
   automationRules         AutomationRule[]
-  socialPosts             SocialPost[]
   jobPosting              JobPosting?
   nurtureFunnels          NurtureFunnel[]
 
@@ -899,6 +898,19 @@ enum ContentIntention {
   BEIDE
 }
 
+// Die inhaltliche Post-Art, unabhängig vom Copywriting-Framework (ContentFormat)
+// und vom hochgeladenen Medientyp (SocialMediaType) - bestimmt z.B. ob ein
+// Skript-Feld (Reel) nötig ist und ob die Caption eine kurze Hook oder ein
+// langer Thought-Leadership-Text sein soll. Named "Format" in der UI (siehe
+// social-post-form-dialog.tsx), bewusst anders benannt im Schema, weil
+// ContentFormat den Begriff "Format" bereits für das Copywriting-Framework belegt.
+enum SocialPostFormat {
+  REEL
+  IMAGE_POST
+  CAROUSEL
+  THOUGHT_LEADERSHIP
+}
+
 // One social media post through its whole lifecycle: idea -> production ->
 // client approval -> scheduled -> actually published by the platform adapter
 // (src/lib/social/publish.ts). Replaces the SocialPilot planning workflow
@@ -922,6 +934,14 @@ model SocialPost {
   contentFormatId String?
   contentFormat   ContentFormat? @relation(fields: [contentFormatId], references: [id], onDelete: SetNull)
 
+  // Die inhaltliche Post-Art (Reel/Bild/Karussell/Thought-Leadership) - siehe
+  // SocialPostFormat. Null bei älteren Beiträgen und von der KI-Ideen-Generierung
+  // angelegten Entwürfen, die noch keine Format-Entscheidung haben.
+  format SocialPostFormat?
+  // Nur bei format=REEL: das Skript/Storyboard für das Reel, getrennt von der
+  // kurzen Hook-Caption.
+  script String?
+
   scheduledAt    DateTime?
   publishedAt    DateTime?
   publishedUrl   String?
@@ -931,11 +951,6 @@ model SocialPost {
   // Vom Kunden bei "Änderung wünschen" hinterlassener Wunsch - für die
   // Agentur sichtbar, bis der Beitrag erneut zur Freigabe eingereicht wird.
   clientFeedback String?
-
-  // An jeden Link in der Caption angehängt (utm_source/utm_medium werden aus
-  // der Plattform abgeleitet, nur die Kampagne ist frei wählbar) - siehe
-  // src/lib/social/utm.ts.
-  utmCampaign String?
 
   // Von Meta abgerufene Leistungskennzahlen (src/lib/social/insights-sync.ts) -
   // aktueller Stand, keine Historie. null bis zum ersten Sync nach Veröffentlichung.
@@ -952,9 +967,6 @@ model SocialPost {
 
   channelId String?
   channel   SocialChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
-
-  pipelineId String?
-  pipeline   Pipeline? @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
 
   responsibleUserId String?
   responsible       User?   @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)

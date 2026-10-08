@@ -16,7 +16,6 @@ import { type ContentIntentionValue } from "./content-config-form";
 import { type ContentReferenceDocItem } from "./content-reference-docs-list";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
-type Pipeline = { id: string; name: string };
 type AgencyUser = { id: string; name: string };
 type View = "board" | "calendar" | "community" | "analytics" | "config";
 
@@ -24,7 +23,6 @@ export function ContentTab({
   organizationId,
   channels,
   posts,
-  pipelines,
   agencyUsers,
   comments,
   analyticsPosts,
@@ -41,7 +39,6 @@ export function ContentTab({
   organizationId: string;
   channels: Channel[];
   posts: BoardPost[];
-  pipelines: Pipeline[];
   agencyUsers: AgencyUser[];
   comments: CommentInboxComment[];
   analyticsPosts: AnalyticsPost[];
@@ -95,15 +92,15 @@ export function ContentTab({
           {canManageFormats && <ContentFormatManager formats={contentFormats} />}
           <GenerateContentIdeasDialog organizationId={organizationId} formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))} />
           <SocialCsvImportDialog organizationId={organizationId} />
-          <SocialPostFormDialog organizationId={organizationId} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
+          <SocialPostFormDialog organizationId={organizationId} channels={channels} agencyUsers={agencyUsers} />
         </div>
       </div>
 
       {view === "board" && (
-        <SocialPostBoard organizationId={organizationId} posts={posts} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
+        <SocialPostBoard organizationId={organizationId} posts={posts} channels={channels} agencyUsers={agencyUsers} />
       )}
       {view === "calendar" && (
-        <SocialPostCalendar organizationId={organizationId} posts={posts} channels={channels} pipelines={pipelines} agencyUsers={agencyUsers} />
+        <SocialPostCalendar organizationId={organizationId} posts={posts} channels={channels} agencyUsers={agencyUsers} />
       )}
       {view === "community" && <SocialCommentInbox organizationId={organizationId} posts={commentInboxPosts} comments={comments} />}
       {view === "analytics" && <SocialAnalytics posts={analyticsPosts} />}
