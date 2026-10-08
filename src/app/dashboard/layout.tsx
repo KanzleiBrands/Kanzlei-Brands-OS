@@ -13,6 +13,7 @@ import {
   UserPlus,
   Users,
   GiftIcon,
+  Share2,
 } from "lucide-react";
 import { signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -70,6 +71,7 @@ function navFor(role: string, campaignKinds: Set<string>) {
       { href: "/dashboard/partner-program", label: "Partnerprogramm", icon: <GiftIcon className={navIconClass} /> },
       ...common,
       { href: "/dashboard/pipelines", label: "Kampagnen", icon: <Megaphone className={navIconClass} /> },
+      { href: "/dashboard/social-content", label: "Social Media Content", icon: <Share2 className={navIconClass} /> },
       ...(campaignKinds.has("LEADS")
         ? [{ href: "/dashboard/leads?kind=LEADS", label: "Mandatsanfragen", icon: <Briefcase className={navIconClass} /> }]
         : []),
