@@ -771,6 +771,13 @@ model SocialChannel {
   accessTokenEnc String
   tokenExpiresAt DateTime?
 
+  // Nur LinkedIn: Access-Token läuft nach 60 Tagen ab, lässt sich aber ohne
+  // erneuten Login per Refresh-Token erneuern (gültig bis zu 365 Tage) -
+  // siehe src/lib/linkedin/token.ts. Bei Meta bleibt das leer, dort sind die
+  // Page-Access-Tokens bereits langlebig (kein Ablauf-Refresh nötig).
+  refreshTokenEnc       String?
+  refreshTokenExpiresAt DateTime?
+
   // Wird auf false gesetzt, sobald die Plattform den Token ablehnt - die
   // Kanal-Kachel fordert dann zum erneuten Verbinden auf, statt Beiträge
   // stillschweigend nicht zu veröffentlichen.

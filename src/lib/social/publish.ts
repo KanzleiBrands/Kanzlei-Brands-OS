@@ -8,6 +8,7 @@ import {
   MetaGraphError,
 } from "@/lib/meta/graph";
 import { publishLinkedInPost, LinkedInApiError } from "@/lib/linkedin/client";
+import { getValidLinkedInAccessToken } from "@/lib/linkedin/token";
 import { appendUtmParams } from "@/lib/social/utm";
 
 /**
@@ -31,7 +32,10 @@ export async function publishDueSocialPosts(): Promise<{ published: number; fail
       if (!post.channel || !post.channel.active) {
         throw new Error("Kein aktiver Kanal für diesen Beitrag verbunden.");
       }
-      const accessToken = decryptToken(post.channel.accessTokenEnc);
+      const accessToken =
+        post.platform === "LINKEDIN"
+          ? await getValidLinkedInAccessToken(post.channel)
+          : decryptToken(post.channel.accessTokenEnc);
       const caption = appendUtmParams(post.caption, post.platform, post.utmCampaign);
       const isCarousel = post.mediaType === "CAROUSEL" && post.mediaUrls.length > 0;
       let result: { id: string; permalink?: string };

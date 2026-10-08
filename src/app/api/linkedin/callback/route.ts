@@ -22,7 +22,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const token = await exchangeLinkedInCode(baseUrl, code);
-    await storeLinkedInPendingConnection(verified.organizationId, token.access_token, token.expires_in);
+    await storeLinkedInPendingConnection(
+      verified.organizationId,
+      token.access_token,
+      token.expires_in,
+      token.refresh_token,
+      token.refresh_token_expires_in,
+    );
     return NextResponse.redirect(`${baseUrl}/dashboard/clients/${verified.organizationId}/connect-linkedin`);
   } catch (error) {
     console.error("LinkedIn OAuth callback failed", error);

@@ -46,14 +46,36 @@ export function buildLinkedInAuthUrl(baseUrl: string, state: string): string {
   return url.toString();
 }
 
-export async function exchangeLinkedInCode(
-  baseUrl: string,
-  code: string,
-): Promise<{ access_token: string; expires_in: number }> {
+export type LinkedInTokenResponse = {
+  access_token: string;
+  expires_in: number;
+  // Nur vorhanden, wenn die App ein API-Produkt mit 1-Jahres-Token-Refresh
+  // freigeschaltet hat (z.B. Community Management API/Advertising API) -
+  // ohne das liefert LinkedIn nur einen reinen 60-Tage-Access-Token.
+  refresh_token?: string;
+  refresh_token_expires_in?: number;
+};
+
+export async function exchangeLinkedInCode(baseUrl: string, code: string): Promise<LinkedInTokenResponse> {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri(baseUrl),
+    client_id: process.env.LINKEDIN_CLIENT_ID ?? "",
+    client_secret: process.env.LINKEDIN_CLIENT_SECRET ?? "",
+  });
+  return linkedInFetch("https://www.linkedin.com/oauth/v2/accessToken", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+}
+
+/** Erneuert einen Access-Token über den Refresh-Token, ohne erneuten Login-Flow - siehe src/lib/linkedin/token.ts. */
+export async function refreshLinkedInAccessToken(refreshToken: string): Promise<LinkedInTokenResponse> {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
     client_id: process.env.LINKEDIN_CLIENT_ID ?? "",
     client_secret: process.env.LINKEDIN_CLIENT_SECRET ?? "",
   });

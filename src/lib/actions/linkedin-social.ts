@@ -38,6 +38,8 @@ export async function finalizeLinkedInConnection(
     throw new Error("Verbindung abgelaufen. Bitte erneut mit LinkedIn verbinden.");
   }
 
+  const refreshTokenEnc = pending.refreshToken ? encryptToken(pending.refreshToken) : null;
+
   await prisma.socialChannel.upsert({
     where: { organizationId_platform_externalId: { organizationId, platform: "LINKEDIN", externalId: orgUrn } },
     create: {
@@ -47,12 +49,16 @@ export async function finalizeLinkedInConnection(
       displayName: orgName,
       accessTokenEnc: encryptToken(pending.userAccessToken),
       tokenExpiresAt: pending.expiresAt,
+      refreshTokenEnc,
+      refreshTokenExpiresAt: pending.refreshTokenExpiresAt,
       connectedByUserId: session.user.id,
     },
     update: {
       displayName: orgName,
       accessTokenEnc: encryptToken(pending.userAccessToken),
       tokenExpiresAt: pending.expiresAt,
+      refreshTokenEnc,
+      refreshTokenExpiresAt: pending.refreshTokenExpiresAt,
       active: true,
       lastError: null,
     },
