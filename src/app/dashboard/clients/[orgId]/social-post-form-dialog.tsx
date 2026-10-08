@@ -165,6 +165,28 @@ function toDatetimeLocalValue(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * Wandelt den Wert eines datetime-local-Felds (z.B. "2026-10-08T17:40",
+ * ohne Zeitzone) in einen echten UTC-ISO-String um. Die Umwandlung muss im
+ * Browser passieren: der new Date(year, month, day, hour, minute)-
+ * Konstruktor interpretiert die Zahlen als Zeit in der Zeitzone, in der der
+ * Code gerade läuft - im Browser also korrekt die Zeitzone des Nutzers.
+ * Würde man stattdessen den rohen "2026-10-08T17:40"-String erst beim
+ * Server-Action-Aufruf mit new Date(string) parsen, interpretiert Node das
+ * (mangels Zeitzone im String) als UTC, nicht als Browser-Ortszeit - auf
+ * dem in UTC laufenden Vercel-Server verschiebt das jede geplante Zeit um
+ * die Differenz zur Nutzer-Zeitzone (in Deutschland +1/+2h).
+ */
+function localDatetimeToIso(local: string): string {
+  if (!local) return "";
+  const [datePart, timePart] = local.split("T");
+  if (!datePart || !timePart) return "";
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const date = new Date(year, month - 1, day, hour, minute);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
 export function SocialPostFormDialog({
   organizationId,
   channels,
@@ -208,6 +230,8 @@ export function SocialPostFormDialog({
     (post?.mediaUrls ?? []).map((url) => ({ id: newId(), url })),
   );
   const [carouselUploading, setCarouselUploading] = useState(false);
+  const [publishNow, setPublishNow] = useState(false);
+  const [scheduledAtLocal, setScheduledAtLocal] = useState(toDatetimeLocalValue(post?.scheduledAt ?? null));
   const carouselSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const channelsForPlatform = channels.filter((c) => c.platform === platform);
@@ -246,6 +270,8 @@ export function SocialPostFormDialog({
       setPlatform("FACEBOOK");
       setSelectedPlatforms(["FACEBOOK"]);
       setChannelByPlatform({});
+      setPublishNow(false);
+      setScheduledAtLocal("");
     }
     setOpen(next);
   }
@@ -686,14 +712,32 @@ export function SocialPostFormDialog({
             </div>
           )}
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="social-post-scheduled">Geplantes Veröffentlichungsdatum</Label>
-            <Input
-              id="social-post-scheduled"
-              type="datetime-local"
-              name="scheduledAt"
-              defaultValue={toDatetimeLocalValue(post?.scheduledAt ?? null)}
-            />
+          <input type="hidden" name="scheduledAt" value={publishNow ? "" : localDatetimeToIso(scheduledAtLocal)} />
+          <input type="hidden" name="publishNow" value={publishNow ? "1" : "0"} />
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Zeitpunkt</Label>
+            <div className="flex gap-1.5">
+              <Button type="button" size="sm" variant={!publishNow ? "default" : "outline"} onClick={() => setPublishNow(false)}>
+                Für später planen
+              </Button>
+              <Button type="button" size="sm" variant={publishNow ? "default" : "outline"} onClick={() => setPublishNow(true)}>
+                Sofort veröffentlichen
+              </Button>
+            </div>
+            {!publishNow && (
+              <Input
+                id="social-post-scheduled"
+                type="datetime-local"
+                value={scheduledAtLocal}
+                onChange={(e) => setScheduledAtLocal(e.target.value)}
+              />
+            )}
+            {publishNow && (
+              <p className="text-xs text-muted-foreground">
+                Wird beim Speichern sofort veröffentlicht, ohne auf den nächsten geplanten Termin zu warten.
+              </p>
+            )}
           </div>
 
           {pipelines.length > 0 && (
@@ -736,7 +780,15 @@ export function SocialPostFormDialog({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Wird gespeichert..." : isEdit ? "Speichern" : "Beitrag anlegen"}
+            {isPending
+              ? publishNow
+                ? "Wird veröffentlicht..."
+                : "Wird gespeichert..."
+              : publishNow
+                ? "Jetzt veröffentlichen"
+                : isEdit
+                  ? "Speichern"
+                  : "Beitrag anlegen"}
           </Button>
         </form>
       </DialogContent>

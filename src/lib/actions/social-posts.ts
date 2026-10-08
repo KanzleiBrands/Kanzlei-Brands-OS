@@ -8,6 +8,7 @@ import { storeFile } from "@/lib/file-storage";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { csvToObjects } from "@/lib/csv";
 import { normalizeFieldKey } from "@/lib/webhook-ingest";
+import { publishSocialPostById } from "@/lib/social/publish";
 
 /** Extra Revalidierung fürs interne Marketing-Center - ein No-Op, wenn der Pfad gar nicht gecacht war. */
 function revalidateInternalMarketing() {
@@ -88,7 +89,8 @@ export async function createSocialPost(_prevState: string | undefined, formData:
   const utmCampaign = String(formData.get("utmCampaign") ?? "").trim();
   const pipelineId = String(formData.get("pipelineId") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
-  const scheduledAt = parseScheduledAt(formData.get("scheduledAt"));
+  const publishNow = formData.get("publishNow") === "1";
+  const scheduledAt = publishNow ? new Date() : parseScheduledAt(formData.get("scheduledAt"));
 
   // "selections" trägt eine oder mehrere {platform, channelId} - ein Beitrag
   // wird pro ausgewählter Plattform angelegt (gleicher Text/Medien/Termin),
@@ -109,26 +111,43 @@ export async function createSocialPost(_prevState: string | undefined, formData:
   }
   if (!caption) return "Text ist erforderlich.";
   if (mediaType === "CAROUSEL" && mediaUrls.length < 2) return "Karussell benötigt mindestens 2 Bilder.";
+  if (publishNow && validSelections.some((sel) => !sel.channelId)) {
+    return "Für sofortiges Veröffentlichen muss für jede Plattform ein Kanal ausgewählt sein.";
+  }
 
-  await prisma.socialPost.createMany({
-    data: validSelections.map((sel) => ({
-      organizationId,
-      platform: sel.platform,
-      caption,
-      mediaUrl: mediaType === "CAROUSEL" ? null : mediaUrl || null,
-      mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
-      mediaType: isValidMediaType(mediaType) ? mediaType : null,
-      utmCampaign: utmCampaign || null,
-      channelId: sel.channelId || null,
-      pipelineId: pipelineId || null,
-      responsibleUserId: responsibleUserId || null,
-      scheduledAt,
-    })),
-  });
+  // Einzeln statt createMany, damit die IDs für ein sofortiges Veröffentlichen
+  // (s.u.) zur Verfügung stehen - createMany gibt keine Datensätze zurück.
+  const created = await Promise.all(
+    validSelections.map((sel) =>
+      prisma.socialPost.create({
+        data: {
+          organizationId,
+          platform: sel.platform,
+          caption,
+          mediaUrl: mediaType === "CAROUSEL" ? null : mediaUrl || null,
+          mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
+          mediaType: isValidMediaType(mediaType) ? mediaType : null,
+          utmCampaign: utmCampaign || null,
+          channelId: sel.channelId || null,
+          pipelineId: pipelineId || null,
+          responsibleUserId: responsibleUserId || null,
+          scheduledAt,
+        },
+      }),
+    ),
+  );
 
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${organizationId}`);
   revalidateInternalMarketing();
+
+  if (publishNow) {
+    const results = await Promise.all(created.map((post) => publishSocialPostById(post.id)));
+    const failures = results.filter((r) => !r.success);
+    if (failures.length > 0) {
+      return `Beitrag gespeichert, aber Veröffentlichung fehlgeschlagen: ${failures.map((f) => f.error).join("; ")}`;
+    }
+  }
 }
 
 export async function updateSocialPost(_prevState: string | undefined, formData: FormData) {
@@ -144,11 +163,13 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
   const channelId = String(formData.get("channelId") ?? "").trim();
   const pipelineId = String(formData.get("pipelineId") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
-  const scheduledAt = parseScheduledAt(formData.get("scheduledAt"));
+  const publishNow = formData.get("publishNow") === "1";
+  const scheduledAt = publishNow ? new Date() : parseScheduledAt(formData.get("scheduledAt"));
 
   if (platform !== "FACEBOOK" && platform !== "INSTAGRAM" && platform !== "LINKEDIN") return "Plattform ist erforderlich.";
   if (!caption) return "Text ist erforderlich.";
   if (mediaType === "CAROUSEL" && mediaUrls.length < 2) return "Karussell benötigt mindestens 2 Bilder.";
+  if (publishNow && !channelId) return "Für sofortiges Veröffentlichen muss ein Kanal ausgewählt sein.";
 
   const post = await prisma.socialPost.findUnique({ where: { id: postId } });
   if (!post) return "Beitrag nicht gefunden.";
@@ -177,6 +198,13 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
   revalidatePath("/dashboard/social");
   revalidatePath(`/dashboard/clients/${post.organizationId}`);
   revalidateInternalMarketing();
+
+  if (publishNow) {
+    const result = await publishSocialPostById(postId);
+    if (!result.success) {
+      return `Beitrag gespeichert, aber Veröffentlichung fehlgeschlagen: ${result.error}`;
+    }
+  }
 }
 
 export async function deleteSocialPost(formData: FormData) {
