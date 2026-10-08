@@ -12,6 +12,7 @@ import { SocialAnalytics, type AnalyticsPost } from "./social-analytics";
 import { GenerateContentIdeasDialog } from "./generate-content-ideas-dialog";
 import { ContentFormatManager, type ContentFormatItem } from "./content-format-manager";
 import { ContentConfigPanel } from "./content-config-panel";
+import { type ContentIntentionValue } from "./content-config-form";
 import { type ContentReferenceDocItem } from "./content-reference-docs-list";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
@@ -30,8 +31,8 @@ export function ContentTab({
   contentFormats,
   contentBrandDna,
   contentWebsiteUrl,
+  contentIntention,
   contentReferenceDocs,
-  clientContext = null,
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
@@ -46,9 +47,8 @@ export function ContentTab({
   contentFormats: ContentFormatItem[];
   contentBrandDna: string;
   contentWebsiteUrl: string;
+  contentIntention: ContentIntentionValue | null;
   contentReferenceDocs: ContentReferenceDocItem[];
-  /** null im internen Marketing-Center, wo Recruiting/Mandatsakquise-Buchungen kein Konzept sind. */
-  clientContext?: { jobsBooked: boolean; leadsBooked: boolean } | null;
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
   /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
@@ -109,8 +109,8 @@ export function ContentTab({
           organizationId={organizationId}
           websiteUrl={contentWebsiteUrl}
           brandDna={contentBrandDna}
+          intention={contentIntention}
           referenceDocs={contentReferenceDocs}
-          clientContext={clientContext}
         />
       )}
     </div>

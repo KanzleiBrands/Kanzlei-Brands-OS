@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, assertCanManageSocialContentFor } from "@/lib/access";
 
 type Platform = "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
+type ContentIntentionValue = "RECRUITING" | "MANDATSAKQUISE" | "BEIDE";
 
 const PLATFORM_NOTE: Record<Platform, string> = {
   FACEBOOK: "Facebook (etwas ausführlicher, Emojis in Maßen erlaubt)",
@@ -13,10 +14,25 @@ const PLATFORM_NOTE: Record<Platform, string> = {
   LINKEDIN: "LinkedIn (professioneller Ton, sparsam mit Emojis, keine übertriebenen Hashtag-Listen)",
 };
 
+const INTENTION_NOTE: Record<ContentIntentionValue, string> = {
+  RECRUITING: "NEUE MITARBEITER GEWINNEN (Recruiting) - Ideen sollen in erster Linie auf Bewerbergewinnung einzahlen.",
+  MANDATSAKQUISE: "NEUE MANDATE/KUNDEN GEWINNEN (Mandatsakquise) - Ideen sollen in erster Linie auf Mandatsgewinnung einzahlen.",
+  BEIDE:
+    "sowohl neue Mitarbeiter gewinnen (Recruiting) als auch neue Mandate/Kunden gewinnen (Mandatsakquise) - Ideen können beides bedienen.",
+};
+
 const GERMAN_ONLY = "Antworte ausschließlich auf Deutsch, unabhängig von der Sprache der Eingabe.";
 
 function isValidPlatform(value: string): value is Platform {
   return value === "FACEBOOK" || value === "INSTAGRAM" || value === "LINKEDIN";
+}
+
+function isValidIntention(value: string): value is ContentIntentionValue {
+  return value === "RECRUITING" || value === "MANDATSAKQUISE" || value === "BEIDE";
+}
+
+function buildIntentionBlock(intention: ContentIntentionValue | null | undefined): string {
+  return intention ? `Content-Ziel dieses Kunden: ${INTENTION_NOTE[intention]}\n\n` : "";
 }
 
 /** Strips an optional ```json ... ``` fence Claude sometimes adds despite being told not to. */
@@ -67,7 +83,7 @@ export async function generateContentIdeas(
   if (!Number.isInteger(count) || count < 1 || count > 30) return "Anzahl Ideen muss zwischen 1 und 30 liegen.";
 
   const [organization, formats, channels] = await Promise.all([
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true } }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true, contentIntention: true } }),
     prisma.contentFormat.findMany({ where: { id: { in: formatIds } } }),
     prisma.socialChannel.findMany({ where: { organizationId, platform: { in: platforms }, active: true } }),
   ]);
@@ -76,6 +92,7 @@ export async function generateContentIdeas(
   const formatsBlock = formats
     .map((f) => `### Format "${f.name}"\nAnleitung:\n${f.description}\n\nBeispiel(e):\n${f.examples}`)
     .join("\n\n");
+  const intentionBlock = buildIntentionBlock(organization?.contentIntention);
   const brandBlock = organization?.contentBrandDna?.trim()
     ? `Marken-DNA des Kunden (unbedingt berücksichtigen):\n${organization.contentBrandDna.trim()}\n\n`
     : "";
@@ -86,7 +103,7 @@ export async function generateContentIdeas(
   for (const platform of platforms) {
     const prompt = `Du hilfst einer Marketing-Agentur, Social-Media-Post-Ideen für einen Kunden zu entwickeln.
 
-${brandBlock}Quelltext (Transkript, Notizen oder Stichpunkte, aus denen Ideen abgeleitet werden sollen):
+${intentionBlock}${brandBlock}Quelltext (Transkript, Notizen oder Stichpunkte, aus denen Ideen abgeleitet werden sollen):
 """
 ${input}
 """
@@ -183,15 +200,16 @@ export async function generatePostTextFromIdea(formData: FormData): Promise<{ er
 
   const organization = await prisma.organization.findUnique({
     where: { id: post.organizationId },
-    select: { contentBrandDna: true },
+    select: { contentBrandDna: true, contentIntention: true },
   });
+  const intentionBlock = buildIntentionBlock(organization?.contentIntention);
   const brandBlock = organization?.contentBrandDna?.trim()
     ? `Marken-DNA des Kunden (unbedingt berücksichtigen):\n${organization.contentBrandDna.trim()}\n\n`
     : "";
 
   const prompt = `Du schreibst einen fertigen Social-Media-Beitrag für ${PLATFORM_NOTE[post.platform]}.
 
-${brandBlock}Format "${post.contentFormat.name}":
+${intentionBlock}${brandBlock}Format "${post.contentFormat.name}":
 Anleitung:
 ${post.contentFormat.description}
 
@@ -238,9 +256,11 @@ export async function updateContentConfig(_prevState: string | undefined, formDa
 
   const contentBrandDna = String(formData.get("contentBrandDna") ?? "").trim();
   const contentWebsiteUrl = String(formData.get("contentWebsiteUrl") ?? "").trim();
+  const intentionRaw = String(formData.get("contentIntention") ?? "").trim();
+  const contentIntention = isValidIntention(intentionRaw) ? intentionRaw : null;
   await prisma.organization.update({
     where: { id: organizationId },
-    data: { contentBrandDna: contentBrandDna || null, contentWebsiteUrl: contentWebsiteUrl || null },
+    data: { contentBrandDna: contentBrandDna || null, contentWebsiteUrl: contentWebsiteUrl || null, contentIntention },
   });
 
   revalidatePath("/dashboard/social");

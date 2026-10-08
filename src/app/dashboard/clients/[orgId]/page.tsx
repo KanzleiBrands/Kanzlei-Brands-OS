@@ -333,7 +333,7 @@ export default async function ClientDetailPage({
           contentBrandDna={organization.contentBrandDna ?? ""}
           contentWebsiteUrl={organization.contentWebsiteUrl ?? ""}
           contentReferenceDocs={contentReferenceDocs}
-          clientContext={{ jobsBooked, leadsBooked }}
+          contentIntention={organization.contentIntention}
           posts={socialPosts.map((post) => ({
             id: post.id,
             platform: post.platform,

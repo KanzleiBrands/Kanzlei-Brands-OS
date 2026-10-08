@@ -25,7 +25,10 @@ export default async function InternalSocialMediaPage() {
       orderBy: { name: "asc" },
     }),
     prisma.contentFormat.findMany({ orderBy: { name: "asc" } }),
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true, contentWebsiteUrl: true } }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { contentBrandDna: true, contentWebsiteUrl: true, contentIntention: true },
+    }),
     prisma.contentReferenceDoc.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
   ]);
 
@@ -50,7 +53,7 @@ export default async function InternalSocialMediaPage() {
       contentBrandDna={organization?.contentBrandDna ?? ""}
       contentWebsiteUrl={organization?.contentWebsiteUrl ?? ""}
       contentReferenceDocs={contentReferenceDocs}
-      clientContext={null}
+      contentIntention={organization?.contentIntention ?? null}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,

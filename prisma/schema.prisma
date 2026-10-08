@@ -155,6 +155,12 @@ model Organization {
   // companyWebsite (nur AGENCY-Organisation, Personal-Bereich) und
   // landingPageUrl (Kunden-Hub-Kampagnenressource).
   contentWebsiteUrl String?
+  // Content-Ziel dieses Kunden (Recruiting, Mandatsakquise oder beides) -
+  // vom Kunden/der Agentur bewusst ausgewählt im Konfiguration-Reiter des
+  // Content Boards, NICHT automatisch aus gebuchten Kampagnen abgeleitet:
+  // ein Kunde kann beides gebucht haben, aber den Content aktuell nur auf
+  // eines davon ausrichten wollen. null = noch nicht ausgewählt.
+  contentIntention ContentIntention?
 
   users                     User[]
   pipelines                 Pipeline[]
@@ -884,6 +890,13 @@ enum SocialMediaType {
   IMAGE
   VIDEO
   CAROUSEL
+}
+
+// Siehe Organization.contentIntention.
+enum ContentIntention {
+  RECRUITING
+  MANDATSAKQUISE
+  BEIDE
 }
 
 // One social media post through its whole lifecycle: idea -> production ->
