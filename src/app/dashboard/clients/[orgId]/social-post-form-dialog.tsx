@@ -133,6 +133,16 @@ function readImageDimensions(file: File): Promise<{ width: number; height: numbe
   });
 }
 
+/** Wie readImageDimensions, aber für ein schon gehostetes Bild (Bilder-Bibliothek) statt einer frisch ausgewählten Datei. */
+function readImageDimensionsFromUrl(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => reject(new Error("Bild konnte nicht gelesen werden."));
+    img.src = url;
+  });
+}
+
 function readVideoDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
@@ -431,6 +441,47 @@ export function SocialPostFormDialog({
     setMediaType("IMAGE");
   }
 
+  /** Selbe Seitenverhältnis-Prüfung wie handleImageFile, aber für ein aus der Bilder-Bibliothek gewähltes (schon gehostetes) Bild. */
+  async function handleLibraryImageSelect(url: string) {
+    setMediaError(null);
+    const target = IMAGE_ASPECTS.find((a) => a.value === imageAspect)!;
+    try {
+      const { width, height } = await readImageDimensionsFromUrl(url);
+      if (!matchesAspect(width, height, target.ratio)) {
+        setMediaError(
+          `Bild hat ${width}×${height}px - erwartet wird ${target.label}. Dieses Bild aus der Bibliothek passt nicht zum gewählten Seitenverhältnis.`,
+        );
+        return;
+      }
+    } catch {
+      setMediaError("Bild konnte nicht gelesen werden.");
+      return;
+    }
+    setMediaUrl(url);
+    setMediaType("IMAGE");
+    setShowLibraryPicker(false);
+  }
+
+  /** Selbe Seitenverhältnis-Prüfung für ein aus der Bibliothek gewähltes Karussell-Bild. */
+  async function handleLibraryCarouselSelect(url: string) {
+    setMediaError(null);
+    const target = IMAGE_ASPECTS.find((a) => a.value === imageAspect)!;
+    try {
+      const { width, height } = await readImageDimensionsFromUrl(url);
+      if (!matchesAspect(width, height, target.ratio)) {
+        setMediaError(
+          `Bild hat ${width}×${height}px - erwartet wird ${target.label}. Dieses Bild aus der Bibliothek passt nicht zum gewählten Seitenverhältnis.`,
+        );
+        return;
+      }
+    } catch {
+      setMediaError("Bild konnte nicht gelesen werden.");
+      return;
+    }
+    setCarousel((c) => [...c, { id: newId(), url }]);
+    setShowLibraryPicker(false);
+  }
+
   async function handleVideoFile(file: File | undefined) {
     if (!file) return;
     setMediaError(null);
@@ -723,13 +774,7 @@ export function SocialPostFormDialog({
               </div>
               {showLibraryPicker && (
                 <div className="rounded-md border p-2">
-                  <MediaLibraryPicker
-                    items={mediaLibraryItems}
-                    onSelect={(url) => {
-                      setCarousel((c) => [...c, { id: newId(), url }]);
-                      setShowLibraryPicker(false);
-                    }}
-                  />
+                  <MediaLibraryPicker items={mediaLibraryItems} onSelect={handleLibraryCarouselSelect} />
                 </div>
               )}
               {carousel.length > 0 && (
@@ -808,14 +853,7 @@ export function SocialPostFormDialog({
                   </div>
                   {showLibraryPicker && (format === "IMAGE_POST" || format === "THOUGHT_LEADERSHIP") && (
                     <div className="rounded-md border p-2">
-                      <MediaLibraryPicker
-                        items={mediaLibraryItems}
-                        onSelect={(url) => {
-                          setMediaUrl(url);
-                          setMediaType("IMAGE");
-                          setShowLibraryPicker(false);
-                        }}
-                      />
+                      <MediaLibraryPicker items={mediaLibraryItems} onSelect={handleLibraryImageSelect} />
                     </div>
                   )}
                 </div>
