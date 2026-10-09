@@ -5,7 +5,7 @@ import { PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 import { createContentFormat, updateContentFormat, deleteContentFormat } from "@/lib/actions/content-formats";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { CollapsibleTextarea } from "@/components/collapsible-textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
@@ -32,11 +32,11 @@ function FormatForm({ format, onDone }: { format?: ContentFormatItem; onDone: ()
       </div>
       <div className="flex flex-col gap-1">
         <Label htmlFor="cf-description">Anleitung (Struktur/Vorgehen für die KI)</Label>
-        <Textarea id="cf-description" name="description" rows={6} defaultValue={format?.description ?? ""} required />
+        <CollapsibleTextarea id="cf-description" name="description" collapsedRows={3} expandedRows={14} defaultValue={format?.description ?? ""} required />
       </div>
       <div className="flex flex-col gap-1">
         <Label htmlFor="cf-examples">Beispiel(e)</Label>
-        <Textarea id="cf-examples" name="examples" rows={6} defaultValue={format?.examples ?? ""} required />
+        <CollapsibleTextarea id="cf-examples" name="examples" collapsedRows={3} expandedRows={14} defaultValue={format?.examples ?? ""} required />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-1.5">

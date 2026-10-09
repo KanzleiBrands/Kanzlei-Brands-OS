@@ -50,13 +50,6 @@ const FORMAT_OPTIONS = [
 ] as const;
 export type SocialPostFormatValue = (typeof FORMAT_OPTIONS)[number]["value"];
 
-/** Welches Format auf welcher Plattform überwiegend Sinn ergibt - nur eine Empfehlung, keine Einschränkung. */
-const PLATFORM_FORMAT_HINT: Record<Channel["platform"], string> = {
-  INSTAGRAM: "Instagram: meist Reel",
-  FACEBOOK: "Facebook: meist Reel",
-  LINKEDIN: "LinkedIn: meist Thought Leadership",
-};
-
 const PLATFORM_FORMAT_DEFAULT: Record<Channel["platform"], SocialPostFormatValue> = {
   INSTAGRAM: "REEL",
   FACEBOOK: "REEL",
@@ -315,9 +308,15 @@ export function SocialPostFormDialog({
       setMediaType("CAROUSEL");
       setMediaUrl("");
     } else if (next === "THOUGHT_LEADERSHIP") {
-      setMediaType("");
-      setMediaUrl("");
+      // Bild bleibt optional - anders als bei REEL/CAROUSEL kein fester
+      // Medientyp, also nichts zurücksetzen außer dem (hier nicht nutzbaren)
+      // Karussell; ein zuvor hochgeladenes Bild bleibt erhalten, ein Video
+      // (von einem vorherigen Reel) ergibt hier keinen Sinn und wird entfernt.
       setCarousel([]);
+      if (mediaType === "VIDEO") {
+        setMediaUrl("");
+        setMediaType("");
+      }
     }
   }
 
@@ -592,7 +591,6 @@ export function SocialPostFormDialog({
                 </Button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">{selectedPlatforms.map((p) => PLATFORM_FORMAT_HINT[p]).join(" · ")}</p>
           </div>
 
           {isEdit && post.title && (
@@ -642,7 +640,7 @@ export function SocialPostFormDialog({
           </div>
           <AiCaptionAssistant caption={caption} platform={selectedPlatforms[0]} onInsert={(text) => setCaption(text)} />
 
-          {(format === "IMAGE_POST" || format === "CAROUSEL") && (
+          {(format === "IMAGE_POST" || format === "CAROUSEL" || format === "THOUGHT_LEADERSHIP") && (
             <div className="flex flex-col gap-1">
               <Label>Seitenverhältnis</Label>
               <div className="flex gap-1.5">
@@ -697,7 +695,7 @@ export function SocialPostFormDialog({
             </div>
           )}
 
-          {(format === "IMAGE_POST" || format === "REEL") && (
+          {(format === "IMAGE_POST" || format === "REEL" || format === "THOUGHT_LEADERSHIP") && (
             <div className="flex flex-col gap-1.5">
               {mediaUploading ? (
                 <div className="rounded-md border p-3">
@@ -730,10 +728,10 @@ export function SocialPostFormDialog({
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {format === "IMAGE_POST" && (
+                  {(format === "IMAGE_POST" || format === "THOUGHT_LEADERSHIP") && (
                     <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
                       <ImageIcon className="size-4" />
-                      Bild auswählen
+                      Bild {format === "THOUGHT_LEADERSHIP" ? "hinzufügen (optional)" : "auswählen"}
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageFile(e.target.files?.[0])} />
                     </label>
                   )}

@@ -773,6 +773,12 @@ enum SocialPlatform {
   LINKEDIN
 }
 
+// Siehe SocialChannel.linkedInKind.
+enum LinkedInChannelKind {
+  ORGANIZATION
+  PERSONAL
+}
+
 // A connected Page/Business-Account/Organization the agency can publish to on
 // behalf of a client - the "Lead-Quelle" equivalent for outbound content
 // instead of inbound leads. Connected once per client per platform (not per
@@ -781,8 +787,15 @@ enum SocialPlatform {
 model SocialChannel {
   id          String         @id @default(cuid())
   platform    SocialPlatform
-  externalId  String // Facebook Page id / Instagram Business Account id / LinkedIn Organization URN
+  externalId  String // Facebook Page id / Instagram Business Account id / LinkedIn Organization or Person URN
   displayName String
+
+  // Nur LINKEDIN: unterscheidet eine Unternehmensseite (bisheriges Verhalten,
+  // braucht die Marketing-Developer-Platform-Partnerschaft) von einem
+  // persönlichen Profil (eigenes, deutlich leichter zu bekommendes
+  // "Share on LinkedIn"-Produkt, Scope w_member_social) - siehe
+  // src/lib/linkedin/client.ts. Null bei FACEBOOK/INSTAGRAM.
+  linkedInKind LinkedInChannelKind?
 
   // Verschlüsselt wie MetaLeadFormConnection.pageAccessTokenEnc.
   accessTokenEnc String

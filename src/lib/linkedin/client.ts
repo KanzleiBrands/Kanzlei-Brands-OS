@@ -2,16 +2,28 @@
 // own publisher: OAuth token exchange, listing the Organization (Company)
 // Pages an admin can pick from, and publishing a post via the Posts API.
 //
+// Two distinct ways to connect a LinkedIn channel - see LinkedInChannelKind:
+//
 // IMPORTANT: organic posting on behalf of an Organization requires LinkedIn
 // Marketing Developer Platform partnership approval (w_organization_social /
 // rw_organization_admin are not self-serve scopes) - this client is built to
 // the documented API shape, but calls will fail with an authorization error
 // until that partnership is granted. See src/lib/social/publish.ts, which
 // surfaces that failure onto the post instead of crashing the publish cron.
+//
+// Posting as a PERSONAL profile uses the much lighter-weight "Sign In with
+// LinkedIn using OpenID Connect" + "Share on LinkedIn" products instead
+// (scopes: openid, profile, w_member_social) - no partnership needed, just
+// LinkedIn's standard app review, which is normally granted quickly.
 const API_BASE = "https://api.linkedin.com";
 const LINKEDIN_VERSION = "202405"; // LinkedIn-Version header, required by the versioned REST APIs below
 
-const LINKEDIN_SCOPES = ["r_organization_admin", "rw_organization_admin", "w_organization_social"].join(" ");
+export type LinkedInConnectKind = "ORGANIZATION" | "PERSONAL";
+
+const LINKEDIN_SCOPES: Record<LinkedInConnectKind, string> = {
+  ORGANIZATION: ["r_organization_admin", "rw_organization_admin", "w_organization_social"].join(" "),
+  PERSONAL: ["openid", "profile", "w_member_social"].join(" "),
+};
 
 function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/linkedin/callback`;
@@ -36,13 +48,13 @@ async function linkedInFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
-export function buildLinkedInAuthUrl(baseUrl: string, state: string): string {
+export function buildLinkedInAuthUrl(baseUrl: string, state: string, kind: LinkedInConnectKind): string {
   const url = new URL("https://www.linkedin.com/oauth/v2/authorization");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", process.env.LINKEDIN_CLIENT_ID ?? "");
   url.searchParams.set("redirect_uri", redirectUri(baseUrl));
   url.searchParams.set("state", state);
-  url.searchParams.set("scope", LINKEDIN_SCOPES);
+  url.searchParams.set("scope", LINKEDIN_SCOPES[kind]);
   return url.toString();
 }
 
@@ -86,6 +98,24 @@ export async function refreshLinkedInAccessToken(refreshToken: string): Promise<
   });
 }
 
+export type LinkedInPersonInfo = { urn: string; name: string };
+
+/**
+ * Das eigene Profil des gerade verbundenen LinkedIn-Nutzers über den
+ * OpenID-Connect-Userinfo-Endpoint - liefert die Person-URN (aus "sub") und
+ * den Anzeigenamen, ohne die (eingeschränkt vergebene) /v2/me-Berechtigung
+ * zu brauchen. Es gibt für ein persönliches Profil keine Auswahl wie bei
+ * Organisationen (eine Person hat nur sich selbst), daher kein "list*".
+ */
+export async function getLinkedInPersonInfo(accessToken: string): Promise<LinkedInPersonInfo> {
+  const data = await linkedInFetch<{ sub: string; name?: string; given_name?: string; family_name?: string }>(
+    `${API_BASE}/v2/userinfo`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const name = data.name ?? [data.given_name, data.family_name].filter(Boolean).join(" ") ?? data.sub;
+  return { urn: `urn:li:person:${data.sub}`, name };
+}
+
 export type LinkedInOrganization = { urn: string; id: string; name: string };
 
 /** Organization (Company) Pages the connected user administers - LinkedIn requires posting "as" a page's URN, not a personal profile. */
@@ -111,12 +141,13 @@ export async function listLinkedInOrganizations(accessToken: string): Promise<Li
 /**
  * Uploads an image to LinkedIn's asset store and returns its URN, for use as
  * a Post's media reference - LinkedIn (unlike Meta) needs the bytes uploaded
- * to it directly, it can't fetch our hosted mediaUrl itself.
+ * to it directly, it can't fetch our hosted mediaUrl itself. "owner" accepts
+ * either an organization or a person URN - same shape either way.
  */
-async function uploadLinkedInImage(accessToken: string, organizationUrn: string, imageUrl: string): Promise<string> {
+async function uploadLinkedInImage(accessToken: string, authorUrn: string, imageUrl: string): Promise<string> {
   const registerBody = {
     initializeUploadRequest: {
-      owner: organizationUrn,
+      owner: authorUrn,
     },
   };
   const registered = await linkedInFetch<{ value: { uploadUrl: string; image: string } }>(
@@ -151,20 +182,21 @@ export type PublishedLinkedInPost = { id: string };
 
 export async function publishLinkedInPost(params: {
   accessToken: string;
-  organizationUrn: string;
+  /** Organization- oder Person-URN, je nach SocialChannel.linkedInKind - die Posts API behandelt beide gleich. */
+  authorUrn: string;
   text: string;
   mediaUrl?: string;
   mediaUrls?: string[];
   mediaType?: "IMAGE" | "VIDEO" | "CAROUSEL";
 }): Promise<PublishedLinkedInPost> {
-  const { accessToken, organizationUrn, text, mediaUrl, mediaUrls, mediaType } = params;
+  const { accessToken, authorUrn, text, mediaUrl, mediaUrls, mediaType } = params;
 
   if (mediaType === "VIDEO") {
     throw new LinkedInApiError("LinkedIn-Video-Upload wird noch nicht unterstützt - Beitrag bitte ohne Video oder mit Bild planen.");
   }
 
   const body: Record<string, unknown> = {
-    author: organizationUrn,
+    author: authorUrn,
     commentary: text,
     visibility: "PUBLIC",
     distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
@@ -173,10 +205,10 @@ export async function publishLinkedInPost(params: {
   };
 
   if (mediaType === "CAROUSEL" && mediaUrls && mediaUrls.length > 0) {
-    const imageUrns = await Promise.all(mediaUrls.map((url) => uploadLinkedInImage(accessToken, organizationUrn, url)));
+    const imageUrns = await Promise.all(mediaUrls.map((url) => uploadLinkedInImage(accessToken, authorUrn, url)));
     body.content = { multiImage: { images: imageUrns.map((id) => ({ id })) } };
   } else if (mediaUrl && mediaType === "IMAGE") {
-    const imageUrn = await uploadLinkedInImage(accessToken, organizationUrn, mediaUrl);
+    const imageUrn = await uploadLinkedInImage(accessToken, authorUrn, mediaUrl);
     body.content = { media: { id: imageUrn } };
   }
 

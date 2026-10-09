@@ -40,7 +40,13 @@ export function ContentConfigPanel({
 
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium">Firma</p>
-        <ContentConfigForm organizationId={organizationId} websiteUrl={websiteUrl} brandDna={brandDna} intention={intention} />
+        <ContentConfigForm
+          organizationId={organizationId}
+          websiteUrl={websiteUrl}
+          brandDna={brandDna}
+          intention={intention}
+          showIntention={socialContentBooked !== null}
+        />
       </div>
 
       <div className="flex flex-col gap-2">

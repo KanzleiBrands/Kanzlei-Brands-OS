@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { EmailAiAssistant } from "./email-ai-assistant";
 import { BodyTextToolbar } from "@/components/funnels/body-text-toolbar";
@@ -635,12 +636,11 @@ function BookedToggle({ organizationId, pipelineId, booked }: { organizationId: 
   const [isPending, startTransition] = useTransition();
 
   return (
-    <label className="flex items-center gap-1.5 text-sm">
-      <input
-        type="checkbox"
+    <label className="flex items-center gap-2.5 text-sm">
+      <Switch
         defaultChecked={booked}
         disabled={isPending}
-        onChange={() => {
+        onCheckedChange={() => {
           const formData = new FormData();
           formData.set("organizationId", organizationId);
           formData.set("pipelineId", pipelineId);
@@ -649,7 +649,7 @@ function BookedToggle({ organizationId, pipelineId, booked }: { organizationId: 
           });
         }}
       />
-      Für diesen Kunden gebucht ({EMAIL_MARKETING_PRICE_LABEL})
+      Dieser Kunde hat E-Mail Marketing gebucht
     </label>
   );
 }

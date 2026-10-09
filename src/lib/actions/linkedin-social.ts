@@ -45,6 +45,7 @@ export async function finalizeLinkedInConnection(
     create: {
       organizationId,
       platform: "LINKEDIN",
+      linkedInKind: "ORGANIZATION",
       externalId: orgUrn,
       displayName: orgName,
       accessTokenEnc: encryptToken(pending.userAccessToken),
@@ -55,6 +56,51 @@ export async function finalizeLinkedInConnection(
     },
     update: {
       displayName: orgName,
+      accessTokenEnc: encryptToken(pending.userAccessToken),
+      tokenExpiresAt: pending.expiresAt,
+      refreshTokenEnc,
+      refreshTokenExpiresAt: pending.refreshTokenExpiresAt,
+      active: true,
+      lastError: null,
+    },
+  });
+
+  await clearLinkedInPendingConnection();
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+}
+
+/** Schließt den Verbinden-Flow für ein persönliches LinkedIn-Profil ab - Gegenstück zu finalizeLinkedInConnection für Organisationsseiten. */
+export async function finalizePersonalLinkedInConnection(
+  organizationId: string,
+  personUrn: string,
+  personName: string,
+): Promise<void> {
+  const session = await requireSession();
+  requireAgencyAdmin(session.user.role);
+
+  const pending = await readLinkedInPendingConnection();
+  if (!pending || pending.organizationId !== organizationId) {
+    throw new Error("Verbindung abgelaufen. Bitte erneut mit LinkedIn verbinden.");
+  }
+
+  const refreshTokenEnc = pending.refreshToken ? encryptToken(pending.refreshToken) : null;
+
+  await prisma.socialChannel.upsert({
+    where: { organizationId_platform_externalId: { organizationId, platform: "LINKEDIN", externalId: personUrn } },
+    create: {
+      organizationId,
+      platform: "LINKEDIN",
+      linkedInKind: "PERSONAL",
+      externalId: personUrn,
+      displayName: `${personName} (persönliches Profil)`,
+      accessTokenEnc: encryptToken(pending.userAccessToken),
+      tokenExpiresAt: pending.expiresAt,
+      refreshTokenEnc,
+      refreshTokenExpiresAt: pending.refreshTokenExpiresAt,
+      connectedByUserId: session.user.id,
+    },
+    update: {
+      displayName: `${personName} (persönliches Profil)`,
       accessTokenEnc: encryptToken(pending.userAccessToken),
       tokenExpiresAt: pending.expiresAt,
       refreshTokenEnc,

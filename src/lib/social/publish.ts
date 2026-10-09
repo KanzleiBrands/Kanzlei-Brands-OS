@@ -69,7 +69,7 @@ async function publishOneSocialPost(post: PostWithChannel): Promise<{ success: b
     } else {
       const linkedInResult = await publishLinkedInPost({
         accessToken,
-        organizationUrn: post.channel.externalId,
+        authorUrn: post.channel.externalId,
         text: caption,
         mediaUrl: post.mediaUrl ?? undefined,
         mediaUrls: isCarousel ? post.mediaUrls : undefined,

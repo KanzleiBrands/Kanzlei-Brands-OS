@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { readLinkedInPendingConnection } from "@/lib/linkedin/pending-connection";
-import { listLinkedInOrganizations } from "@/lib/linkedin/client";
+import { listLinkedInOrganizations, getLinkedInPersonInfo } from "@/lib/linkedin/client";
 import { LinkedInConnectWizard } from "./linkedin-connect-wizard";
+import { LinkedInPersonalConnectConfirm } from "./linkedin-personal-connect-confirm";
 
 export default async function ConnectLinkedInPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
@@ -16,6 +17,31 @@ export default async function ConnectLinkedInPage({ params }: { params: Promise<
   const pending = await readLinkedInPendingConnection();
   if (!pending || pending.organizationId !== orgId) {
     redirect(`/dashboard/clients/${orgId}?tab=content&error=linkedin_session_expired`);
+  }
+
+  if (pending.kind === "PERSONAL") {
+    let person: { urn: string; name: string } | null = null;
+    let loadError: string | null = null;
+    try {
+      person = await getLinkedInPersonInfo(pending.userAccessToken);
+    } catch (error) {
+      loadError = error instanceof Error ? error.message : "LinkedIn-Profil konnte nicht geladen werden.";
+    }
+
+    return (
+      <div className="p-4 sm:p-8">
+        <h1 className="mb-2 text-2xl font-semibold">Persönliches LinkedIn-Profil verbinden</h1>
+        <p className="mb-6 text-muted-foreground">
+          Für &bdquo;{organization.name}&ldquo; - Beiträge erscheinen dann unter dem persönlichen Profil, nicht der
+          Unternehmensseite (z.B. für Thought-Leadership-Content der Personal Brand).
+        </p>
+        {loadError || !person ? (
+          <p className="text-destructive">{loadError}</p>
+        ) : (
+          <LinkedInPersonalConnectConfirm organizationId={organization.id} personUrn={person.urn} personName={person.name} />
+        )}
+      </div>
+    );
   }
 
   let organizations: { urn: string; name: string }[] = [];

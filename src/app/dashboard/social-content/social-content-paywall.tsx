@@ -6,6 +6,7 @@ import { requestSocialContentUnlock, toggleSocialContentBooked } from "@/lib/act
 import { SOCIAL_CONTENT_PRICE_LABEL } from "@/lib/social-content/constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 
 /** Mirrors EmailMarketingPaywall in email-marketing-tab.tsx. */
 export function SocialContentPaywall({ organizationId }: { organizationId: string }) {
@@ -52,12 +53,11 @@ export function SocialContentBookedToggle({ organizationId, booked }: { organiza
   const [isPending, startTransition] = useTransition();
 
   return (
-    <label className="flex items-center gap-1.5 text-sm">
-      <input
-        type="checkbox"
+    <label className="flex items-center gap-2.5 text-sm">
+      <Switch
         defaultChecked={booked}
         disabled={isPending}
-        onChange={() => {
+        onCheckedChange={() => {
           const formData = new FormData();
           formData.set("organizationId", organizationId);
           startTransition(() => {
@@ -65,7 +65,7 @@ export function SocialContentBookedToggle({ organizationId, booked }: { organiza
           });
         }}
       />
-      Für diesen Kunden gebucht ({SOCIAL_CONTENT_PRICE_LABEL})
+      Dieser Kunde hat Social Media Content gebucht
     </label>
   );
 }

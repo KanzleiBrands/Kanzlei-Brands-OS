@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const state = await createLinkedInOAuthState(organizationId);
-  return NextResponse.redirect(buildLinkedInAuthUrl(baseUrl, state));
+  const kind = request.nextUrl.searchParams.get("kind") === "personal" ? "PERSONAL" : "ORGANIZATION";
+  const state = await createLinkedInOAuthState(organizationId, kind);
+  return NextResponse.redirect(buildLinkedInAuthUrl(baseUrl, state, kind));
 }

@@ -11,6 +11,7 @@ type Channel = {
   platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
   displayName: string;
   active: boolean;
+  linkedInKind?: "ORGANIZATION" | "PERSONAL" | null;
 };
 
 function DisconnectButton({ channelId }: { channelId: string }) {
@@ -56,9 +57,14 @@ export function SocialChannelList({
                 Facebook/Instagram verbinden
               </Button>
             </a>
-            <a href={`/api/linkedin/connect?organizationId=${organizationId}`}>
+            <a href={`/api/linkedin/connect?organizationId=${organizationId}&kind=organization`}>
               <Button type="button" size="sm" variant="outline">
-                LinkedIn verbinden
+                LinkedIn-Seite verbinden
+              </Button>
+            </a>
+            <a href={`/api/linkedin/connect?organizationId=${organizationId}&kind=personal`}>
+              <Button type="button" size="sm" variant="outline">
+                LinkedIn-Profil verbinden
               </Button>
             </a>
           </div>

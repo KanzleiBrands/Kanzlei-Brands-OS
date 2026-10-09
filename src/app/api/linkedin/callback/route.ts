@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     const token = await exchangeLinkedInCode(baseUrl, code);
     await storeLinkedInPendingConnection(
       verified.organizationId,
+      verified.kind,
       token.access_token,
       token.expires_in,
       token.refresh_token,
