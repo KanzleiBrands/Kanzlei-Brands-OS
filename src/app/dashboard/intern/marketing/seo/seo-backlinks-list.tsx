@@ -14,6 +14,51 @@ export type SeoBacklinkItem = {
   note: string | null;
 };
 
+export type SeoBacklinkProfileItem = {
+  domain: string | null;
+  rank: number | null;
+  backlinks: number | null;
+  referringDomains: number | null;
+  brokenBacklinks: number | null;
+  fetchedAt: string | null;
+  fetchError: string | null;
+} | null;
+
+/** Live-Backlink-Profil der eigenen Zieldomain via DataForSEO (siehe dataforseo-config-panel.tsx für den Sync-Button). */
+function BacklinkProfileSummary({ profile }: { profile: SeoBacklinkProfileItem }) {
+  if (!profile) return null;
+  if (profile.fetchError && !profile.fetchedAt) {
+    return <p className="text-sm text-destructive">Backlink-Profil konnte nicht geladen werden: {profile.fetchError}</p>;
+  }
+  if (!profile.fetchedAt) return null;
+
+  return (
+    <div className="flex flex-wrap gap-4 rounded-md border bg-muted/30 p-3">
+      <div>
+        <p className="text-xs text-muted-foreground">Verweisende Domains</p>
+        <p className="text-lg font-semibold">{profile.referringDomains ?? "–"}</p>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Backlinks gesamt</p>
+        <p className="text-lg font-semibold">{profile.backlinks ?? "–"}</p>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Rang</p>
+        <p className="text-lg font-semibold">{profile.rank ?? "–"}</p>
+      </div>
+      {!!profile.brokenBacklinks && (
+        <div>
+          <p className="text-xs text-muted-foreground">Defekte Backlinks</p>
+          <p className="text-lg font-semibold text-destructive">{profile.brokenBacklinks}</p>
+        </div>
+      )}
+      <p className="w-full text-xs text-muted-foreground">
+        {profile.domain} · zuletzt aktualisiert {new Date(profile.fetchedAt).toLocaleString("de-DE")}
+      </p>
+    </div>
+  );
+}
+
 const STATUS_OPTIONS: SeoBacklinkItem["status"][] = ["GEPLANT", "ANGEFRAGT", "LIVE", "ABGELEHNT"];
 const STATUS_LABELS: Record<SeoBacklinkItem["status"], string> = {
   GEPLANT: "Geplant",
@@ -27,7 +72,7 @@ const STATUS_LABELS: Record<SeoBacklinkItem["status"], string> = {
  * gibt keine kostenlose automatisierte Backlink-Quelle, auch byclaire.co
  * automatisiert echten Linkaufbau nicht). Einfache Liste statt Sync-Ziel.
  */
-export function SeoBacklinksList({ backlinks }: { backlinks: SeoBacklinkItem[] }) {
+export function SeoBacklinksList({ backlinks, profile }: { backlinks: SeoBacklinkItem[]; profile: SeoBacklinkProfileItem }) {
   const [isAdding, startAdding] = useTransition();
   const [domain, setDomain] = useState("");
   const [url, setUrl] = useState("");
@@ -46,6 +91,7 @@ export function SeoBacklinksList({ backlinks }: { backlinks: SeoBacklinkItem[] }
 
   return (
     <div className="flex flex-col gap-3">
+      <BacklinkProfileSummary profile={profile} />
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Domain</label>

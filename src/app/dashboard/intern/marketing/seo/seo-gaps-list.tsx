@@ -14,6 +14,8 @@ export type SeoContentGapItem = {
   impressions: number;
   ctr: number;
   avgPosition: number;
+  /** Echtes Google-Suchvolumen via DataForSEO (siehe seo-dataforseo.ts) - null, solange nicht angereichert. */
+  searchVolume: number | null;
 };
 
 function GapRow({ gap }: { gap: SeoContentGapItem }) {
@@ -37,6 +39,7 @@ function GapRow({ gap }: { gap: SeoContentGapItem }) {
         <p className="text-xs text-muted-foreground">
           Position {gap.avgPosition.toFixed(1)} · {gap.impressions} Impressionen · {gap.clicks} Klicks ·{" "}
           {(gap.ctr * 100).toFixed(1)}% CTR (letzte 28 Tage)
+          {gap.searchVolume != null && <> · ca. {gap.searchVolume} Suchanfragen/Monat (DataForSEO)</>}
         </p>
       </div>
       <div className="flex gap-1.5">

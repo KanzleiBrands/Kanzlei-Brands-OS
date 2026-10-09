@@ -169,6 +169,50 @@ export async function createBlogIdeaFromGap(formData: FormData): Promise<{ error
   return undefined;
 }
 
+/** Ein-Klick-Idee aus einer DataForSEO-Konkurrenz-Keyword-Lücke (siehe seo-dataforseo.ts) - markiert die Lücke als aufgegriffen. */
+export async function createBlogIdeaFromCompetitorGap(formData: FormData): Promise<{ error: string } | undefined> {
+  const session = await requireSession();
+  try {
+    requireAgencyAdmin(session.user.role);
+  } catch {
+    return { error: "Nur Agentur-Admins können Blogartikel-Ideen generieren." };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) return { error: "KI-Funktionen sind noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt)." };
+
+  const gapId = String(formData.get("gapId") ?? "");
+  const gap = await prisma.seoCompetitorKeywordGap.findUnique({ where: { id: gapId }, include: { competitorDomain: true } });
+  if (!gap) return { error: "Konkurrenz-Keyword-Lücke nicht gefunden." };
+
+  const positionNote =
+    gap.ourPosition != null
+      ? `wir selbst ranken nur auf Position ${gap.ourPosition}`
+      : "wir selbst ranken dafür noch gar nicht";
+  const input = `Die Konkurrenz-Kanzlei "${gap.competitorDomain.domain}" rankt bei Google für die Suchanfrage "${gap.keyword}" auf Position ${gap.competitorPosition ?? "?"}${gap.searchVolume ? ` (ca. ${gap.searchVolume} Suchanfragen/Monat)` : ""} - ${positionNote}. Entwickle einen Blogartikel, der dieses Thema umfassend und besser als die Konkurrenz beantwortet.`;
+
+  try {
+    const ideas = await generateIdeasFromInput(input, 1);
+    if (ideas.length === 0) return { error: "Die KI hat keine verwertbare Idee geliefert." };
+
+    const idea = ideas[0];
+    await prisma.$transaction([
+      prisma.blogPost.create({
+        data: {
+          title: idea.title,
+          topic: idea.topic,
+          targetKeyword: idea.targetKeyword || gap.keyword,
+          ideaSourceLabel: `DataForSEO: Konkurrenz "${gap.competitorDomain.domain}" rankt für "${gap.keyword}" (Position ${gap.competitorPosition ?? "?"})`,
+        },
+      }),
+      prisma.seoCompetitorKeywordGap.update({ where: { id: gapId }, data: { status: "IDEA_CREATED" } }),
+    ]);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "KI-Anfrage fehlgeschlagen." };
+  }
+
+  revalidatePath(SEO_TAB_PATH);
+  return undefined;
+}
+
 /** Phase 2: schreibt den vollständigen Artikel (Markdown + SEO-Metadaten) zu einer bereits generierten Idee. */
 export async function generateBlogPostDraft(formData: FormData): Promise<{ error: string } | { content: string }> {
   const session = await requireSession();

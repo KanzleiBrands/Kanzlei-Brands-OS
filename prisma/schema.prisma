@@ -2492,6 +2492,19 @@ model PlatformSettings {
   closeCallsLastSyncedAt  DateTime?
   closeCallsLastSyncError String?
 
+  // DataForSEO-Anreicherung der SEO/GEO-Pipeline (echtes Suchvolumen,
+  // Konkurrenz-Keyword-Gaps, Backlink-Profil) - siehe src/lib/dataforseo.
+  // Bewusst AUS per Default (Standardregel, hier NICHT mit dem Nutzer
+  // abweichend vereinbart wie bei Fireflies/Close): jeder Aufruf kostet
+  // echtes Geld (Pay-as-you-go), der Nutzer wollte erst manuell über den
+  // "Jetzt"-Button testen, bevor es im täglichen Cron automatisch mitläuft.
+  dataForSeoEnabled      Boolean   @default(false)
+  // Domain ohne "https://"/"www." für Backlink-Profil + Konkurrenz-Vergleich
+  // (unsere Seite der domain_intersection-Abfrage), z.B. "kanzlei-brands.de".
+  dataForSeoTargetDomain String?
+  dataForSeoLastSyncedAt DateTime?
+  dataForSeoLastSyncError String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -2589,6 +2602,12 @@ model SeoContentGap {
   avgPosition Float
   status      SeoContentGapStatus @default(NEW)
 
+  // Optionale Anreicherung über DataForSEO (echtes Google-Suchvolumen statt
+  // nur GSC-Impressionen) - null, solange DataForSEO nicht konfiguriert/
+  // ausgeführt wurde. Siehe src/lib/actions/seo-dataforseo.ts.
+  searchVolume Int?
+  cpc          Float?
+
   discoveredAt DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -2669,5 +2688,62 @@ model SeoBacklink {
   note   String?
 
   addedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Manuell gepflegte Liste von Konkurrenz-Domains (andere Kanzleien), gegen
+// die per DataForSEO "domain_intersection" (intersections=false) verglichen
+// wird: welche Keywords rankt die Konkurrenz, für die wir selbst (noch) nicht
+// ranken. Ergänzt die GSC-basierten SeoContentGap-Lücken (die nur zeigen, wo
+// WIR schon fast ranken) um echte Konkurrenz-Lücken.
+model SeoCompetitorDomain {
+  id     String @id @default(cuid())
+  domain String @unique
+  label  String?
+
+  addedAt DateTime @default(now())
+
+  gaps SeoCompetitorKeywordGap[]
+}
+
+model SeoCompetitorKeywordGap {
+  id                    String              @id @default(cuid())
+  competitorDomainId    String
+  competitorDomain      SeoCompetitorDomain @relation(fields: [competitorDomainId], references: [id], onDelete: Cascade)
+  keyword               String
+  searchVolume          Int?
+  // Rang der Konkurrenz-Domain für dieses Keyword (rank_group aus DataForEO).
+  competitorPosition    Int?
+  // Eigener Rang, falls vorhanden (wir ranken ggf. schlechter, nicht nur gar nicht).
+  ourPosition           Int?
+  status                SeoContentGapStatus @default(NEW)
+
+  discoveredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([competitorDomainId, keyword])
+  @@index([status])
+}
+
+// Live-Backlink-Profil der eigenen Zieldomain (siehe
+// PlatformSettings.dataForSeoTargetDomain) über DataForSEO's Backlinks-
+// Summary-Endpoint - ein Snapshot (Singleton), nicht historisiert, da v1 nur
+// den aktuellen Stand zeigen soll. Ergänzt die rein manuelle SeoBacklink-Liste
+// (dort stehen geplante/angefragte Platzierungen) um automatisch gemessene
+// Gesamtzahlen der eigenen Seite.
+model SeoBacklinkProfile {
+  id     String  @id @default("singleton")
+  domain String?
+
+  rank                    Int?
+  backlinks               Int?
+  referringDomains        Int?
+  referringDomainsNofollow Int?
+  brokenBacklinks         Int?
+  spamScore               Int?
+
+  fetchedAt  DateTime?
+  fetchError String?
+
   updatedAt DateTime @updatedAt
 }

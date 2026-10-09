@@ -14,7 +14,13 @@ export async function getPlatformSettings() {
     // Beide Live-Schaltungen (Fireflies- und Close-Call-Sync) wurden vor dem
     // jeweiligen Bau explizit mit dem Nutzer abgestimmt (siehe CLAUDE.md-
     // Automationsregel) - deshalb hier bewusst abweichend vom sonst üblichen
-    // AUS-Default bereits bei Erstanlage an.
-    create: { id: "singleton", firefliesSyncEnabled: true, closeCallsSyncEnabled: true },
+    // AUS-Default bereits bei Erstanlage an. dataForSeoEnabled bleibt dagegen
+    // bewusst auf dem Schema-Default (aus) - siehe seo-dataforseo.ts.
+    create: {
+      id: "singleton",
+      firefliesSyncEnabled: true,
+      closeCallsSyncEnabled: true,
+      dataForSeoTargetDomain: "kanzlei-brands.de",
+    },
   });
 }
