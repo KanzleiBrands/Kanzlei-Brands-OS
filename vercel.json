@@ -55,6 +55,14 @@
     {
       "path": "/api/cron/close-calls-sync",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/seo-gaps-sync",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/blog-publish",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

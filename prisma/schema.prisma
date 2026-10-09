@@ -318,6 +318,7 @@ model User {
   connectedMetaLeadForms    MetaLeadFormConnection[]
   connectedSocialChannels   SocialChannel[]
   socialPostsResponsible    SocialPost[]
+  blogPostsAuthored         BlogPost[]
   connectedWhatsAppChannels WhatsAppChannel[]
   whatsAppTemplateSends     WhatsAppTemplateSend[]
   tasksCreated              Task[]                     @relation("TaskCreatedBy")
@@ -2540,4 +2541,133 @@ model CallTranscript {
 
   @@unique([source, externalId])
   @@index([dateTime])
+}
+
+// Einzige Google-Search-Console-Verbindung der Agentur (eine Property,
+// kanzlei-brands.de) - bewusst ein Singleton statt pro Organisation, da die
+// SEO/GEO-Pipeline (v1) ausschließlich intern läuft, siehe BlogPost. OAuth-
+// Flow + Verschlüsselung spiegeln EmailAccount/SocialChannel (accessTokenEnc/
+// refreshTokenEnc, siehe src/lib/auth-encryption.ts).
+model GoogleSearchConsoleConnection {
+  id String @id @default("singleton")
+  // Property wie in der Search Console hinterlegt, z.B. "sc-domain:kanzlei-brands.de"
+  // oder "https://kanzlei-brands.de/". Null direkt nach dem OAuth-Callback, bis
+  // die Property aus sites.list ausgewählt wurde (zweistufiger Connect-Flow,
+  // siehe seo.ts - Google selbst kennt die Property erst nach dem Login).
+  siteUrl String?
+
+  accessTokenEnc  String
+  refreshTokenEnc String
+  tokenExpiresAt  DateTime
+
+  connectedAt   DateTime  @default(now())
+  lastSyncedAt  DateTime?
+  lastSyncError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SeoContentGapStatus {
+  NEW
+  IDEA_CREATED
+  DISMISSED
+}
+
+// Aus den eigenen Google-Search-Console-Daten abgeleitete "Striking Distance"-
+// Keywords (Impressionen vorhanden, aber Position 5-20 bzw. schwache CTR) -
+// die kostenlose Alternative zu bezahlten Konkurrenz-Keyword-Datenbanken wie
+// Ahrefs/Semrush (siehe src/lib/actions/seo-gaps.ts). Zeigt, wo die eigene
+// Seite für eigene Themen/Angebote schon (fast) gefunden wird, aber noch
+// keinen dedizierten/guten Content dafür hat.
+model SeoContentGap {
+  id          String              @id @default(cuid())
+  query       String              @unique
+  clicks      Int
+  impressions Int
+  ctr         Float
+  avgPosition Float
+  status      SeoContentGapStatus @default(NEW)
+
+  discoveredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum BlogPostStatus {
+  IDEA
+  IN_PRODUCTION
+  REVIEW
+  CHANGES_REQUESTED
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+// Blog-/SEO-Content-Pipeline (v1, nur intern) - eigenständig von SocialPost,
+// da strukturell anders (Volltext-Artikel mit SEO-Metadaten statt kurzer
+// Social-Caption, eigene Veröffentlichung unter /blog statt an eine externe
+// Plattform). Durchläuft denselben Freigabe-Rhythmus wie Social Media Content
+// (Idee -> Produktion -> Freigabe -> Geplant -> Veröffentlicht), siehe
+// social-posts.ts für das Vorbild der Statuslogik. ideaSourceLabel macht wie
+// bei SocialPost nachvollziehbar, woher eine Idee stammt (Content-Lücke,
+// Call-Transkript oder manuell).
+model BlogPost {
+  id     String         @id @default(cuid())
+  status BlogPostStatus @default(IDEA)
+
+  title String?
+  topic String?
+  // z.B. "GSC-Content-Lücke: '...' (Position 8.3, 420 Impressionen/Monat)"
+  // oder ein Call-Transkript-Label (siehe call-transcripts-tab.tsx). Null bei
+  // manuell angelegten Beiträgen.
+  ideaSourceLabel String?
+
+  // Erst ab IN_PRODUCTION befüllt - in der Idee-Phase gibt es nur title/topic.
+  slug             String? @unique
+  metaTitle        String?
+  metaDescription  String?
+  targetKeyword    String?
+  content          String? // Markdown, gerendert auf der öffentlichen Blog-Seite
+  featuredImageUrl String?
+
+  authorUserId String?
+  author       User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  // Änderungswunsch-Text bei CHANGES_REQUESTED, analog SocialPost.clientFeedback.
+  reviewFeedback String?
+  publishError   String?
+
+  scheduledAt DateTime?
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+}
+
+enum SeoBacklinkStatus {
+  GEPLANT
+  ANGEFRAGT
+  LIVE
+  ABGELEHNT
+}
+
+// Rein manuelles Backlink-Tracking - es gibt keine kostenlose automatisierte
+// Backlink-API (Google selbst liefert "verweisende Seiten" nicht über die
+// Search-Console-API, nur in der Weboberfläche), und selbst byclaire.co
+// automatisiert echten Linkaufbau nicht, sondern bucht ihn als manuelles
+// PR-Zusatzpaket (siehe Recherche in der Session). Diese Tabelle ist bewusst
+// eine einfache Liste statt eines Sync-Ziels.
+model SeoBacklink {
+  id     String            @id @default(cuid())
+  domain String
+  url    String?
+  status SeoBacklinkStatus @default(GEPLANT)
+  note   String?
+
+  addedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
