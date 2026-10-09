@@ -10,7 +10,18 @@ export default async function InternalSocialMediaPage() {
 
   const organizationId = session.user.organizationId;
 
-  const [channels, posts, comments, agencyUsers, contentFormats, organization, contentReferenceDocs, contentReferenceAccounts] = await Promise.all([
+  const [
+    channels,
+    posts,
+    comments,
+    agencyUsers,
+    contentFormats,
+    organization,
+    contentReferenceDocs,
+    contentReferenceAccounts,
+    mediaLibraryItems,
+    contentSnippets,
+  ] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
       where: { organizationId },
@@ -30,6 +41,8 @@ export default async function InternalSocialMediaPage() {
     }),
     prisma.contentReferenceDoc.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.contentReferenceAccount.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
+    prisma.mediaLibraryItem.findMany({ where: { organizationId }, orderBy: { createdAt: "desc" } }),
+    prisma.contentSnippet.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
   ]);
 
   return (
@@ -62,8 +75,11 @@ export default async function InternalSocialMediaPage() {
         lastSyncedAt: account.lastSyncedAt?.toISOString() ?? null,
         lastSyncError: account.lastSyncError,
       }))}
+      mediaLibraryItems={mediaLibraryItems}
+      contentSnippets={contentSnippets}
       contentIntention={organization?.contentIntention ?? null}
       socialContentBooked={null}
+      socialApprovalReminderEnabled={null}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,

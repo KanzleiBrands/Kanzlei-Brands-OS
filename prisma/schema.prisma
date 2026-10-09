@@ -162,6 +162,13 @@ model Organization {
   // eines davon ausrichten wollen. null = noch nicht ausgewählt.
   contentIntention ContentIntention?
 
+  // An/Aus für die automatische Erinnerungs-Mail an den Kunden, wenn ein
+  // Beitrag zu lange unbearbeitet in "Interne Freigabe" hängt (siehe
+  // src/app/api/cron/social-approval-reminder). Defaultet bewusst auf false -
+  // siehe CLAUDE.md-Automationsregel: neue Automationen gehen nie
+  // stillschweigend scharf, das muss die Agentur pro Kunde bewusst anschalten.
+  socialApprovalReminderEnabled Boolean @default(false)
+
   users                     User[]
   pipelines                 Pipeline[]
   courseAssignments         CourseAssignment[]
@@ -171,6 +178,8 @@ model Organization {
   socialPosts               SocialPost[]
   contentReferenceDocs      ContentReferenceDoc[]
   contentReferenceAccounts  ContentReferenceAccount[]
+  mediaLibraryItems         MediaLibraryItem[]
+  contentSnippets           ContentSnippet[]
   whatsAppChannels          WhatsAppChannel[]
   auditLogs                 AuditLog[]
   messageTemplates          MessageTemplate[]
@@ -966,6 +975,13 @@ model SocialPost {
   // Agentur sichtbar, bis der Beitrag erneut zur Freigabe eingereicht wird.
   clientFeedback String?
 
+  // Wann zuletzt eine Freigabe-Erinnerungsmail für diesen Beitrag raus ist
+  // (siehe Organization.socialApprovalReminderEnabled) - verhindert
+  // wiederholten Versand für denselben CLIENT_REVIEW-Zeitraum. Wird bei jeder
+  // Statusänderung weg von CLIENT_REVIEW wieder auf null gesetzt, damit ein
+  // erneuter Freigabe-Durchlauf wieder eine Erinnerung bekommen kann.
+  reviewReminderSentAt DateTime?
+
   // Von Meta abgerufene Leistungskennzahlen (src/lib/social/insights-sync.ts) -
   // aktueller Stand, keine Historie. null bis zum ersten Sync nach Veröffentlichung.
   impressions      Int?
@@ -1067,6 +1083,46 @@ model ContentReferenceAccount {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// Medien-Pool pro Kunde (Konfiguration-Reiter des Content Boards) - 15-20
+// vorab passend zugeschnittene Bilder (z.B. aus Canva) auf einen Schlag
+// hochladen und im Post-Editor per Klick statt Einzel-Upload auswählen,
+// statt sie für jeden Beitrag einzeln neu hochzuladen. Bewusst reine
+// Bild-Ablage ohne eigene Nutzungs-Historie - welches Bild wo verwendet
+// wurde, steht weiterhin nur auf dem jeweiligen SocialPost.mediaUrl.
+model MediaLibraryItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  url            String
+  tags           String[]     @default([])
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+enum ContentSnippetCategory {
+  SIGNATURE
+  CTA
+  HASHTAGS
+  OTHER
+}
+
+// Wiederverwendbare Textbausteine pro Kunde (Signaturen/CTAs/Hashtag-Sets),
+// die sich im Post-Editor per Klick einfügen lassen statt bei jedem Beitrag
+// neu getippt zu werden - siehe content-config-panel.tsx (Verwaltung) und
+// social-post-form-dialog.tsx (Einfügen).
+model ContentSnippet {
+  id             String                 @id @default(cuid())
+  organizationId String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  label          String
+  content        String
+  category       ContentSnippetCategory @default(OTHER)
+  createdAt      DateTime               @default(now())
 
   @@index([organizationId])
 }
@@ -1420,6 +1476,7 @@ enum SystemEmailType {
   NEW_APPLICANT_NOTIFICATION
   ABSENCE_REQUEST_SUBMITTED
   ABSENCE_REQUEST_DECIDED
+  SOCIAL_APPROVAL_REMINDER
 }
 
 // Editable subject/heading/body/button text for an automated email (see

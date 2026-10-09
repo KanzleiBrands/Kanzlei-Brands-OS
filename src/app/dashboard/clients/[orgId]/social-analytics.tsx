@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { RefreshCwIcon } from "lucide-react";
+import { duplicateSocialPostAsIdea } from "@/lib/actions/social-posts";
 import { PlatformIcon } from "@/components/platform-icon";
 import { StatTile } from "@/components/stat-tile";
+import { Button } from "@/components/ui/button";
 
 export type AnalyticsPost = {
   id: string;
@@ -103,6 +106,76 @@ function formatMetric(value: number | null): string {
   return value === null ? "–" : value.toLocaleString("de-DE");
 }
 
+const RECYCLING_MIN_AGE_DAYS = 60;
+const RECYCLING_MAX_SUGGESTIONS = 5;
+
+function engagementScore(post: AnalyticsPost): number {
+  return (post.likeCount ?? 0) + (post.commentCount ?? 0) + (post.shareCount ?? 0);
+}
+
+function RecyclingRow({ post }: { post: AnalyticsPost }) {
+  const [isPending, startTransition] = useTransition();
+  const [done, setDone] = useState(false);
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-md border p-2.5 text-sm">
+      <PlatformIcon platform={post.platform} />
+      <span className="min-w-0 flex-1 truncate">{post.caption}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">{engagementScore(post).toLocaleString("de-DE")} Interaktionen</span>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={isPending || done}
+        onClick={() => {
+          const fd = new FormData();
+          fd.set("postId", post.id);
+          startTransition(async () => {
+            await duplicateSocialPostAsIdea(fd);
+            setDone(true);
+          });
+        }}
+      >
+        <RefreshCwIcon className="size-3.5" />
+        {done ? "Als Idee angelegt" : "Als neue Idee duplizieren"}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Content-Recycling: schlägt gut performende, schon länger zurückliegende
+ * Beiträge zur Wiederverwendung vor (höchste Interaktionszahl zuerst) - ein
+ * Klick legt sie als neue Idee (Status IDEA) im Board an, siehe
+ * duplicateSocialPostAsIdea in social-posts.ts.
+ */
+function RecyclingSuggestions({ posts, now }: { posts: AnalyticsPost[]; now: number }) {
+  const suggestions = useMemo(() => {
+    return posts
+      .filter((p) => now - new Date(p.publishedAt).getTime() > RECYCLING_MIN_AGE_DAYS * 24 * 60 * 60 * 1000)
+      .filter((p) => engagementScore(p) > 0)
+      .sort((a, b) => engagementScore(b) - engagementScore(a))
+      .slice(0, RECYCLING_MAX_SUGGESTIONS);
+  }, [posts, now]);
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border p-4">
+      <p className="mb-3 text-sm font-medium">Wiederverwendungs-Vorschläge</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Gut performende Beiträge, die schon {RECYCLING_MIN_AGE_DAYS}+ Tage zurückliegen - lohnt sich, sie als Basis für
+        einen neuen Beitrag zu nutzen.
+      </p>
+      <div className="flex flex-col gap-1.5">
+        {suggestions.map((post) => (
+          <RecyclingRow key={post.id} post={post} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SocialAnalytics({ posts }: { posts: AnalyticsPost[] }) {
   // Frozen once per mount instead of read fresh on every render, so the
   // component stays pure (see react-hooks/purity) - the trend/30-day window
@@ -136,6 +209,8 @@ export function SocialAnalytics({ posts }: { posts: AnalyticsPost[] }) {
         <StatTile label="Interaktionen gesamt" value={totalEngagement.toLocaleString("de-DE")} subtext="Likes, Kommentare, Shares" />
         <StatTile label="Klicks gesamt" value={totalClicks.toLocaleString("de-DE")} subtext="Facebook" />
       </div>
+
+      <RecyclingSuggestions posts={posts} now={now} />
 
       <div className="rounded-lg border p-4">
         <p className="mb-3 text-sm font-medium">Veröffentlichungstrend (letzte 12 Wochen)</p>

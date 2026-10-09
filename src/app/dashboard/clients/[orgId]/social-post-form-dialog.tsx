@@ -13,6 +13,7 @@ import {
   PencilIcon,
   PlusIcon,
   SparklesIcon,
+  TextCursorInputIcon,
   UploadCloudIcon,
   XIcon,
 } from "lucide-react";
@@ -27,6 +28,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlatformIcon } from "@/components/platform-icon";
 import { useSaveToast } from "@/hooks/use-save-toast";
 import { AiCaptionAssistant } from "./ai-caption-assistant";
+import { MediaLibraryPicker, type MediaLibraryItemData } from "./media-library-list";
+import { SNIPPET_CATEGORY_OPTIONS, type ContentSnippetItem } from "./content-snippets-list";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -223,12 +227,16 @@ export function SocialPostFormDialog({
   organizationId,
   channels,
   agencyUsers,
+  mediaLibraryItems = [],
+  contentSnippets = [],
   post,
   variant = "default",
 }: {
   organizationId: string;
   channels: Channel[];
   agencyUsers: AgencyUser[];
+  mediaLibraryItems?: MediaLibraryItemData[];
+  contentSnippets?: ContentSnippetItem[];
   post?: SocialPostData;
   /** "calendarChip" renders the trigger as a small platform-icon + caption chip for the calendar view, instead of the default edit-pencil/create-button. */
   variant?: "default" | "calendarChip";
@@ -265,6 +273,7 @@ export function SocialPostFormDialog({
     (post?.mediaUrls ?? []).map((url) => ({ id: newId(), url })),
   );
   const [carouselUploading, setCarouselUploading] = useState(false);
+  const [showLibraryPicker, setShowLibraryPicker] = useState(false);
   const [publishNow, setPublishNow] = useState(false);
   const [scheduledAtLocal, setScheduledAtLocal] = useState(toDatetimeLocalValue(post?.scheduledAt ?? null));
   const carouselSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -342,6 +351,7 @@ export function SocialPostFormDialog({
       setImageAspect("1:1");
       setMediaError(null);
       setCarousel([]);
+      setShowLibraryPicker(false);
       setSelectedPlatforms(["FACEBOOK"]);
       setChannelByPlatform({});
       setFormat(PLATFORM_FORMAT_DEFAULT.FACEBOOK);
@@ -638,7 +648,34 @@ export function SocialPostFormDialog({
               required
             />
           </div>
-          <AiCaptionAssistant caption={caption} platform={selectedPlatforms[0]} onInsert={(text) => setCaption(text)} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <AiCaptionAssistant caption={caption} platform={selectedPlatforms[0]} onInsert={(text) => setCaption(text)} />
+            {contentSnippets.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button type="button" size="sm" variant="outline">
+                      <TextCursorInputIcon className="size-3.5" />
+                      Textbaustein einfügen
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent>
+                  {contentSnippets.map((s) => (
+                    <DropdownMenuItem
+                      key={s.id}
+                      onClick={() => setCaption((prev) => (prev.trim() ? `${prev.trim()}\n\n${s.content}` : s.content))}
+                    >
+                      <span className="rounded bg-muted px-1 py-0.5 text-[0.6rem] font-medium uppercase text-muted-foreground">
+                        {SNIPPET_CATEGORY_OPTIONS.find((o) => o.value === s.category)?.label}
+                      </span>
+                      {s.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
 
           {(format === "IMAGE_POST" || format === "CAROUSEL" || format === "THOUGHT_LEADERSHIP") && (
             <div className="flex flex-col gap-1">
@@ -661,21 +698,40 @@ export function SocialPostFormDialog({
 
           {format === "CAROUSEL" && (
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1.5">
                 <Label>Karussell-Bilder (2-10)</Label>
-                <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted">
-                  {carouselUploading ? <Loader2Icon className="size-3.5 animate-spin" /> : <ImagesIcon className="size-3.5" />}
-                  Bilder hinzufügen
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    disabled={carouselUploading}
-                    onChange={(e) => handleCarouselFiles(e.target.files)}
-                  />
-                </label>
+                <div className="flex gap-1.5">
+                  {mediaLibraryItems.length > 0 && (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setShowLibraryPicker((v) => !v)}>
+                      <ImagesIcon className="size-3.5" />
+                      Aus Bibliothek
+                    </Button>
+                  )}
+                  <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted">
+                    {carouselUploading ? <Loader2Icon className="size-3.5 animate-spin" /> : <ImagesIcon className="size-3.5" />}
+                    Bilder hinzufügen
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={carouselUploading}
+                      onChange={(e) => handleCarouselFiles(e.target.files)}
+                    />
+                  </label>
+                </div>
               </div>
+              {showLibraryPicker && (
+                <div className="rounded-md border p-2">
+                  <MediaLibraryPicker
+                    items={mediaLibraryItems}
+                    onSelect={(url) => {
+                      setCarousel((c) => [...c, { id: newId(), url }]);
+                      setShowLibraryPicker(false);
+                    }}
+                  />
+                </div>
+              )}
               {carousel.length > 0 && (
                 <DndContext sensors={carouselSensors} collisionDetection={closestCenter} onDragEnd={handleCarouselDragEnd}>
                   <SortableContext items={carousel.map((c) => c.id)} strategy={verticalListSortingStrategy}>
@@ -727,20 +783,40 @@ export function SocialPostFormDialog({
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {(format === "IMAGE_POST" || format === "THOUGHT_LEADERSHIP") && (
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-                      <ImageIcon className="size-4" />
-                      Bild {format === "THOUGHT_LEADERSHIP" ? "hinzufügen (optional)" : "auswählen"}
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageFile(e.target.files?.[0])} />
-                    </label>
-                  )}
-                  {format === "REEL" && (
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-                      <UploadCloudIcon className="size-4" />
-                      Video auswählen (Hochformat 9:16)
-                      <input type="file" accept="video/*" className="hidden" onChange={(e) => handleVideoFile(e.target.files?.[0])} />
-                    </label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {(format === "IMAGE_POST" || format === "THOUGHT_LEADERSHIP") && (
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                        <ImageIcon className="size-4" />
+                        Bild {format === "THOUGHT_LEADERSHIP" ? "hinzufügen (optional)" : "auswählen"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageFile(e.target.files?.[0])} />
+                      </label>
+                    )}
+                    {(format === "IMAGE_POST" || format === "THOUGHT_LEADERSHIP") && mediaLibraryItems.length > 0 && (
+                      <Button type="button" size="sm" variant="outline" onClick={() => setShowLibraryPicker((v) => !v)}>
+                        <ImagesIcon className="size-3.5" />
+                        Aus Bibliothek
+                      </Button>
+                    )}
+                    {format === "REEL" && (
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                        <UploadCloudIcon className="size-4" />
+                        Video auswählen (Hochformat 9:16)
+                        <input type="file" accept="video/*" className="hidden" onChange={(e) => handleVideoFile(e.target.files?.[0])} />
+                      </label>
+                    )}
+                  </div>
+                  {showLibraryPicker && (format === "IMAGE_POST" || format === "THOUGHT_LEADERSHIP") && (
+                    <div className="rounded-md border p-2">
+                      <MediaLibraryPicker
+                        items={mediaLibraryItems}
+                        onSelect={(url) => {
+                          setMediaUrl(url);
+                          setMediaType("IMAGE");
+                          setShowLibraryPicker(false);
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               )}

@@ -97,6 +97,17 @@ export const SYSTEM_EMAIL_DEFAULTS: Record<SystemEmailType, SystemEmailContent> 
     ctaLabel: "Meine Abwesenheiten öffnen",
     footerNote: "",
   },
+  SOCIAL_APPROVAL_REMINDER: {
+    label: "Freigabe-Erinnerung Social Media Content",
+    description:
+      "Geht an den Kunden, wenn ein Social-Media-Beitrag seit mehreren Tagen unbearbeitet auf seine Freigabe wartet. Muss pro Kunde im Konfiguration-Reiter des Content Boards bewusst aktiviert werden.",
+    placeholders: [{ token: "{{name}}", description: "Name des Empfängers" }],
+    subject: "Ein Beitrag wartet auf deine Freigabe",
+    heading: "Moin {{name}},",
+    body: "ein Social-Media-Beitrag wartet schon eine Weile auf deine Freigabe oder deinen Änderungswunsch. Wirf kurz einen Blick drauf, damit es für euch weitergehen kann.",
+    ctaLabel: "Beitrag ansehen",
+    footerNote: "",
+  },
 };
 
 export const SYSTEM_EMAIL_TYPES = Object.keys(SYSTEM_EMAIL_DEFAULTS) as SystemEmailType[];

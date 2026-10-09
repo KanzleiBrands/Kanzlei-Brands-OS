@@ -15,6 +15,9 @@ import { ContentConfigPanel } from "./content-config-panel";
 import { type ContentIntentionValue } from "./content-config-form";
 import { type ContentReferenceDocItem } from "./content-reference-docs-list";
 import { type ContentReferenceAccountItem } from "./content-reference-accounts-list";
+import { type MediaLibraryItemData } from "./media-library-list";
+import { type ContentSnippetItem } from "./content-snippets-list";
+import { BulkScheduleDialog } from "./bulk-schedule-dialog";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -33,7 +36,10 @@ export function ContentTab({
   contentIntention,
   contentReferenceDocs,
   contentReferenceAccounts,
+  mediaLibraryItems,
+  contentSnippets,
   socialContentBooked,
+  socialApprovalReminderEnabled,
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
@@ -50,8 +56,12 @@ export function ContentTab({
   contentIntention: ContentIntentionValue | null;
   contentReferenceDocs: ContentReferenceDocItem[];
   contentReferenceAccounts: ContentReferenceAccountItem[];
+  mediaLibraryItems: MediaLibraryItemData[];
+  contentSnippets: ContentSnippetItem[];
   /** null im internen Marketing-Center, wo "für diesen Kunden gebucht" kein Konzept ist. */
   socialContentBooked: boolean | null;
+  /** null im internen Marketing-Center, wo es keine echten Kunden-Nutzer zum Erinnern gibt. */
+  socialApprovalReminderEnabled: boolean | null;
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
   /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
@@ -68,6 +78,9 @@ export function ContentTab({
     publishedAt: post.publishedAt,
     publishedUrl: post.publishedUrl,
   }));
+  const schedulablePosts = posts
+    .filter((post) => post.status === "IN_PRODUCTION" && post.caption.trim())
+    .map((post) => ({ id: post.id, platform: post.platform, caption: post.caption }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,16 +107,37 @@ export function ContentTab({
         <div className="flex flex-wrap gap-1.5">
           {canManageFormats && <ContentFormatManager formats={contentFormats} />}
           <GenerateContentIdeasDialog organizationId={organizationId} formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))} />
+          <BulkScheduleDialog organizationId={organizationId} posts={schedulablePosts} />
           <SocialCsvImportDialog organizationId={organizationId} />
-          <SocialPostFormDialog organizationId={organizationId} channels={channels} agencyUsers={agencyUsers} />
+          <SocialPostFormDialog
+            organizationId={organizationId}
+            channels={channels}
+            agencyUsers={agencyUsers}
+            mediaLibraryItems={mediaLibraryItems}
+            contentSnippets={contentSnippets}
+          />
         </div>
       </div>
 
       {view === "board" && (
-        <SocialPostBoard organizationId={organizationId} posts={posts} channels={channels} agencyUsers={agencyUsers} />
+        <SocialPostBoard
+          organizationId={organizationId}
+          posts={posts}
+          channels={channels}
+          agencyUsers={agencyUsers}
+          mediaLibraryItems={mediaLibraryItems}
+          contentSnippets={contentSnippets}
+        />
       )}
       {view === "calendar" && (
-        <SocialPostCalendar organizationId={organizationId} posts={posts} channels={channels} agencyUsers={agencyUsers} />
+        <SocialPostCalendar
+          organizationId={organizationId}
+          posts={posts}
+          channels={channels}
+          agencyUsers={agencyUsers}
+          mediaLibraryItems={mediaLibraryItems}
+          contentSnippets={contentSnippets}
+        />
       )}
       {view === "community" && <SocialCommentInbox organizationId={organizationId} posts={commentInboxPosts} comments={comments} />}
       {view === "analytics" && <SocialAnalytics posts={analyticsPosts} />}
@@ -115,7 +149,10 @@ export function ContentTab({
           intention={contentIntention}
           referenceDocs={contentReferenceDocs}
           referenceAccounts={contentReferenceAccounts}
+          mediaLibraryItems={mediaLibraryItems}
+          contentSnippets={contentSnippets}
           socialContentBooked={socialContentBooked}
+          socialApprovalReminderEnabled={socialApprovalReminderEnabled}
         />
       )}
     </div>

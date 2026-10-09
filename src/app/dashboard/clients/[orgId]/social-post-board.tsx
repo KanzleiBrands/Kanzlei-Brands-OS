@@ -17,6 +17,8 @@ import { CalendarIcon, SparklesIcon, Trash2Icon, UserIcon } from "lucide-react";
 import { moveSocialPostStatus, deleteSocialPost } from "@/lib/actions/social-posts";
 import { PlatformIcon } from "@/components/platform-icon";
 import { SocialPostFormDialog, type SocialPostData, type SocialPostStatus } from "./social-post-form-dialog";
+import { type MediaLibraryItemData } from "./media-library-list";
+import { type ContentSnippetItem } from "./content-snippets-list";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -43,11 +45,13 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function PostCard({ post, organizationId, channels, agencyUsers }: {
+function PostCard({ post, organizationId, channels, agencyUsers, mediaLibraryItems, contentSnippets }: {
   post: BoardPost;
   organizationId: string;
   channels: Channel[];
   agencyUsers: AgencyUser[];
+  mediaLibraryItems: MediaLibraryItemData[];
+  contentSnippets: ContentSnippetItem[];
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: post.id });
   const [isPending, startTransition] = useTransition();
@@ -139,7 +143,14 @@ function PostCard({ post, organizationId, channels, agencyUsers }: {
           </span>
         )}
         <div className="ml-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
-          <SocialPostFormDialog organizationId={organizationId} channels={channels} agencyUsers={agencyUsers} post={post} />
+          <SocialPostFormDialog
+            organizationId={organizationId}
+            channels={channels}
+            agencyUsers={agencyUsers}
+            mediaLibraryItems={mediaLibraryItems}
+            contentSnippets={contentSnippets}
+            post={post}
+          />
           <button
             type="button"
             aria-label="Löschen"
@@ -187,11 +198,15 @@ export function SocialPostBoard({
   posts,
   channels,
   agencyUsers,
+  mediaLibraryItems,
+  contentSnippets,
 }: {
   organizationId: string;
   posts: BoardPost[];
   channels: Channel[];
   agencyUsers: AgencyUser[];
+  mediaLibraryItems: MediaLibraryItemData[];
+  contentSnippets: ContentSnippetItem[];
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -226,7 +241,15 @@ export function SocialPostBoard({
             {posts
               .filter((p) => p.status === col.status)
               .map((post) => (
-                <PostCard key={post.id} post={post} organizationId={organizationId} channels={channels} agencyUsers={agencyUsers} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  organizationId={organizationId}
+                  channels={channels}
+                  agencyUsers={agencyUsers}
+                  mediaLibraryItems={mediaLibraryItems}
+                  contentSnippets={contentSnippets}
+                />
               ))}
           </Column>
         ))}

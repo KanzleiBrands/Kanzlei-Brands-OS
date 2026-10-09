@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/reference-account-sync",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/social-approval-reminder",
+      "schedule": "0 7 * * *"
     }
   ]
 }

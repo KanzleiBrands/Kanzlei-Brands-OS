@@ -275,3 +275,33 @@ export async function updateContentConfig(_prevState: string | undefined, formDa
   revalidatePath("/dashboard/intern/marketing/social");
   return undefined;
 }
+
+/**
+ * An/Aus für die automatische Freigabe-Erinnerungsmail an den Kunden -
+ * defaultet in der DB auf false (siehe CLAUDE.md-Automationsregel) und muss
+ * pro Kunde bewusst aktiviert werden. Siehe src/lib/social/approval-reminder.ts.
+ */
+export async function toggleSocialApprovalReminder(formData: FormData): Promise<void> {
+  const session = await requireSession();
+  const organizationId = String(formData.get("organizationId") ?? "");
+  if (!organizationId) return;
+  try {
+    await assertCanManageSocialContentFor(session, organizationId);
+  } catch {
+    return;
+  }
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { socialApprovalReminderEnabled: true },
+  });
+  if (!organization) return;
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { socialApprovalReminderEnabled: !organization.socialApprovalReminderEnabled },
+  });
+
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidatePath("/dashboard/intern/marketing/social");
+}

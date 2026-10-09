@@ -261,11 +261,86 @@ export async function deleteSocialPost(formData: FormData) {
   revalidateInternalMarketing();
 }
 
+/**
+ * Content-Recycling: dupliziert einen bereits veröffentlichten, gut
+ * performenden Beitrag als neue Idee (Status IDEA, ohne Termin) - Grundlage
+ * für die "Wiederverwendungs-Vorschläge" in der Analytics-Ansicht
+ * (social-analytics.tsx). Kopiert Text/Medien/Format 1:1; die Agentur
+ * passt den Text dann für die erneute Verwendung an.
+ */
+export async function duplicateSocialPostAsIdea(formData: FormData): Promise<void> {
+  const session = await requireSession();
+  const postId = String(formData.get("postId") ?? "");
+  const post = await prisma.socialPost.findUnique({ where: { id: postId } });
+  if (!post) return;
+  await assertCanManageSocialContentFor(session, post.organizationId);
+
+  await prisma.socialPost.create({
+    data: {
+      organizationId: post.organizationId,
+      platform: post.platform,
+      status: "IDEA",
+      caption: post.caption,
+      mediaUrl: post.mediaUrl,
+      mediaUrls: post.mediaUrls,
+      mediaType: post.mediaType,
+      format: post.format,
+      contentFormatId: post.contentFormatId,
+      channelId: post.channelId,
+    },
+  });
+
+  revalidatePath("/dashboard/social");
+  revalidatePath(`/dashboard/clients/${post.organizationId}`);
+  revalidateInternalMarketing();
+}
+
 const AGENCY_SETTABLE_STATUSES = ["IDEA", "IN_PRODUCTION", "CLIENT_REVIEW", "SCHEDULED"] as const;
 type AgencySettableStatus = (typeof AGENCY_SETTABLE_STATUSES)[number];
 
 function isAgencySettableStatus(value: string): value is AgencySettableStatus {
   return (AGENCY_SETTABLE_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * Bulk-Terminplanung: verteilt mehrere produktionsbereite Beiträge auf einen
+ * Rutsch statt jeden einzeln manuell zu planen - setzt scheduledAt und Status
+ * SCHEDULED für jeden übergebenen Beitrag. Die eigentliche Verteilung
+ * (Startdatum + Rhythmus -> ein Termin pro Beitrag) passiert bewusst im
+ * Browser (bulk-schedule-dialog.tsx), aus demselben Grund wie
+ * localDatetimeToIso in social-post-form-dialog.tsx: nur dort ist die
+ * Zeitzone des Nutzers bekannt, der auf Vercel in UTC laufende Server würde
+ * sonst falsch rechnen.
+ */
+export async function bulkSchedulePosts(formData: FormData): Promise<string | undefined> {
+  const session = await requireSession();
+  const organizationId = String(formData.get("organizationId") ?? "");
+  if (!organizationId) return "Kunde ist erforderlich.";
+  try {
+    await assertCanManageSocialContentFor(session, organizationId);
+  } catch {
+    return "Nur Agentur-Admins oder Marketing-Mitarbeiter können Beiträge planen.";
+  }
+
+  const postIds = formData.getAll("postIds").map(String).filter(Boolean);
+  const scheduledAtsRaw = formData.getAll("scheduledAts").map(String);
+  if (postIds.length === 0 || postIds.length !== scheduledAtsRaw.length) {
+    return "Bitte mindestens einen Beitrag mit gültigem Termin auswählen.";
+  }
+
+  const posts = await prisma.socialPost.findMany({ where: { id: { in: postIds }, organizationId } });
+  if (posts.length !== postIds.length) return "Mindestens ein Beitrag gehört nicht zu diesem Kunden.";
+
+  for (let i = 0; i < postIds.length; i++) {
+    const scheduledAt = new Date(scheduledAtsRaw[i]);
+    if (Number.isNaN(scheduledAt.getTime())) continue;
+    await prisma.socialPost.update({ where: { id: postIds[i] }, data: { status: "SCHEDULED", scheduledAt } });
+  }
+
+  revalidatePath("/dashboard/social");
+  revalidatePath(`/dashboard/clients/${organizationId}`);
+  revalidateInternalMarketing();
+  return undefined;
 }
 
 /** Quick status change from the board (drag between columns) - agency only. */
@@ -283,7 +358,10 @@ export async function moveSocialPostStatus(formData: FormData) {
     throw new Error("Bitte zuerst ein Veröffentlichungsdatum festlegen.");
   }
 
-  await prisma.socialPost.update({ where: { id: postId }, data: { status } });
+  await prisma.socialPost.update({
+    where: { id: postId },
+    data: { status, ...(status === "CLIENT_REVIEW" ? { reviewReminderSentAt: null } : {}) },
+  });
   revalidatePath("/dashboard/social");
   revalidateInternalMarketing();
   revalidatePath(`/dashboard/clients/${post.organizationId}`);

@@ -1,6 +1,9 @@
 import { ContentConfigForm, type ContentIntentionValue } from "./content-config-form";
 import { ContentReferenceDocsList, type ContentReferenceDocItem } from "./content-reference-docs-list";
 import { ContentReferenceAccountsList, type ContentReferenceAccountItem } from "./content-reference-accounts-list";
+import { MediaLibraryList, type MediaLibraryItemData } from "./media-library-list";
+import { ContentSnippetsList, type ContentSnippetItem } from "./content-snippets-list";
+import { ApprovalReminderToggle } from "./approval-reminder-toggle";
 import { SocialContentBookedToggle } from "@/app/dashboard/social-content/social-content-paywall";
 
 /**
@@ -21,7 +24,10 @@ export function ContentConfigPanel({
   intention,
   referenceDocs,
   referenceAccounts,
+  mediaLibraryItems,
+  contentSnippets,
   socialContentBooked,
+  socialApprovalReminderEnabled,
 }: {
   organizationId: string;
   websiteUrl: string;
@@ -29,8 +35,12 @@ export function ContentConfigPanel({
   intention: ContentIntentionValue | null;
   referenceDocs: ContentReferenceDocItem[];
   referenceAccounts: ContentReferenceAccountItem[];
+  mediaLibraryItems: MediaLibraryItemData[];
+  contentSnippets: ContentSnippetItem[];
   /** null im internen Marketing-Center, wo "für diesen Kunden gebucht" kein Konzept ist. */
   socialContentBooked: boolean | null;
+  /** null im internen Marketing-Center, wo es keine echten Kunden-Nutzer zum Erinnern gibt. */
+  socialApprovalReminderEnabled: boolean | null;
 }) {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -38,6 +48,13 @@ export function ContentConfigPanel({
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">Freischaltung</p>
           <SocialContentBookedToggle organizationId={organizationId} booked={socialContentBooked} />
+        </div>
+      )}
+
+      {socialApprovalReminderEnabled !== null && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">Freigabe-Reminder</p>
+          <ApprovalReminderToggle organizationId={organizationId} enabled={socialApprovalReminderEnabled} />
         </div>
       )}
 
@@ -60,6 +77,16 @@ export function ContentConfigPanel({
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium">Referenz-Accounts</p>
         <ContentReferenceAccountsList organizationId={organizationId} accounts={referenceAccounts} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium">Bilder-Bibliothek</p>
+        <MediaLibraryList organizationId={organizationId} items={mediaLibraryItems} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium">Textbausteine</p>
+        <ContentSnippetsList organizationId={organizationId} snippets={contentSnippets} />
       </div>
     </div>
   );

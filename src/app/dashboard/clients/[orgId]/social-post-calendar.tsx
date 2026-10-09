@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { SocialPostFormDialog } from "./social-post-form-dialog";
 import type { BoardPost } from "./social-post-board";
+import { type MediaLibraryItemData } from "./media-library-list";
+import { type ContentSnippetItem } from "./content-snippets-list";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -19,11 +21,15 @@ export function SocialPostCalendar({
   posts,
   channels,
   agencyUsers,
+  mediaLibraryItems,
+  contentSnippets,
 }: {
   organizationId: string;
   posts: BoardPost[];
   channels: Channel[];
   agencyUsers: AgencyUser[];
+  mediaLibraryItems: MediaLibraryItemData[];
+  contentSnippets: ContentSnippetItem[];
 }) {
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
@@ -104,6 +110,8 @@ export function SocialPostCalendar({
                   organizationId={organizationId}
                   channels={channels}
                   agencyUsers={agencyUsers}
+                  mediaLibraryItems={mediaLibraryItems}
+                  contentSnippets={contentSnippets}
                   post={post}
                   variant="calendarChip"
                 />

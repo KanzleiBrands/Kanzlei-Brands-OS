@@ -116,6 +116,14 @@ export default async function ClientDetailPage({
     tab === "content"
       ? await prisma.contentReferenceAccount.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } })
       : [];
+  const mediaLibraryItems =
+    tab === "content"
+      ? await prisma.mediaLibraryItem.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "desc" } })
+      : [];
+  const contentSnippets =
+    tab === "content"
+      ? await prisma.contentSnippet.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } })
+      : [];
   const socialComments =
     tab === "content"
       ? await prisma.socialComment.findMany({
@@ -347,8 +355,11 @@ export default async function ClientDetailPage({
             lastSyncedAt: account.lastSyncedAt?.toISOString() ?? null,
             lastSyncError: account.lastSyncError,
           }))}
+          mediaLibraryItems={mediaLibraryItems}
+          contentSnippets={contentSnippets}
           contentIntention={organization.contentIntention}
           socialContentBooked={organization.bookedProductTags.includes(SOCIAL_CONTENT_PRODUCT_TAG)}
+          socialApprovalReminderEnabled={organization.socialApprovalReminderEnabled}
           posts={socialPosts.map((post) => ({
             id: post.id,
             platform: post.platform,
