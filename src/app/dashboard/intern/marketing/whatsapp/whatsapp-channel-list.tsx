@@ -27,11 +27,20 @@ function DisconnectButton({ channelId }: { channelId: string }) {
   );
 }
 
-export function WhatsAppChannelList({ channels, canManage }: { channels: Channel[]; canManage: boolean }) {
+export function WhatsAppChannelList({
+  channels,
+  canManage,
+  connectHref = "/api/meta/whatsapp/connect",
+}: {
+  channels: Channel[];
+  canManage: boolean;
+  /** Für einen Kunden-Kampagnen-Reiter: "/api/meta/whatsapp/connect?organizationId=...&pipelineId=..." - ohne Angabe verbindet die Nummer der Agentur selbst. */
+  connectHref?: string;
+}) {
   return (
     <div className="flex flex-col gap-3">
       {canManage && (
-        <a href="/api/meta/whatsapp/connect" className="self-start">
+        <a href={connectHref} className="self-start">
           <Button type="button" size="sm" variant="outline">
             WhatsApp verbinden
           </Button>

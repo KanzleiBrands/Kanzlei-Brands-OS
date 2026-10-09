@@ -17,10 +17,19 @@ import { FinalStageSelector } from "./final-stage-selector";
 import { JobPostingForm } from "./job-posting-form";
 import { EmailMarketingTab, type FunnelData } from "./email-marketing-tab";
 import { EMAIL_MARKETING_PRODUCT_TAG } from "@/lib/funnels/constants";
+import {
+  WhatsAppMarketingTab,
+  type WhatsAppChannelOption,
+  type WhatsAppContactOption,
+  type WhatsAppSendRecord,
+} from "./whatsapp-marketing-tab";
+import { WHATSAPP_MARKETING_PRODUCT_TAG, WHATSAPP_RECRUITING_PRODUCT_TAG } from "@/lib/whatsapp-marketing/constants";
+import { listWhatsAppTemplates } from "@/lib/meta/graph";
+import { decryptToken } from "@/lib/auth-encryption";
 import { CAMPAIGN_KIND_LABELS } from "@/lib/campaign-kind-labels";
 import { contactDisplayName } from "@/lib/contact-display";
 
-type Tab = "leads" | "settings" | "sources" | "multiposting" | "email-marketing";
+type Tab = "leads" | "settings" | "sources" | "multiposting" | "email-marketing" | "whatsapp-marketing";
 
 export default async function PipelineDetailPage({
   params,
@@ -59,7 +68,9 @@ export default async function PipelineDetailPage({
           ? "multiposting"
           : tabParam === "email-marketing"
             ? "email-marketing"
-            : "leads";
+            : tabParam === "whatsapp-marketing"
+              ? "whatsapp-marketing"
+              : "leads";
 
   const pipeline = await prisma.pipeline.findUnique({
     where: { id: pipelineId },
@@ -94,10 +105,18 @@ export default async function PipelineDetailPage({
   // Marketing-Mitarbeiter dürfen das E-Mail-Marketing der eigenen
   // Organisation verwalten, und dort gibt es keine Buchungs-Paywall.
   const isAgencyOwnPipeline = pipeline.organization.type === "AGENCY";
-  const canManageEmailMarketing =
-    canViewEmailMarketing && (canManageSettings || (isAgencyOwnPipeline && (await isAgencyMarketingStaffFor(session, pipeline.organizationId))));
+  const isAgencyMarketingStaff = isAgencyOwnPipeline && (await isAgencyMarketingStaffFor(session, pipeline.organizationId));
+  const canManageEmailMarketing = canViewEmailMarketing && (canManageSettings || isAgencyMarketingStaff);
   const emailMarketingBooked = isAgencyOwnPipeline || pipeline.organization.bookedProductTags.includes(EMAIL_MARKETING_PRODUCT_TAG);
   if (tab === "email-marketing" && !canViewEmailMarketing) tab = "leads";
+
+  // WhatsApp Marketing (Mandatsakquise-Kampagnen) / WhatsApp Recruiting
+  // (Bewerbungs-Kampagnen) - zwei separat buchbare Varianten desselben
+  // Reiters, je nach Kampagnen-Art (siehe src/lib/actions/whatsapp-marketing.ts).
+  const whatsAppLabel = pipeline.kind === "APPLICANTS" ? "WhatsApp Recruiting" : "WhatsApp Marketing";
+  const whatsAppProductTag = pipeline.kind === "APPLICANTS" ? WHATSAPP_RECRUITING_PRODUCT_TAG : WHATSAPP_MARKETING_PRODUCT_TAG;
+  const canManageWhatsAppMarketing = canManageSettings || isAgencyMarketingStaff;
+  const whatsAppBooked = isAgencyOwnPipeline || pipeline.organization.bookedProductTags.includes(whatsAppProductTag);
 
   const baseUrl = await getBaseUrl();
   const siblingPipelines =
@@ -191,6 +210,54 @@ export default async function PipelineDetailPage({
     }
   }
 
+  let whatsAppChannels: WhatsAppChannelOption[] = [];
+  let whatsAppContacts: WhatsAppContactOption[] = [];
+  let whatsAppSends: WhatsAppSendRecord[] = [];
+  if (tab === "whatsapp-marketing" && (canManageSettings || whatsAppBooked)) {
+    const channels = await prisma.whatsAppChannel.findMany({
+      where: { organizationId: pipeline.organizationId },
+      orderBy: { createdAt: "asc" },
+    });
+    whatsAppChannels = await Promise.all(
+      channels.map(async (channel) => {
+        let templates: { name: string; language: string; category: string }[] = [];
+        try {
+          const all = await listWhatsAppTemplates(channel.businessAccountId, decryptToken(channel.accessTokenEnc));
+          templates = all.filter((t) => t.status === "APPROVED");
+        } catch {
+          templates = [];
+        }
+        return {
+          id: channel.id,
+          displayName: channel.displayName,
+          displayPhoneNumber: channel.displayPhoneNumber,
+          active: channel.active,
+          templates,
+        };
+      }),
+    );
+
+    whatsAppContacts = pipeline.stages
+      .flatMap((s) => s.contacts)
+      .map((c) => ({ id: c.id, name: contactDisplayName(c), phone: c.phone }));
+
+    const sends = await prisma.whatsAppTemplateSend.findMany({
+      where: { channel: { organizationId: pipeline.organizationId } },
+      include: { sentBy: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    });
+    whatsAppSends = sends.map((s) => ({
+      id: s.id,
+      templateName: s.templateName,
+      recipientPhone: s.recipientPhone,
+      status: s.status,
+      error: s.error,
+      createdAt: s.createdAt.toISOString(),
+      sentByName: s.sentBy?.name ?? null,
+    }));
+  }
+
   return (
     <div className="p-4 sm:p-8">
       <div className="mb-4">
@@ -201,48 +268,52 @@ export default async function PipelineDetailPage({
         </p>
       </div>
 
-      {(canManageSettings || canViewEmailMarketing) && (
-        <div className="mb-6 flex gap-1 overflow-x-auto border-b">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b">
+        <Link
+          href={`/dashboard/pipelines/${pipeline.id}?tab=leads`}
+          className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "leads" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          {pipeline.kind === "APPLICANTS" ? "Bewerbungen" : "Leads"}
+        </Link>
+        {canManageSettings && (
           <Link
-            href={`/dashboard/pipelines/${pipeline.id}?tab=leads`}
-            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "leads" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            href={`/dashboard/pipelines/${pipeline.id}?tab=settings`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
-            {pipeline.kind === "APPLICANTS" ? "Bewerbungen" : "Leads"}
+            Kampagnen-Einstellungen
           </Link>
-          {canManageSettings && (
-            <Link
-              href={`/dashboard/pipelines/${pipeline.id}?tab=settings`}
-              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "settings" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              Kampagnen-Einstellungen
-            </Link>
-          )}
-          {canManageSources && (
-            <Link
-              href={`/dashboard/pipelines/${pipeline.id}?tab=sources`}
-              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "sources" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              Lead-Quellen
-            </Link>
-          )}
-          {canManageMultiposting && (
-            <Link
-              href={`/dashboard/pipelines/${pipeline.id}?tab=multiposting`}
-              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "multiposting" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              Stellenportale
-            </Link>
-          )}
-          {canViewEmailMarketing && (
-            <Link
-              href={`/dashboard/pipelines/${pipeline.id}?tab=email-marketing`}
-              className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "email-marketing" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              E-Mail Marketing
-            </Link>
-          )}
-        </div>
-      )}
+        )}
+        {canManageSources && (
+          <Link
+            href={`/dashboard/pipelines/${pipeline.id}?tab=sources`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "sources" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Lead-Quellen
+          </Link>
+        )}
+        {canManageMultiposting && (
+          <Link
+            href={`/dashboard/pipelines/${pipeline.id}?tab=multiposting`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "multiposting" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Stellenportale
+          </Link>
+        )}
+        {canViewEmailMarketing && (
+          <Link
+            href={`/dashboard/pipelines/${pipeline.id}?tab=email-marketing`}
+            className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "email-marketing" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            E-Mail Marketing
+          </Link>
+        )}
+        <Link
+          href={`/dashboard/pipelines/${pipeline.id}?tab=whatsapp-marketing`}
+          className={`flex-shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${tab === "whatsapp-marketing" ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          {whatsAppLabel}
+        </Link>
+      </div>
 
       {tab === "leads" && (
         <div className="mb-6">
@@ -389,6 +460,21 @@ export default async function PipelineDetailPage({
           booked={emailMarketingBooked}
           funnels={funnelsData}
           senderAccounts={senderAccounts}
+          isOwnOrganization={isAgencyOwnPipeline}
+        />
+      )}
+
+      {tab === "whatsapp-marketing" && (
+        <WhatsAppMarketingTab
+          pipelineId={pipeline.id}
+          organizationId={pipeline.organizationId}
+          label={whatsAppLabel}
+          isAgency={canManageSettings}
+          canManage={canManageWhatsAppMarketing}
+          booked={whatsAppBooked}
+          channels={whatsAppChannels}
+          contacts={whatsAppContacts}
+          recentSends={whatsAppSends}
           isOwnOrganization={isAgencyOwnPipeline}
         />
       )}

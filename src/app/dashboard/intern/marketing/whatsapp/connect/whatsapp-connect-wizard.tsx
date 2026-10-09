@@ -17,7 +17,13 @@ function friendlyMetaError(e: unknown): string {
   return message;
 }
 
-export function WhatsAppConnectWizard({ businessAccounts }: { businessAccounts: BusinessAccount[] }) {
+export function WhatsAppConnectWizard({
+  businessAccounts,
+  redirectTo,
+}: {
+  businessAccounts: BusinessAccount[];
+  redirectTo: string;
+}) {
   const router = useRouter();
   const [selectedWaba, setSelectedWaba] = useState<BusinessAccount | null>(null);
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[] | undefined>(undefined);
@@ -46,7 +52,7 @@ export function WhatsAppConnectWizard({ businessAccounts }: { businessAccounts: 
     startTransition(async () => {
       try {
         await finalizeWhatsAppConnection(selectedWaba.id, selectedPhone);
-        router.push("/dashboard/intern/marketing/whatsapp?connected=1");
+        router.push(redirectTo);
       } catch (e) {
         setError(friendlyMetaError(e));
       }

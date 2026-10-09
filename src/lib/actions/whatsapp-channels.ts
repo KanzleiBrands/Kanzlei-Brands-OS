@@ -16,25 +16,26 @@ export async function listPhoneNumbersForWaba(wabaId: string): Promise<WhatsAppP
   requireAgencyAdmin(session.user.role);
 
   const pending = await readWhatsAppPendingConnection();
-  if (!pending || pending.organizationId !== session.user.organizationId) {
+  if (!pending) {
     throw new Error("Verbindung abgelaufen. Bitte erneut mit Facebook verbinden.");
   }
   return listWhatsAppPhoneNumbers(wabaId, pending.userAccessToken);
 }
 
+/** Zielorganisation kommt aus dem Pending-Connection-Cookie, nicht aus der Session - siehe whatsapp-pending-connection.ts. */
 export async function finalizeWhatsAppConnection(wabaId: string, phoneNumber: WhatsAppPhoneNumber): Promise<void> {
   const session = await requireSession();
   requireAgencyAdmin(session.user.role);
 
   const pending = await readWhatsAppPendingConnection();
-  if (!pending || pending.organizationId !== session.user.organizationId) {
+  if (!pending) {
     throw new Error("Verbindung abgelaufen. Bitte erneut mit Facebook verbinden.");
   }
 
   await prisma.whatsAppChannel.upsert({
-    where: { organizationId_phoneNumberId: { organizationId: session.user.organizationId, phoneNumberId: phoneNumber.id } },
+    where: { organizationId_phoneNumberId: { organizationId: pending.organizationId, phoneNumberId: phoneNumber.id } },
     create: {
-      organizationId: session.user.organizationId,
+      organizationId: pending.organizationId,
       businessAccountId: wabaId,
       phoneNumberId: phoneNumber.id,
       displayPhoneNumber: phoneNumber.display_phone_number,
@@ -53,15 +54,18 @@ export async function finalizeWhatsAppConnection(wabaId: string, phoneNumber: Wh
 
   await clearWhatsAppPendingConnection();
   revalidatePath("/dashboard/intern/marketing/whatsapp");
+  if (pending.pipelineId) revalidatePath(`/dashboard/pipelines/${pending.pipelineId}`);
 }
 
+/** AGENCY_ADMIN kann jeden Kanal trennen (eigener oder eines Kunden) - gleiches Zugriffsmodell wie bei Social-Media-Kanälen. */
 export async function disconnectWhatsAppChannel(channelId: string): Promise<void> {
   const session = await requireSession();
   requireAgencyAdmin(session.user.role);
 
   const channel = await prisma.whatsAppChannel.findUnique({ where: { id: channelId } });
-  if (!channel || channel.organizationId !== session.user.organizationId) return;
+  if (!channel) return;
 
   await prisma.whatsAppChannel.delete({ where: { id: channelId } });
   revalidatePath("/dashboard/intern/marketing/whatsapp");
+  revalidatePath("/dashboard/pipelines");
 }

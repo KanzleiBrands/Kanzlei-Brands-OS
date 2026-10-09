@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const shortLived = await exchangeMetaWhatsAppCode(baseUrl, code);
     const longLived = await exchangeForLongLivedUserToken(shortLived.access_token);
-    await storeWhatsAppPendingConnection(verified.organizationId, longLived.access_token);
+    await storeWhatsAppPendingConnection(verified.organizationId, longLived.access_token, verified.pipelineId);
     return NextResponse.redirect(`${baseUrl}/dashboard/intern/marketing/whatsapp/connect`);
   } catch (error) {
     console.error("Meta WhatsApp OAuth callback failed", error);

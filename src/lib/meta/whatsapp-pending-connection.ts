@@ -4,6 +4,7 @@ import { encryptToken, decryptToken } from "@/lib/auth-encryption";
 // Mirrors src/lib/meta/social-pending-connection.ts for the WhatsApp connect flow.
 const TOKEN_COOKIE = "meta_whatsapp_pending_user_token";
 const ORG_COOKIE = "meta_whatsapp_pending_org_id";
+const PIPELINE_COOKIE = "meta_whatsapp_pending_pipeline_id";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -13,19 +14,28 @@ const COOKIE_OPTIONS = {
   path: "/",
 };
 
-export async function storeWhatsAppPendingConnection(organizationId: string, userAccessToken: string): Promise<void> {
+export async function storeWhatsAppPendingConnection(
+  organizationId: string,
+  userAccessToken: string,
+  pipelineId?: string | null,
+): Promise<void> {
   const store = await cookies();
   store.set(TOKEN_COOKIE, encryptToken(userAccessToken), COOKIE_OPTIONS);
   store.set(ORG_COOKIE, organizationId, COOKIE_OPTIONS);
+  if (pipelineId) store.set(PIPELINE_COOKIE, pipelineId, COOKIE_OPTIONS);
+  else store.delete(PIPELINE_COOKIE);
 }
 
-export async function readWhatsAppPendingConnection(): Promise<{ organizationId: string; userAccessToken: string } | null> {
+export async function readWhatsAppPendingConnection(): Promise<
+  { organizationId: string; pipelineId: string | null; userAccessToken: string } | null
+> {
   const store = await cookies();
   const encToken = store.get(TOKEN_COOKIE)?.value;
   const organizationId = store.get(ORG_COOKIE)?.value;
+  const pipelineId = store.get(PIPELINE_COOKIE)?.value ?? null;
   if (!encToken || !organizationId) return null;
   try {
-    return { organizationId, userAccessToken: decryptToken(encToken) };
+    return { organizationId, pipelineId, userAccessToken: decryptToken(encToken) };
   } catch {
     return null;
   }
@@ -35,4 +45,5 @@ export async function clearWhatsAppPendingConnection(): Promise<void> {
   const store = await cookies();
   store.delete(TOKEN_COOKIE);
   store.delete(ORG_COOKIE);
+  store.delete(PIPELINE_COOKIE);
 }
