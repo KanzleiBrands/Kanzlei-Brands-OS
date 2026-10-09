@@ -31,6 +31,7 @@ import { AiCaptionAssistant } from "./ai-caption-assistant";
 import { MediaLibraryPicker, type MediaLibraryItemData } from "./media-library-list";
 import { SNIPPET_CATEGORY_OPTIONS, type ContentSnippetItem } from "./content-snippets-list";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PYRAMID_STAGE_OPTIONS, type ContentPyramidStageValue } from "@/lib/social/content-pyramid";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -69,6 +70,7 @@ export type SocialPostData = {
   topic: string | null;
   contentFormatName: string | null;
   format: SocialPostFormatValue | null;
+  pyramidStage: ContentPyramidStageValue | null;
   script: string | null;
   mediaUrl: string | null;
   mediaUrls: string[];
@@ -271,6 +273,7 @@ export function SocialPostFormDialog({
   const [format, setFormat] = useState<SocialPostFormatValue | "">(
     isEdit ? inferFormat(post) : PLATFORM_FORMAT_DEFAULT[selectedPlatforms[0]],
   );
+  const [pyramidStage, setPyramidStage] = useState<ContentPyramidStageValue | "">(post?.pyramidStage ?? "");
   const [script, setScript] = useState(post?.script ?? "");
   const [caption, setCaption] = useState(post?.caption ?? "");
   const [mediaUrl, setMediaUrl] = useState(post?.mediaUrl ?? "");
@@ -365,6 +368,7 @@ export function SocialPostFormDialog({
       setSelectedPlatforms(["FACEBOOK"]);
       setChannelByPlatform({});
       setFormat(PLATFORM_FORMAT_DEFAULT.FACEBOOK);
+      setPyramidStage("");
       setScript("");
       setPublishNow(false);
       setScheduledAtLocal("");
@@ -580,6 +584,7 @@ export function SocialPostFormDialog({
           <input type="hidden" name="mediaType" value={mediaType} />
           <input type="hidden" name="mediaUrls" value={JSON.stringify(carousel.map((c) => c.url))} />
           <input type="hidden" name="format" value={format} />
+          <input type="hidden" name="pyramidStage" value={pyramidStage} />
           <input type="hidden" name="script" value={format === "REEL" ? script : ""} />
 
           <div className="flex flex-col gap-1">
@@ -652,6 +657,28 @@ export function SocialPostFormDialog({
                 </Button>
               ))}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label>Content-Pyramide</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {PYRAMID_STAGE_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={pyramidStage === option.value ? "default" : "outline"}
+                  onClick={() => setPyramidStage(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {pyramidStage
+                ? PYRAMID_STAGE_OPTIONS.find((o) => o.value === pyramidStage)?.shortDescription
+                : "Strategische Ausrichtung - unabhängig vom Copywriting-Framework/Format oben."}
+            </p>
           </div>
 
           {isEdit && post.title && (

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, assertCanManageSocialContentFor } from "@/lib/access";
 import { getAnthropicClient } from "@/lib/anthropic";
+import { PYRAMID_STAGE_OPTIONS, isValidPyramidStage } from "@/lib/social/content-pyramid";
 
 type Platform = "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
 type ContentIntentionValue = "RECRUITING" | "MANDATSAKQUISE" | "BEIDE";
@@ -76,6 +77,11 @@ export async function generateContentIdeas(
   const formatIds = formData.getAll("formatIds").map(String).filter(Boolean);
   if (formatIds.length === 0) return "Bitte mindestens ein Format auswählen.";
 
+  const pyramidStageRaw = String(formData.get("pyramidStage") ?? "").trim();
+  if (!isValidPyramidStage(pyramidStageRaw)) return "Bitte eine Content-Pyramide-Stufe auswählen.";
+  const pyramidStage = pyramidStageRaw;
+  const pyramidStageOption = PYRAMID_STAGE_OPTIONS.find((o) => o.value === pyramidStage)!;
+
   const input = String(formData.get("input") ?? "").trim();
   if (!input) return "Bitte Text/Transkript/Notizen einfügen, auf deren Basis Ideen generiert werden sollen.";
 
@@ -103,6 +109,7 @@ export async function generateContentIdeas(
           .map((a) => `- ${a.displayName || a.handle}: ${a.lastAnalysis}`)
           .join("\n")}\n\n`
       : "";
+  const pyramidBlock = `Content-Pyramide-Stufe für diese Ideen: ${pyramidStageOption.label} (Ziel-Anteil im Gesamtmix über alle Postings: ${pyramidStageOption.targetPercent}%).\n${pyramidStageOption.promptGuidance}\n\n`;
 
   let created = 0;
   const errors: string[] = [];
@@ -110,7 +117,7 @@ export async function generateContentIdeas(
   for (const platform of platforms) {
     const prompt = `Du hilfst einer Marketing-Agentur, Social-Media-Post-Ideen für einen Kunden zu entwickeln.
 
-${intentionBlock}${brandBlock}${referenceAccountsBlock}Quelltext (Transkript, Notizen oder Stichpunkte, aus denen Ideen abgeleitet werden sollen):
+${intentionBlock}${brandBlock}${pyramidBlock}${referenceAccountsBlock}Quelltext (Transkript, Notizen oder Stichpunkte, aus denen Ideen abgeleitet werden sollen):
 """
 ${input}
 """
@@ -162,6 +169,7 @@ ${GERMAN_ONLY} Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (keine Mark
             topic: idea.topic,
             contentFormatId: format.id,
             channelId: channel?.id ?? null,
+            pyramidStage,
           };
         }),
       });

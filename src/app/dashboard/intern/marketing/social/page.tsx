@@ -91,6 +91,7 @@ export default async function InternalSocialMediaPage() {
         contentFormatName: post.contentFormat?.name ?? null,
         format: post.format,
         script: post.script,
+        pyramidStage: post.pyramidStage,
         mediaUrl: post.mediaUrl,
         mediaUrls: post.mediaUrls,
         mediaType: post.mediaType,

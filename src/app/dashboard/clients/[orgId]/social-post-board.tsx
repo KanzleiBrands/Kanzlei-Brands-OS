@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SocialPostFormDialog, type SocialPostData, type SocialPostStatus } from "./social-post-form-dialog";
 import { type MediaLibraryItemData } from "./media-library-list";
 import { type ContentSnippetItem } from "./content-snippets-list";
+import { PYRAMID_STAGE_OPTIONS } from "@/lib/social/content-pyramid";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -152,11 +153,18 @@ function PostCard({ post, organizationId, channels, agencyUsers, mediaLibraryIte
         <PlatformIcon platform={post.platform} className="mt-0.5 size-4 shrink-0" />
         <div className="min-w-0 flex-1">
           {post.title && <p className="truncate font-medium">{post.title}</p>}
-          {post.contentFormatName && (
-            <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-primary">
-              {post.contentFormatName}
-            </span>
-          )}
+          <div className="flex flex-wrap gap-1">
+            {post.contentFormatName && (
+              <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-primary">
+                {post.contentFormatName}
+              </span>
+            )}
+            {post.pyramidStage && (
+              <span className="inline-block rounded bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                {PYRAMID_STAGE_OPTIONS.find((o) => o.value === post.pyramidStage)?.label}
+              </span>
+            )}
+          </div>
           {post.caption && <p className="line-clamp-3 whitespace-pre-line">{post.caption}</p>}
         </div>
       </div>

@@ -18,6 +18,7 @@ import { type ContentReferenceAccountItem } from "./content-reference-accounts-l
 import { type MediaLibraryItemData } from "./media-library-list";
 import { type ContentSnippetItem } from "./content-snippets-list";
 import { BulkScheduleDialog } from "./bulk-schedule-dialog";
+import { ContentPyramidOverview } from "./content-pyramid-overview";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -118,6 +119,10 @@ export function ContentTab({
           />
         </div>
       </div>
+
+      {(view === "board" || view === "calendar") && (
+        <ContentPyramidOverview posts={posts.map((post) => ({ status: post.status, pyramidStage: post.pyramidStage }))} />
+      )}
 
       {view === "board" && (
         <SocialPostBoard

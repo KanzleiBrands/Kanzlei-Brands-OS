@@ -9,6 +9,7 @@ import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { csvToObjects } from "@/lib/csv";
 import { normalizeFieldKey } from "@/lib/webhook-ingest";
 import { publishSocialPostById } from "@/lib/social/publish";
+import { isValidPyramidStage } from "@/lib/social/content-pyramid";
 
 /** Extra Revalidierung fürs interne Marketing-Center - ein No-Op, wenn der Pfad gar nicht gecacht war. */
 function revalidateInternalMarketing() {
@@ -92,6 +93,8 @@ export async function createSocialPost(_prevState: string | undefined, formData:
   const mediaUrls = parseMediaUrls(formData.get("mediaUrls"));
   const formatRaw = String(formData.get("format") ?? "").trim();
   const format = isValidFormat(formatRaw) ? formatRaw : null;
+  const pyramidStageRaw = String(formData.get("pyramidStage") ?? "").trim();
+  const pyramidStage = isValidPyramidStage(pyramidStageRaw) ? pyramidStageRaw : null;
   const script = String(formData.get("script") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
   const publishNow = formData.get("publishNow") === "1";
@@ -133,6 +136,7 @@ export async function createSocialPost(_prevState: string | undefined, formData:
           mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
           mediaType: isValidMediaType(mediaType) ? mediaType : null,
           format,
+          pyramidStage,
           script: script || null,
           channelId: sel.channelId || null,
           responsibleUserId: responsibleUserId || null,
@@ -166,6 +170,8 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
   const mediaUrls = parseMediaUrls(formData.get("mediaUrls"));
   const formatRaw = String(formData.get("format") ?? "").trim();
   const format = isValidFormat(formatRaw) ? formatRaw : null;
+  const pyramidStageRaw = String(formData.get("pyramidStage") ?? "").trim();
+  const pyramidStage = isValidPyramidStage(pyramidStageRaw) ? pyramidStageRaw : null;
   const script = String(formData.get("script") ?? "").trim();
   const channelId = String(formData.get("channelId") ?? "").trim();
   const responsibleUserId = String(formData.get("responsibleUserId") ?? "").trim();
@@ -207,6 +213,7 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
       mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
       mediaType: isValidMediaType(mediaType) ? mediaType : null,
       format,
+      pyramidStage,
       script: script || null,
       channelId: channelId || null,
       responsibleUserId: responsibleUserId || null,
@@ -225,6 +232,7 @@ export async function updateSocialPost(_prevState: string | undefined, formData:
           mediaUrls: mediaType === "CAROUSEL" ? mediaUrls : [],
           mediaType: isValidMediaType(mediaType) ? mediaType : null,
           format,
+          pyramidStage,
           script: script || null,
           channelId: sel.channelId || null,
           responsibleUserId: responsibleUserId || null,

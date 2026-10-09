@@ -934,6 +934,15 @@ enum SocialPostFormat {
   THOUGHT_LEADERSHIP
 }
 
+// Die drei Stufen der Content-Pyramide (siehe src/lib/social/content-pyramid.ts)
+// - ein fixes, kundenübergreifendes Rahmenwerk dafür, WOFÜR ein Beitrag
+// strategisch gedacht ist, unabhängig von Plattform/Format/Copywriting-Framework.
+enum ContentPyramidStage {
+  REACH
+  EDUCATION
+  CONVERSION
+}
+
 // One social media post through its whole lifecycle: idea -> production ->
 // client approval -> scheduled -> actually published by the platform adapter
 // (src/lib/social/publish.ts). Replaces the SocialPilot planning workflow
@@ -964,6 +973,14 @@ model SocialPost {
   // Nur bei format=REEL: das Skript/Storyboard für das Reel, getrennt von der
   // kurzen Hook-Caption.
   script String?
+
+  // Strategische Ausrichtung nach der Content-Pyramide (Reichweite/Education/
+  // Conversion, siehe src/lib/social/content-pyramid.ts) - unabhängig vom
+  // Copywriting-Framework (contentFormatId) und dem Post-Format (format):
+  // die Pyramide-Stufe ist das "Wofür", Format/Framework sind das "Wie". Ein
+  // fixes 60/30/10-Zielverhältnis gilt für ALLE Kunden gleich, siehe
+  // content-pyramid-overview.tsx. Null bei älteren Beiträgen.
+  pyramidStage ContentPyramidStage?
 
   scheduledAt    DateTime?
   publishedAt    DateTime?

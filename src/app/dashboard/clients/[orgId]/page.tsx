@@ -371,6 +371,7 @@ export default async function ClientDetailPage({
             contentFormatName: post.contentFormat?.name ?? null,
             format: post.format,
             script: post.script,
+            pyramidStage: post.pyramidStage,
             mediaUrl: post.mediaUrl,
             mediaUrls: post.mediaUrls,
             mediaType: post.mediaType,

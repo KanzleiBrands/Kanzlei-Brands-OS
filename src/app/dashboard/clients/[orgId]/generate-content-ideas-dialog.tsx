@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSaveToast } from "@/hooks/use-save-toast";
+import { PYRAMID_STAGE_OPTIONS, type ContentPyramidStageValue } from "@/lib/social/content-pyramid";
 
 type Platform = "FACEBOOK" | "INSTAGRAM" | "LINKEDIN";
 type ContentFormatOption = { id: string; name: string };
@@ -42,6 +43,7 @@ export function GenerateContentIdeasDialog({
 
   const [platforms, setPlatforms] = useState<Platform[]>(["LINKEDIN"]);
   const [formatIds, setFormatIds] = useState<string[]>([]);
+  const [pyramidStage, setPyramidStage] = useState<ContentPyramidStageValue>("REACH");
   const [input, setInput] = useState("");
   const [count, setCount] = useState("10");
 
@@ -51,6 +53,7 @@ export function GenerateContentIdeasDialog({
       formRef.current?.reset();
       setPlatforms(["LINKEDIN"]);
       setFormatIds([]);
+      setPyramidStage("REACH");
       setInput("");
       setCount("10");
     }
@@ -88,12 +91,34 @@ export function GenerateContentIdeasDialog({
 
         <form ref={formRef} action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="organizationId" value={organizationId} />
+          <input type="hidden" name="pyramidStage" value={pyramidStage} />
           {platforms.map((p) => (
             <input key={p} type="hidden" name="platforms" value={p} />
           ))}
           {formatIds.map((id) => (
             <input key={id} type="hidden" name="formatIds" value={id} />
           ))}
+
+          <div className="flex flex-col gap-1">
+            <Label>Content-Pyramide: strategische Ausrichtung</Label>
+            <div className="flex gap-1.5">
+              {PYRAMID_STAGE_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={pyramidStage === option.value ? "default" : "outline"}
+                  onClick={() => setPyramidStage(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {PYRAMID_STAGE_OPTIONS.find((o) => o.value === pyramidStage)?.shortDescription} Ziel-Anteil im Gesamtmix:{" "}
+              {PYRAMID_STAGE_OPTIONS.find((o) => o.value === pyramidStage)?.targetPercent}%.
+            </p>
+          </div>
 
           <div className="flex flex-col gap-1">
             <Label>Plattform(en)</Label>
