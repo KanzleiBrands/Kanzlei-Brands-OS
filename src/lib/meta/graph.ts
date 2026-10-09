@@ -23,6 +23,13 @@ const META_SCOPES = [
 // META_SCOPES/buildMetaAuthUrl above so the existing Lead-Ads connect flow
 // keeps requesting only what it has always requested. Requires Meta App
 // Review, same process already used to get META_SCOPES approved.
+//
+// instagram_manage_insights is additionally required for Business Discovery
+// (fetchInstagramBusinessDiscovery below, used by Referenz-Accounts) - without
+// it Meta returns "(#10) Application does not have permission for this
+// action" even though the rest of publishing still works. A channel connected
+// before this scope was added must be reconnected (disconnect + re-verbinden)
+// for the new permission to actually land on its token.
 const SOCIAL_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
@@ -31,6 +38,7 @@ const SOCIAL_SCOPES = [
   "instagram_basic",
   "instagram_content_publish",
   "instagram_manage_comments",
+  "instagram_manage_insights",
   "business_management",
 ].join(",");
 
