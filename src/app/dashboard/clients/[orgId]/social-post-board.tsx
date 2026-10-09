@@ -165,6 +165,11 @@ function PostCard({ post, organizationId, channels, agencyUsers, mediaLibraryIte
               </span>
             )}
           </div>
+          {post.ideaSourceLabel && (
+            <p className="truncate text-[0.7rem] text-muted-foreground" title={post.ideaSourceLabel}>
+              Quelle: {post.ideaSourceLabel}
+            </p>
+          )}
           {post.caption && <p className="line-clamp-3 whitespace-pre-line">{post.caption}</p>}
         </div>
       </div>

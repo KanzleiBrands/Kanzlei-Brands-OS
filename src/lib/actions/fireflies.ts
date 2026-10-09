@@ -3,14 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
+import { getPlatformSettings } from "@/lib/actions/platform-settings";
 import { listAllFirefliesTranscripts, getFirefliesTranscriptText } from "@/lib/fireflies/client";
 
 /**
  * Fireflies-Sync fürs interne Marketing-Center: zieht Call-Transkripte (Sales
- * Calls, Kunden-Calls etc.) als Rohmaterial für die KI-Ideen-Generierung
- * (siehe content-ideas.ts). Agentur-weit, nicht pro Kunde - sichtbar nur im
- * internen Marketing-Center (isInternalOrg), siehe content-pyramid-overview.tsx
- * für das analoge "nur intern sichtbar"-Muster.
+ * Calls, Kunden Calls etc.) als Rohmaterial für die KI-Ideen-Generierung
+ * (siehe content-ideas.ts) in die gemeinsame CallTranscript-Tabelle (source:
+ * FIREFLIES - siehe auch close-calls.ts für die Close.io-Variante). Agentur-
+ * weit, nicht pro Kunde - sichtbar nur im internen Marketing-Center
+ * (isInternalOrg), siehe content-pyramid-overview.tsx für das analoge
+ * "nur intern sichtbar"-Muster.
  *
  * firefliesSyncEnabled defaultet in der DB auf false (CLAUDE.md-Automations-
  * regel) - für diese Einführung wurde die Live-Schaltung vor dem Bau bewusst
@@ -24,17 +27,6 @@ const INITIAL_BACKFILL_DAYS = 90;
 // weiter, wo dieser aufgehört hat (fromDate = letzter gespeicherter Call).
 const MAX_LIST_PAGES_PER_RUN = 10; // 10 x 50 = 500 Metadaten-Einträge pro Lauf
 const MAX_DETAIL_FETCHES_PER_RUN = 25; // volle Transkripte sind teurer als Metadaten
-
-async function getPlatformSettings() {
-  return prisma.platformSettings.upsert({
-    where: { id: "singleton" },
-    update: {},
-    // firefliesSyncEnabled: true nur hier bei der allerersten Erstanlage - die
-    // Live-Schaltung wurde vor dem Bau explizit mit dem Nutzer abgestimmt
-    // (siehe CLAUDE.md-Automationsregel + Kommentar am PlatformSettings-Modell).
-    create: { id: "singleton", firefliesSyncEnabled: true },
-  });
-}
 
 /** An/Aus-Schalter im Konfiguration-Reiter des internen Marketing-Centers - nur AGENCY_ADMIN. */
 export async function togglePlatformFirefliesSync(): Promise<void> {
@@ -62,7 +54,11 @@ export async function togglePlatformFirefliesSync(): Promise<void> {
  * einzelner fehlgeschlagener Call bricht den restlichen Batch nicht ab.
  */
 async function runFirefliesSync(apiKey: string): Promise<{ synced: number; failed: number; skipped?: string }> {
-  const latest = await prisma.firefliesTranscript.findFirst({ orderBy: { dateTime: "desc" }, select: { dateTime: true } });
+  const latest = await prisma.callTranscript.findFirst({
+    where: { source: "FIREFLIES" },
+    orderBy: { dateTime: "desc" },
+    select: { dateTime: true },
+  });
   const fromDate = latest?.dateTime ?? new Date(Date.now() - INITIAL_BACKFILL_DAYS * 24 * 60 * 60 * 1000);
 
   let synced = 0;
@@ -73,19 +69,20 @@ async function runFirefliesSync(apiKey: string): Promise<{ synced: number; faile
 
     const existingIds = new Set(
       (
-        await prisma.firefliesTranscript.findMany({
-          where: { firefliesId: { in: items.map((i) => i.firefliesId) } },
-          select: { firefliesId: true },
+        await prisma.callTranscript.findMany({
+          where: { source: "FIREFLIES", externalId: { in: items.map((i) => i.firefliesId) } },
+          select: { externalId: true },
         })
-      ).map((r) => r.firefliesId),
+      ).map((r) => r.externalId),
     );
 
     for (const item of items) {
       if (existingIds.has(item.firefliesId)) continue;
       try {
-        await prisma.firefliesTranscript.create({
+        await prisma.callTranscript.create({
           data: {
-            firefliesId: item.firefliesId,
+            source: "FIREFLIES",
+            externalId: item.firefliesId,
             title: item.title,
             dateTime: item.dateTime,
             durationMinutes: item.durationMinutes,
@@ -101,21 +98,21 @@ async function runFirefliesSync(apiKey: string): Promise<{ synced: number; faile
       }
     }
 
-    const pendingDetail = await prisma.firefliesTranscript.findMany({
-      where: { transcriptText: null },
+    const pendingDetail = await prisma.callTranscript.findMany({
+      where: { source: "FIREFLIES", transcriptText: null },
       orderBy: { dateTime: "desc" },
       take: MAX_DETAIL_FETCHES_PER_RUN,
-      select: { id: true, firefliesId: true },
+      select: { id: true, externalId: true },
     });
 
     for (const row of pendingDetail) {
       try {
-        const text = await getFirefliesTranscriptText(apiKey, row.firefliesId);
-        await prisma.firefliesTranscript.update({ where: { id: row.id }, data: { transcriptText: text ?? "" } });
+        const text = await getFirefliesTranscriptText(apiKey, row.externalId);
+        await prisma.callTranscript.update({ where: { id: row.id }, data: { transcriptText: text ?? "" } });
         synced++;
       } catch (error) {
         failed++;
-        console.error("[fireflies] Transkript-Fetch fehlgeschlagen", row.firefliesId, error);
+        console.error("[fireflies] Transkript-Fetch fehlgeschlagen", row.externalId, error);
       }
     }
 

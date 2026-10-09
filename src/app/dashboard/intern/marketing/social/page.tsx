@@ -22,8 +22,8 @@ export default async function InternalSocialMediaPage() {
     mediaLibraryItems,
     contentSnippets,
     platformSettings,
-    firefliesTranscripts,
-    firefliesTranscriptCount,
+    callTranscripts,
+    callTranscriptCount,
   ] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
@@ -47,8 +47,8 @@ export default async function InternalSocialMediaPage() {
     prisma.mediaLibraryItem.findMany({ where: { organizationId }, orderBy: { createdAt: "desc" } }),
     prisma.contentSnippet.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.platformSettings.findUnique({ where: { id: "singleton" } }),
-    prisma.firefliesTranscript.findMany({ orderBy: { dateTime: "desc" }, take: 200 }),
-    prisma.firefliesTranscript.count(),
+    prisma.callTranscript.findMany({ orderBy: { dateTime: "desc" }, take: 200 }),
+    prisma.callTranscript.count(),
   ]);
 
   return (
@@ -86,14 +86,22 @@ export default async function InternalSocialMediaPage() {
       contentIntention={organization?.contentIntention ?? null}
       socialContentBooked={null}
       socialApprovalReminderEnabled={null}
-      firefliesSync={{
-        enabled: platformSettings?.firefliesSyncEnabled ?? false,
-        lastSyncedAt: platformSettings?.firefliesLastSyncedAt?.toISOString() ?? null,
-        lastSyncError: platformSettings?.firefliesLastSyncError ?? null,
-        transcriptCount: firefliesTranscriptCount,
+      callTranscriptSync={{
+        fireflies: {
+          enabled: platformSettings?.firefliesSyncEnabled ?? false,
+          lastSyncedAt: platformSettings?.firefliesLastSyncedAt?.toISOString() ?? null,
+          lastSyncError: platformSettings?.firefliesLastSyncError ?? null,
+        },
+        close: {
+          enabled: platformSettings?.closeCallsSyncEnabled ?? false,
+          lastSyncedAt: platformSettings?.closeCallsLastSyncedAt?.toISOString() ?? null,
+          lastSyncError: platformSettings?.closeCallsLastSyncError ?? null,
+        },
+        transcriptCount: callTranscriptCount,
       }}
-      firefliesTranscripts={firefliesTranscripts.map((t) => ({
+      callTranscripts={callTranscripts.map((t) => ({
         id: t.id,
+        source: t.source,
         title: t.title,
         dateTime: t.dateTime.toISOString(),
         durationMinutes: t.durationMinutes,
@@ -114,6 +122,7 @@ export default async function InternalSocialMediaPage() {
         format: post.format,
         script: post.script,
         pyramidStage: post.pyramidStage,
+        ideaSourceLabel: post.ideaSourceLabel,
         mediaUrl: post.mediaUrl,
         mediaUrls: post.mediaUrls,
         mediaType: post.mediaType,

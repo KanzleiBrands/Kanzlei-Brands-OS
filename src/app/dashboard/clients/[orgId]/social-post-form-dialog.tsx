@@ -71,6 +71,7 @@ export type SocialPostData = {
   contentFormatName: string | null;
   format: SocialPostFormatValue | null;
   pyramidStage: ContentPyramidStageValue | null;
+  ideaSourceLabel: string | null;
   script: string | null;
   mediaUrl: string | null;
   mediaUrls: string[];

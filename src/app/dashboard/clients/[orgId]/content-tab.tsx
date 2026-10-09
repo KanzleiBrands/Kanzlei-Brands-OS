@@ -19,7 +19,7 @@ import { type MediaLibraryItemData } from "./media-library-list";
 import { type ContentSnippetItem } from "./content-snippets-list";
 import { BulkScheduleDialog } from "./bulk-schedule-dialog";
 import { ContentPyramidOverview } from "./content-pyramid-overview";
-import { FirefliesTranscriptsTab, type FirefliesTranscriptItem } from "./fireflies-transcripts-tab";
+import { CallTranscriptsTab, type CallTranscriptItem } from "./call-transcripts-tab";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -42,8 +42,8 @@ export function ContentTab({
   contentSnippets,
   socialContentBooked,
   socialApprovalReminderEnabled,
-  firefliesSync,
-  firefliesTranscripts,
+  callTranscriptSync,
+  callTranscripts,
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
@@ -66,10 +66,14 @@ export function ContentTab({
   socialContentBooked: boolean | null;
   /** null im internen Marketing-Center, wo es keine echten Kunden-Nutzer zum Erinnern gibt. */
   socialApprovalReminderEnabled: boolean | null;
-  /** null für echte Kunden - der Fireflies-Sync ist agentur-weit, nie pro Kunde sichtbar. */
-  firefliesSync: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null; transcriptCount: number } | null;
-  /** [] für echte Kunden - siehe firefliesSync. */
-  firefliesTranscripts: FirefliesTranscriptItem[];
+  /** null für echte Kunden - die Call-Transkript-Syncs sind agentur-weit, nie pro Kunde sichtbar. */
+  callTranscriptSync: {
+    fireflies: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null };
+    close: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null };
+    transcriptCount: number;
+  } | null;
+  /** [] für echte Kunden - siehe callTranscriptSync. */
+  callTranscripts: CallTranscriptItem[];
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
   /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
@@ -79,6 +83,7 @@ export function ContentTab({
 }) {
   const [view, setView] = useState<View>("board");
   const [ideaPrefillInput, setIdeaPrefillInput] = useState<string | null>(null);
+  const [ideaPrefillSourceLabel, setIdeaPrefillSourceLabel] = useState<string | null>(null);
   const [ideaPrefillNonce, setIdeaPrefillNonce] = useState(0);
   const isInternalOrg = socialContentBooked === null;
   const commentInboxPosts: CommentInboxPost[] = posts.map((post) => ({
@@ -126,6 +131,7 @@ export function ContentTab({
             organizationId={organizationId}
             formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))}
             prefillInput={ideaPrefillInput}
+            prefillSourceLabel={ideaPrefillSourceLabel}
             prefillNonce={ideaPrefillNonce}
           />
           <BulkScheduleDialog organizationId={organizationId} posts={schedulablePosts} />
@@ -156,10 +162,11 @@ export function ContentTab({
         />
       )}
       {view === "calls" && isInternalOrg && (
-        <FirefliesTranscriptsTab
-          transcripts={firefliesTranscripts}
-          onUseAsIdeaSource={(text) => {
+        <CallTranscriptsTab
+          transcripts={callTranscripts}
+          onUseAsIdeaSource={(text, sourceLabel) => {
             setIdeaPrefillInput(text);
+            setIdeaPrefillSourceLabel(sourceLabel);
             setIdeaPrefillNonce((n) => n + 1);
           }}
         />
@@ -188,7 +195,7 @@ export function ContentTab({
           contentSnippets={contentSnippets}
           socialContentBooked={socialContentBooked}
           socialApprovalReminderEnabled={socialApprovalReminderEnabled}
-          firefliesSync={firefliesSync}
+          callTranscriptSync={callTranscriptSync}
         />
       )}
     </div>

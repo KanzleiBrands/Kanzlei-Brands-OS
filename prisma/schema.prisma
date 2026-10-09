@@ -962,6 +962,13 @@ model SocialPost {
   // Für manuell angelegte Beiträge bleiben beide Felder leer.
   title String?
   topic String?
+  // Nachvollziehbarkeit: woher Idee/Kontext stammen, wenn die Idee aus einem
+  // Call-Transkript erzeugt wurde (z.B. "Fireflies-Call 'Sales Call mit Max
+  // Mustermann' vom 09.10.2026" oder "Close.io Cold Call mit ... vom ..."),
+  // siehe call-transcripts-tab.tsx + generateContentIdeas. Null bei manuell
+  // eingefügtem Quelltext oder manuell angelegten Beiträgen - dort lässt sich
+  // die Herkunft nicht automatisch bestimmen.
+  ideaSourceLabel String?
 
   contentFormatId String?
   contentFormat   ContentFormat? @relation(fields: [contentFormatId], references: [id], onDelete: SetNull)
@@ -2461,10 +2468,11 @@ model JourneyEvent {
 }
 
 // Agentur-weite Einstellungen, die an keiner einzelnen Organisation hängen
-// (z.B. der Fireflies-Sync, der ALLE Calls zieht - Sales Calls, Kunden Calls
-// etc. - und nicht pro Kunde aktiviert wird). Bewusst eine einzige Zeile
-// (id fest "singleton") statt eines eigenen Modells pro Einstellung, analog
-// zu Organization.socialApprovalReminderEnabled, nur eben global.
+// (z.B. die Call-Transkript-Syncs, die ALLE Calls ziehen - Sales Calls,
+// Kunden-Calls etc. - und nicht pro Kunde aktiviert werden). Bewusst eine
+// einzige Zeile (id fest "singleton") statt eines eigenen Modells pro
+// Einstellung, analog zu Organization.socialApprovalReminderEnabled, nur
+// eben global.
 model PlatformSettings {
   id String @id @default("singleton")
 
@@ -2476,39 +2484,60 @@ model PlatformSettings {
   firefliesLastSyncedAt  DateTime?
   firefliesLastSyncError String?
 
+  // Gleiches Prinzip für den Close.io-Call-Sync (eigene Automation, eigener
+  // bewusst mit dem Nutzer abgestimmter Live-Schalter) - siehe
+  // src/lib/actions/close-calls.ts.
+  closeCallsSyncEnabled   Boolean   @default(false)
+  closeCallsLastSyncedAt  DateTime?
+  closeCallsLastSyncError String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// Aus der Fireflies-API synchronisierte Call-Transkripte (Sales Calls,
-// Kunden-Calls etc.) - Rohmaterial für die KI-Ideen-Generierung im internen
-// Marketing-Center (src/lib/actions/content-ideas.ts), damit niemand
-// Transkripte mehr von Hand aus Fireflies kopieren/einfügen muss. Bewusst
-// agentur-weit statt pro Kunde gespeichert (wie ContentFormat) - welcher Call
-// zu welchem Thema passt, entscheidet die Marketing-Mitarbeiterin bei der
-// Auswahl im Ideen-Dialog, keine automatische Kunden-Zuordnung. Sichtbar NUR
-// im internen Marketing-Center (isInternalOrg), nie für echte Kunden, da
-// Calls über alle Kunden hinweg sensible Inhalte enthalten können.
-model FirefliesTranscript {
-  id              String    @id @default(cuid())
-  firefliesId     String    @unique
+enum CallTranscriptSource {
+  FIREFLIES
+  CLOSE
+}
+
+// Aus Fireflies UND Close.io (Call Assistant/Voicemail-Transkripte)
+// synchronisierte Call-Transkripte (Sales Calls, Kunden-Calls, Cold Calls,
+// Quali-Calls etc.) - Rohmaterial für die KI-Ideen-Generierung im internen
+// Marketing-Center (src/lib/actions/content-ideas.ts), z.B. um Einwände und
+// Glaubenssätze aus echten Gesprächen in Content zu verarbeiten, ohne
+// Transkripte von Hand kopieren zu müssen. Eine Tabelle für beide Quellen
+// (source-Feld), damit Browser/Picker/Ideen-Dialog nicht dupliziert werden
+// müssen - war bis zur Close.io-Erweiterung "FirefliesTranscript" (siehe
+// Migration). Bewusst agentur-weit statt pro Kunde gespeichert (wie
+// ContentFormat) - welcher Call zu welchem Thema passt, entscheidet die
+// Marketing-Mitarbeiterin bei der Auswahl im Ideen-Dialog, keine
+// automatische Kunden-Zuordnung. Sichtbar NUR im internen Marketing-Center
+// (isInternalOrg), nie für echte Kunden, da Calls über alle Kunden hinweg
+// sensible Inhalte enthalten können.
+model CallTranscript {
+  id              String               @id @default(cuid())
+  source          CallTranscriptSource
+  // Fireflies: Transcript-ID. Close.io: Activity-ID des Call-Objekts.
+  externalId      String
   title           String
   dateTime        DateTime
   durationMinutes Float?
   organizerEmail  String?
   participants    String[]
   meetingUrl      String?
-  // Fireflies' eigene KI-Zusammenfassung (overview) - kurzer Überblick fürs
-  // Auflisten, ohne das volle Transkript laden zu müssen.
+  // Fireflies' KI-Zusammenfassung bzw. Close.io's Call-Assistant-Summary -
+  // kurzer Überblick fürs Auflisten, ohne das volle Transkript zu laden.
   summaryOverview String?
   // Voller Transkripttext (Sprecher: Satz, zeilenweise) - das eigentliche
   // "Quelltext"-Material für generateContentIdeas. Null, bis der Detail-Fetch
-  // für dieses Transkript gelaufen ist (siehe syncFirefliesTranscripts).
+  // für diesen Call gelaufen ist bzw. (bei Close.io ohne Call Assistant) kein
+  // Transkript verfügbar ist.
   transcriptText  String?
-  fetchedAt       DateTime  @default(now())
+  fetchedAt       DateTime             @default(now())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([source, externalId])
   @@index([dateTime])
 }

@@ -373,3 +373,139 @@ export async function listClosedDeals(year: number): Promise<CloseResult<ClosedD
     return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
   }
 }
+
+/**
+ * Call-Transkripte (Cold Calls, Quali-Calls etc.) für die KI-Ideen-
+ * Generierung im internen Marketing-Center (siehe src/lib/actions/
+ * close-calls.ts) - Einwände/Glaubenssätze aus echten Gesprächen als
+ * Content-Rohmaterial. Zweistufig wie der Fireflies-Client: erst eine
+ * günstige Liste von Kandidaten (Metadaten only), dann pro neuem Call gezielt
+ * der volle Transkripttext - vermeidet, bei einem großen Backfill die
+ * teureren Transkript-Felder für Calls zu laden, die ohnehin schon
+ * gespeichert sind.
+ *
+ * WICHTIG: volle Gesprächstranskripte (recording_transcript) liefert Close
+ * nur, wenn der Close-Plan die "Call Assistant"-Funktion aktiviert hat (ab
+ * 30 Sekunden Gesprächsdauer). Voicemail-Transkripte (voicemail_transcript)
+ * liefert Close dagegen immer kostenlos. Ohne Call Assistant bleiben
+ * beantwortete Calls also ggf. ohne Transkript - kein Fehler, nur weniger
+ * Material, bis Call Assistant bei Close dazugebucht wird.
+ */
+export type CloseCallCandidate = {
+  externalId: string;
+  title: string;
+  dateTime: Date;
+  durationMinutes: number | null;
+  organizerEmail: string | null;
+  participants: string[];
+  isVoicemail: boolean;
+  /** Für den nachfolgenden getCloseCallTranscript-Aufruf (Sprecher-Zuordnung in den Utterances). */
+  leadName: string;
+  userName: string | null;
+};
+
+type RawCloseCall = {
+  id: string;
+  lead_id: string;
+  user_id: string;
+  user_name: string | null;
+  date_created: string;
+  duration: number | null; // Sekunden
+  status: string;
+  disposition: string | null;
+};
+
+const CLOSE_CALL_LIST_FIELDS = "id,lead_id,user_id,user_name,date_created,duration,status,disposition";
+
+async function fetchLeadDisplayNames(leadIds: string[], apiKey: string): Promise<Map<string, string>> {
+  const uniqueIds = Array.from(new Set(leadIds));
+  const names = new Map<string, string>();
+  const chunkSize = 25;
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const chunk = uniqueIds.slice(i, i + chunkSize);
+    if (chunk.length === 0) continue;
+    const url = new URL(`${CLOSE_API_BASE}/lead/`);
+    url.searchParams.set("id__in", chunk.join(","));
+    url.searchParams.set("_fields", "id,display_name");
+    url.searchParams.set("_limit", String(chunkSize));
+    const res = await fetch(url.toString(), { headers: { Authorization: closeAuthHeader(apiKey) } });
+    if (!res.ok) throw new Error(`Close.io-Lead-Abfrage fehlgeschlagen (${res.status})`);
+    const data = (await res.json()) as { data: { id: string; display_name: string }[] };
+    for (const lead of data.data) names.set(lead.id, lead.display_name);
+  }
+  return names;
+}
+
+/** Liste der Calls mit tatsächlichem Gesprächsinhalt (beantwortet, >=30s) oder Voicemail seit `fromDate` - noch ohne Transkripttext. */
+export async function listCloseCallCandidates(fromDate: Date): Promise<CloseResult<CloseCallCandidate>> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+
+  try {
+    const calls = await closeFetchAll<RawCloseCall>(
+      "/activity/call/",
+      { date_created__gte: fromDate.toISOString(), _fields: CLOSE_CALL_LIST_FIELDS },
+      apiKey,
+    );
+    const relevant = calls.filter(
+      (c) => (c.disposition === "answered" && (c.duration ?? 0) >= 30) || c.disposition === "vm-answer" || c.disposition === "vm-left",
+    );
+    const leadNames = await fetchLeadDisplayNames(relevant.map((c) => c.lead_id), apiKey);
+
+    const rows: CloseCallCandidate[] = relevant.map((call) => {
+      const isVoicemail = call.disposition !== "answered";
+      const leadName = leadNames.get(call.lead_id) ?? "Unbekannter Kontakt";
+      return {
+        externalId: call.id,
+        title: `${isVoicemail ? "Voicemail" : "Call"} mit ${leadName}`,
+        dateTime: new Date(call.date_created),
+        durationMinutes: call.duration != null ? call.duration / 60 : null,
+        organizerEmail: null,
+        participants: [leadName, call.user_name].filter((v): v is string => Boolean(v)),
+        isVoicemail,
+        leadName,
+        userName: call.user_name,
+      };
+    });
+    return { ok: true, rows };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}
+
+type CloseCallUtterance = { speaker_label: string | null; speaker_side: "contact" | "close-user"; text: string };
+type CloseCallTranscriptField = { utterances: CloseCallUtterance[]; summary_text: string | null } | null;
+
+/** Voller Transkripttext + Summary für genau einen Call - erst beim ersten Sync eines neuen Calls geladen (siehe close-calls.ts). */
+export async function getCloseCallTranscript(
+  externalId: string,
+  leadName: string,
+  userName: string | null,
+): Promise<{ ok: true; summaryOverview: string | null; transcriptText: string | null } | { ok: false; error: string }> {
+  const apiKey = process.env.CLOSE_API_KEY;
+  if (!apiKey) return { ok: false, error: "CLOSE_API_KEY ist nicht konfiguriert." };
+
+  try {
+    const url = new URL(`${CLOSE_API_BASE}/activity/call/`);
+    url.searchParams.set("id__in", externalId);
+    url.searchParams.set("_fields", "id,recording_transcript,voicemail_transcript");
+    const res = await fetch(url.toString(), { headers: { Authorization: closeAuthHeader(apiKey) } });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Close.io-Transkript-Abfrage fehlgeschlagen (${res.status})${body ? `: ${body.slice(0, 300)}` : ""}`);
+    }
+    const data = (await res.json()) as {
+      data: { id: string; recording_transcript: CloseCallTranscriptField; voicemail_transcript: CloseCallTranscriptField }[];
+    };
+    const call = data.data[0];
+    const transcript = call?.recording_transcript ?? call?.voicemail_transcript ?? null;
+    if (!transcript || transcript.utterances.length === 0) return { ok: true, summaryOverview: null, transcriptText: null };
+
+    const transcriptText = transcript.utterances
+      .map((u) => `${u.speaker_side === "contact" ? leadName : (userName ?? "Close-Nutzer")}: ${u.text}`)
+      .join("\n");
+    return { ok: true, summaryOverview: transcript.summary_text, transcriptText };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler bei der Close.io-Abfrage." };
+  }
+}

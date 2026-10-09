@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/fireflies-sync",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/close-calls-sync",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

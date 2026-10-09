@@ -360,8 +360,8 @@ export default async function ClientDetailPage({
           contentIntention={organization.contentIntention}
           socialContentBooked={organization.bookedProductTags.includes(SOCIAL_CONTENT_PRODUCT_TAG)}
           socialApprovalReminderEnabled={organization.socialApprovalReminderEnabled}
-          firefliesSync={null}
-          firefliesTranscripts={[]}
+          callTranscriptSync={null}
+          callTranscripts={[]}
           posts={socialPosts.map((post) => ({
             id: post.id,
             platform: post.platform,
@@ -374,6 +374,7 @@ export default async function ClientDetailPage({
             format: post.format,
             script: post.script,
             pyramidStage: post.pyramidStage,
+            ideaSourceLabel: post.ideaSourceLabel,
             mediaUrl: post.mediaUrl,
             mediaUrls: post.mediaUrls,
             mediaType: post.mediaType,

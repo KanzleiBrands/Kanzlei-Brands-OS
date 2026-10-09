@@ -85,6 +85,12 @@ export async function generateContentIdeas(
   const input = String(formData.get("input") ?? "").trim();
   if (!input) return "Bitte Text/Transkript/Notizen einfügen, auf deren Basis Ideen generiert werden sollen.";
 
+  // Nur gesetzt, wenn der Quelltext aus dem Call-Transkript-Browser übernommen
+  // wurde (siehe call-transcripts-tab.tsx) - macht auf dem Board nachvollziehbar,
+  // woher Idee/Kontext stammen (SocialPost.ideaSourceLabel).
+  const sourceLabelRaw = String(formData.get("sourceLabel") ?? "").trim();
+  const ideaSourceLabel = sourceLabelRaw || null;
+
   const count = Number(formData.get("count") ?? 0);
   if (!Number.isInteger(count) || count < 1 || count > 30) return "Anzahl Ideen muss zwischen 1 und 30 liegen.";
 
@@ -170,6 +176,7 @@ ${GERMAN_ONLY} Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (keine Mark
             contentFormatId: format.id,
             channelId: channel?.id ?? null,
             pyramidStage,
+            ideaSourceLabel,
           };
         }),
       });

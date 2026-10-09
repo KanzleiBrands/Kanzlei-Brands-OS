@@ -5,7 +5,7 @@ import { MediaLibraryList, type MediaLibraryItemData } from "./media-library-lis
 import { ContentSnippetsList, type ContentSnippetItem } from "./content-snippets-list";
 import { ApprovalReminderToggle } from "./approval-reminder-toggle";
 import { SocialContentBookedToggle } from "@/app/dashboard/social-content/social-content-paywall";
-import { FirefliesSyncPanel } from "./fireflies-sync-panel";
+import { CallTranscriptSyncPanel } from "./call-transcript-sync-panel";
 
 /**
  * "Konfiguration"-Reiter des Content Boards (siehe content-tab.tsx) - alles
@@ -29,7 +29,7 @@ export function ContentConfigPanel({
   contentSnippets,
   socialContentBooked,
   socialApprovalReminderEnabled,
-  firefliesSync,
+  callTranscriptSync,
 }: {
   organizationId: string;
   websiteUrl: string;
@@ -43,8 +43,12 @@ export function ContentConfigPanel({
   socialContentBooked: boolean | null;
   /** null im internen Marketing-Center, wo es keine echten Kunden-Nutzer zum Erinnern gibt. */
   socialApprovalReminderEnabled: boolean | null;
-  /** null für echte Kunden - der Fireflies-Sync ist agentur-weit, nie pro Kunde sichtbar. */
-  firefliesSync: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null; transcriptCount: number } | null;
+  /** null für echte Kunden - die Call-Transkript-Syncs sind agentur-weit, nie pro Kunde sichtbar. */
+  callTranscriptSync: {
+    fireflies: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null };
+    close: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null };
+    transcriptCount: number;
+  } | null;
 }) {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -62,14 +66,13 @@ export function ContentConfigPanel({
         </div>
       )}
 
-      {firefliesSync && (
+      {callTranscriptSync && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Fireflies-Sync</p>
-          <FirefliesSyncPanel
-            enabled={firefliesSync.enabled}
-            lastSyncedAt={firefliesSync.lastSyncedAt}
-            lastSyncError={firefliesSync.lastSyncError}
-            transcriptCount={firefliesSync.transcriptCount}
+          <p className="text-sm font-medium">Call-Transkripte</p>
+          <CallTranscriptSyncPanel
+            fireflies={callTranscriptSync.fireflies}
+            close={callTranscriptSync.close}
+            transcriptCount={callTranscriptSync.transcriptCount}
           />
         </div>
       )}

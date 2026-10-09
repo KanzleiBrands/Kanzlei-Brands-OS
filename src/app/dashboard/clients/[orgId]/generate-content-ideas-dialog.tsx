@@ -32,12 +32,15 @@ export function GenerateContentIdeasDialog({
   organizationId,
   formats,
   prefillInput,
+  prefillSourceLabel,
   prefillNonce,
 }: {
   organizationId: string;
   formats: ContentFormatOption[];
-  /** Von außen gesetzter Quelltext (z.B. ein Fireflies-Transkript, siehe fireflies-transcripts-tab.tsx) - öffnet den Dialog vorausgefüllt. */
+  /** Von außen gesetzter Quelltext (z.B. ein Call-Transkript, siehe call-transcripts-tab.tsx) - öffnet den Dialog vorausgefüllt. */
   prefillInput?: string | null;
+  /** Begleitendes Quelle-Label (z.B. "Fireflies-Call ... vom ...") - landet als ideaSourceLabel auf den erzeugten Beiträgen, siehe social-post-board.tsx. */
+  prefillSourceLabel?: string | null;
   /** Bei jedem "Idee daraus generieren"-Klick hochgezählt, auch für denselben Text erneut - löst das Öffnen zuverlässig aus, ohne auf String-Gleichheit angewiesen zu sein. */
   prefillNonce?: number;
 }) {
@@ -51,6 +54,7 @@ export function GenerateContentIdeasDialog({
   const [formatIds, setFormatIds] = useState<string[]>([]);
   const [pyramidStage, setPyramidStage] = useState<ContentPyramidStageValue>("REACH");
   const [input, setInput] = useState("");
+  const [sourceLabel, setSourceLabel] = useState<string | null>(null);
   const [count, setCount] = useState("10");
   const [consumedPrefillNonce, setConsumedPrefillNonce] = useState(0);
 
@@ -62,6 +66,7 @@ export function GenerateContentIdeasDialog({
       setFormatIds([]);
       setPyramidStage("REACH");
       setInput("");
+      setSourceLabel(null);
       setCount("10");
     }
     wasPending.current = isPending;
@@ -73,6 +78,7 @@ export function GenerateContentIdeasDialog({
   if (prefillInput && prefillNonce && prefillNonce !== consumedPrefillNonce) {
     setConsumedPrefillNonce(prefillNonce);
     setInput(prefillInput);
+    setSourceLabel(prefillSourceLabel ?? null);
     setOpen(true);
   }
 
@@ -108,12 +114,19 @@ export function GenerateContentIdeasDialog({
         <form ref={formRef} action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="organizationId" value={organizationId} />
           <input type="hidden" name="pyramidStage" value={pyramidStage} />
+          {sourceLabel && <input type="hidden" name="sourceLabel" value={sourceLabel} />}
           {platforms.map((p) => (
             <input key={p} type="hidden" name="platforms" value={p} />
           ))}
           {formatIds.map((id) => (
             <input key={id} type="hidden" name="formatIds" value={id} />
           ))}
+
+          {sourceLabel && (
+            <p className="rounded-md border border-dashed bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground">
+              Quelle: {sourceLabel}
+            </p>
+          )}
 
           <div className="flex flex-col gap-1">
             <Label>Content-Pyramide: strategische Ausrichtung</Label>
