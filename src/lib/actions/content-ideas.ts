@@ -82,10 +82,11 @@ export async function generateContentIdeas(
   const count = Number(formData.get("count") ?? 0);
   if (!Number.isInteger(count) || count < 1 || count > 30) return "Anzahl Ideen muss zwischen 1 und 30 liegen.";
 
-  const [organization, formats, channels] = await Promise.all([
+  const [organization, formats, channels, referenceAccounts] = await Promise.all([
     prisma.organization.findUnique({ where: { id: organizationId }, select: { contentBrandDna: true, contentIntention: true } }),
     prisma.contentFormat.findMany({ where: { id: { in: formatIds } } }),
     prisma.socialChannel.findMany({ where: { organizationId, platform: { in: platforms }, active: true } }),
+    prisma.contentReferenceAccount.findMany({ where: { organizationId, lastAnalysis: { not: null } } }),
   ]);
   if (formats.length === 0) return "Die ausgewählten Formate wurden nicht gefunden.";
 
@@ -96,6 +97,12 @@ export async function generateContentIdeas(
   const brandBlock = organization?.contentBrandDna?.trim()
     ? `Marken-DNA des Kunden (unbedingt berücksichtigen):\n${organization.contentBrandDna.trim()}\n\n`
     : "";
+  const referenceAccountsBlock =
+    referenceAccounts.length > 0
+      ? `Stil-/Format-Inspiration aus Vorbild-Accounts (NICHT das Thema/die Branche übernehmen, nur übertragbare Muster bei Format/Hook/Aufbau als Inspiration nutzen):\n${referenceAccounts
+          .map((a) => `- ${a.displayName || a.handle}: ${a.lastAnalysis}`)
+          .join("\n")}\n\n`
+      : "";
 
   let created = 0;
   const errors: string[] = [];
@@ -103,7 +110,7 @@ export async function generateContentIdeas(
   for (const platform of platforms) {
     const prompt = `Du hilfst einer Marketing-Agentur, Social-Media-Post-Ideen für einen Kunden zu entwickeln.
 
-${intentionBlock}${brandBlock}Quelltext (Transkript, Notizen oder Stichpunkte, aus denen Ideen abgeleitet werden sollen):
+${intentionBlock}${brandBlock}${referenceAccountsBlock}Quelltext (Transkript, Notizen oder Stichpunkte, aus denen Ideen abgeleitet werden sollen):
 """
 ${input}
 """

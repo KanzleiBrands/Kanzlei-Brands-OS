@@ -10,7 +10,7 @@ export default async function InternalSocialMediaPage() {
 
   const organizationId = session.user.organizationId;
 
-  const [channels, posts, comments, agencyUsers, contentFormats, organization, contentReferenceDocs] = await Promise.all([
+  const [channels, posts, comments, agencyUsers, contentFormats, organization, contentReferenceDocs, contentReferenceAccounts] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
       where: { organizationId },
@@ -29,6 +29,7 @@ export default async function InternalSocialMediaPage() {
       select: { contentBrandDna: true, contentWebsiteUrl: true, contentIntention: true },
     }),
     prisma.contentReferenceDoc.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
+    prisma.contentReferenceAccount.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
   ]);
 
   return (
@@ -51,6 +52,16 @@ export default async function InternalSocialMediaPage() {
       contentBrandDna={organization?.contentBrandDna ?? ""}
       contentWebsiteUrl={organization?.contentWebsiteUrl ?? ""}
       contentReferenceDocs={contentReferenceDocs}
+      contentReferenceAccounts={contentReferenceAccounts.map((account) => ({
+        id: account.id,
+        platform: account.platform,
+        handle: account.handle,
+        displayName: account.displayName,
+        scanEnabled: account.scanEnabled,
+        lastAnalysis: account.lastAnalysis,
+        lastSyncedAt: account.lastSyncedAt?.toISOString() ?? null,
+        lastSyncError: account.lastSyncError,
+      }))}
       contentIntention={organization?.contentIntention ?? null}
       socialContentBooked={null}
       posts={posts.map((post) => ({

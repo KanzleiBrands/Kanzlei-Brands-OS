@@ -14,6 +14,7 @@ import { ContentFormatManager, type ContentFormatItem } from "./content-format-m
 import { ContentConfigPanel } from "./content-config-panel";
 import { type ContentIntentionValue } from "./content-config-form";
 import { type ContentReferenceDocItem } from "./content-reference-docs-list";
+import { type ContentReferenceAccountItem } from "./content-reference-accounts-list";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
@@ -31,6 +32,7 @@ export function ContentTab({
   contentWebsiteUrl,
   contentIntention,
   contentReferenceDocs,
+  contentReferenceAccounts,
   socialContentBooked,
   canManageChannels = true,
   canManageFormats = true,
@@ -47,6 +49,7 @@ export function ContentTab({
   contentWebsiteUrl: string;
   contentIntention: ContentIntentionValue | null;
   contentReferenceDocs: ContentReferenceDocItem[];
+  contentReferenceAccounts: ContentReferenceAccountItem[];
   /** null im internen Marketing-Center, wo "für diesen Kunden gebucht" kein Konzept ist. */
   socialContentBooked: boolean | null;
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
@@ -111,6 +114,7 @@ export function ContentTab({
           brandDna={contentBrandDna}
           intention={contentIntention}
           referenceDocs={contentReferenceDocs}
+          referenceAccounts={contentReferenceAccounts}
           socialContentBooked={socialContentBooked}
         />
       )}

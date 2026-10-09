@@ -694,6 +694,79 @@ export async function subscribeInstagramToCommentsWebhook(igUserId: string, page
   await graphFetch(url.toString(), { method: "POST" });
 }
 
+export type InstagramBusinessDiscoveryMedia = {
+  caption?: string;
+  mediaType: string; // IMAGE | VIDEO | CAROUSEL_ALBUM
+  likeCount?: number;
+  commentsCount?: number;
+  timestamp: string;
+  permalink?: string;
+};
+export type InstagramBusinessDiscoveryResult = {
+  username: string;
+  followersCount?: number;
+  mediaCount?: number;
+  media: InstagramBusinessDiscoveryMedia[];
+};
+
+/**
+ * "Business Discovery" - liest öffentliche Profil-/Post-Daten eines FREMDEN
+ * Instagram-Business-/Creator-Accounts (z.B. ein Referenz-Account eines
+ * Kunden), ohne dass der fremde Account selbst irgendetwas verbindet oder
+ * zustimmt - nur unser eigener verbundener Account (igUserId/pageAccessToken,
+ * siehe SocialChannel) muss ein Business/Creator-Konto sein. Funktioniert
+ * NUR für Instagram, nicht für Facebook-Seiten (dafür gibt es keine
+ * vergleichbare Graph-API) - siehe src/lib/actions/content-reference-accounts.ts.
+ */
+export async function fetchInstagramBusinessDiscovery(
+  igUserId: string,
+  pageAccessToken: string,
+  targetUsername: string,
+): Promise<InstagramBusinessDiscoveryResult> {
+  const mediaFields = "caption,media_type,like_count,comments_count,timestamp,permalink";
+  const fields = `business_discovery.username(${targetUsername}){username,followers_count,media_count,media.limit(25){${mediaFields}}}`;
+
+  const url = new URL(`${GRAPH_BASE}/${igUserId}`);
+  url.searchParams.set("fields", fields);
+  url.searchParams.set("access_token", pageAccessToken);
+
+  const data = await graphFetch<{
+    business_discovery?: {
+      username: string;
+      followers_count?: number;
+      media_count?: number;
+      media?: {
+        data: {
+          caption?: string;
+          media_type: string;
+          like_count?: number;
+          comments_count?: number;
+          timestamp: string;
+          permalink?: string;
+        }[];
+      };
+    };
+  }>(url.toString());
+
+  if (!data.business_discovery) {
+    throw new MetaGraphError(`"${targetUsername}" wurde nicht gefunden oder ist kein Instagram-Business-/Creator-Konto.`);
+  }
+
+  return {
+    username: data.business_discovery.username,
+    followersCount: data.business_discovery.followers_count,
+    mediaCount: data.business_discovery.media_count,
+    media: (data.business_discovery.media?.data ?? []).map((m) => ({
+      caption: m.caption,
+      mediaType: m.media_type,
+      likeCount: m.like_count,
+      commentsCount: m.comments_count,
+      timestamp: m.timestamp,
+      permalink: m.permalink,
+    })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // WhatsApp Business Platform (Cloud API)
 // ---------------------------------------------------------------------------

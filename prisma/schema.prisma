@@ -170,6 +170,7 @@ model Organization {
   socialChannels            SocialChannel[]
   socialPosts               SocialPost[]
   contentReferenceDocs      ContentReferenceDoc[]
+  contentReferenceAccounts  ContentReferenceAccount[]
   whatsAppChannels          WhatsAppChannel[]
   auditLogs                 AuditLog[]
   messageTemplates          MessageTemplate[]
@@ -1023,6 +1024,49 @@ model ContentReferenceDoc {
   url            String
 
   createdAt DateTime @default(now())
+
+  @@index([organizationId])
+}
+
+enum ReferenceAccountPlatform {
+  INSTAGRAM
+  FACEBOOK
+  LINKEDIN
+  OTHER
+}
+
+// Vorbild-/Inspirations-Accounts pro Kunde (nicht zwingend aus der gleichen
+// Branche - einfach erfolgreiche Creator, an denen man sich orientieren will),
+// siehe Konfiguration-Reiter des Content Boards. Nur INSTAGRAM lässt sich
+// automatisch im Hintergrund scannen: Metas "Business Discovery"-Feature
+// erlaubt das Auslesen öffentlicher Post-Daten eines fremden Business-/
+// Creator-Accounts über den eigenen verbundenen IG-Account (siehe
+// src/lib/meta/graph.ts: fetchInstagramBusinessDiscovery) - dafür braucht der
+// Kunde selbst einen verbundenen Instagram-Kanal (SocialChannel). Für
+// FACEBOOK/LINKEDIN/OTHER gibt es keine vergleichbare, ToS-konforme API für
+// fremde Accounts - die bleiben reine Link-Referenz wie ContentReferenceDoc.
+// scanEnabled defaultet bewusst auf false (siehe CLAUDE.md-Automationsregel) -
+// die Agentur aktiviert den Hintergrund-Scan bewusst pro Account.
+model ContentReferenceAccount {
+  id             String                   @id @default(cuid())
+  organizationId String
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  platform       ReferenceAccountPlatform
+  handle         String // Instagram: Business-Username (für Business Discovery); sonst: Profil-URL
+  displayName    String?
+
+  scanEnabled Boolean @default(false)
+
+  // Von der KI aus den zuletzt gescannten Top-Posts erzeugte Muster-
+  // Zusammenfassung (Formate/Hooks/Themen/Aufbau) - fließt in die
+  // Ideen-Generierung ein (siehe content-ideas.ts). Null bis zum ersten
+  // erfolgreichen Scan.
+  lastAnalysis  String?
+  lastSyncedAt  DateTime?
+  lastSyncError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([organizationId])
 }

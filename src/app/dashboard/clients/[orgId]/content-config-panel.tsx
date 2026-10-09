@@ -1,5 +1,6 @@
 import { ContentConfigForm, type ContentIntentionValue } from "./content-config-form";
 import { ContentReferenceDocsList, type ContentReferenceDocItem } from "./content-reference-docs-list";
+import { ContentReferenceAccountsList, type ContentReferenceAccountItem } from "./content-reference-accounts-list";
 import { SocialContentBookedToggle } from "@/app/dashboard/social-content/social-content-paywall";
 
 /**
@@ -19,6 +20,7 @@ export function ContentConfigPanel({
   brandDna,
   intention,
   referenceDocs,
+  referenceAccounts,
   socialContentBooked,
 }: {
   organizationId: string;
@@ -26,6 +28,7 @@ export function ContentConfigPanel({
   brandDna: string;
   intention: ContentIntentionValue | null;
   referenceDocs: ContentReferenceDocItem[];
+  referenceAccounts: ContentReferenceAccountItem[];
   /** null im internen Marketing-Center, wo "für diesen Kunden gebucht" kein Konzept ist. */
   socialContentBooked: boolean | null;
 }) {
@@ -52,6 +55,11 @@ export function ContentConfigPanel({
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium">Referenzdokumente</p>
         <ContentReferenceDocsList organizationId={organizationId} docs={referenceDocs} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium">Referenz-Accounts</p>
+        <ContentReferenceAccountsList organizationId={organizationId} accounts={referenceAccounts} />
       </div>
     </div>
   );
