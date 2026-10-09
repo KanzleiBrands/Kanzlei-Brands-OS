@@ -27,7 +27,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { updateLesson, uploadLessonBlockImage } from "@/lib/actions/courses";
+import { autoSaveLessonContent, updateLesson, uploadLessonBlockImage } from "@/lib/actions/courses";
 import type { LessonBlock } from "@/lib/lesson-blocks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,10 +44,12 @@ function newBlockId() {
 function SortableBlock({
   block,
   onChange,
+  onUploaded,
   onRemove,
 }: {
   block: LessonBlock;
   onChange: (next: LessonBlock) => void;
+  onUploaded: (next: LessonBlock) => void;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
@@ -105,7 +107,9 @@ function SortableBlock({
         handleUploadUrl: "/api/uploads/video",
         onUploadProgress: (event) => setVideoProgress(Math.round(event.percentage)),
       });
-      onChange({ ...block, url: blob.url });
+      // Persist immediately (not just local state) so the upload survives
+      // navigating away right after it finishes - see onUploaded.
+      onUploaded({ ...block, url: blob.url });
       setVideoFallbackFile(null);
     } catch {
       // No Blob token configured (e.g. local dev) or the direct upload
@@ -128,7 +132,7 @@ function SortableBlock({
         handleUploadUrl: "/api/uploads/audio",
         onUploadProgress: (event) => setAudioProgress(Math.round(event.percentage)),
       });
-      onChange({ ...block, url: blob.url });
+      onUploaded({ ...block, url: blob.url });
       setAudioFallbackFile(null);
     } catch {
       // Same direct-upload fallback as handleVideoFile - see there for why.
@@ -282,7 +286,7 @@ function SortableBlock({
                     onKeyDown={(e) => {
                       if (e.key !== "Enter" || !videoUrlInput.trim()) return;
                       e.preventDefault();
-                      onChange({ ...block, url: videoUrlInput.trim() });
+                      onUploaded({ ...block, url: videoUrlInput.trim() });
                       setVideoUrlInput("");
                     }}
                     placeholder="Video-URL einfügen (z.B. schon selbst zu Vercel Blob hochgeladen)"
@@ -294,7 +298,7 @@ function SortableBlock({
                     variant="outline"
                     disabled={!videoUrlInput.trim()}
                     onClick={() => {
-                      onChange({ ...block, url: videoUrlInput.trim() });
+                      onUploaded({ ...block, url: videoUrlInput.trim() });
                       setVideoUrlInput("");
                     }}
                   >
@@ -369,7 +373,7 @@ function SortableBlock({
                     onKeyDown={(e) => {
                       if (e.key !== "Enter" || !audioUrlInput.trim()) return;
                       e.preventDefault();
-                      onChange({ ...block, url: audioUrlInput.trim() });
+                      onUploaded({ ...block, url: audioUrlInput.trim() });
                       setAudioUrlInput("");
                     }}
                     placeholder="Audio-URL einfügen (z.B. schon selbst zu Vercel Blob hochgeladen)"
@@ -381,7 +385,7 @@ function SortableBlock({
                     variant="outline"
                     disabled={!audioUrlInput.trim()}
                     onClick={() => {
-                      onChange({ ...block, url: audioUrlInput.trim() });
+                      onUploaded({ ...block, url: audioUrlInput.trim() });
                       setAudioUrlInput("");
                     }}
                   >
@@ -458,6 +462,17 @@ export function LessonEditor({
 
   function updateBlock(id: string, next: LessonBlock) {
     setBlocks((b) => b.map((blk) => (blk.id === id ? next : blk)));
+  }
+
+  // Used for video/audio blocks that just got a real URL (upload finished,
+  // recorded, trimmed, or pasted) - saves immediately so the user can leave
+  // the page to start the next upload without losing this one.
+  function updateBlockAndSave(id: string, next: LessonBlock) {
+    setBlocks((prev) => {
+      const updated = prev.map((blk) => (blk.id === id ? next : blk));
+      void autoSaveLessonContent(lessonId, updated);
+      return updated;
+    });
   }
 
   function removeBlock(id: string) {
@@ -566,6 +581,7 @@ export function LessonEditor({
                       key={block.id}
                       block={block}
                       onChange={(next) => updateBlock(block.id, next)}
+                      onUploaded={(next) => updateBlockAndSave(block.id, next)}
                       onRemove={() => removeBlock(block.id)}
                     />
                   ))}

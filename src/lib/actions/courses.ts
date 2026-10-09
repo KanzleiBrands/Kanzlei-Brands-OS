@@ -465,6 +465,42 @@ export async function updateLesson(_prevState: string | undefined, formData: For
   return undefined;
 }
 
+/**
+ * Persists only a lesson's `content` blocks (and the derived videoUrl),
+ * called right after a video/audio block gets a real URL (upload finished,
+ * recorded, trimmed, or pasted) so the file is never lost if the editor is
+ * closed before the main "Speichern" button is clicked. Deliberately narrow:
+ * it never touches title/description/pdfUrl/notionUrl/thumbnail, so it can't
+ * clobber an in-flight edit to those from the full-form submit.
+ */
+export async function autoSaveLessonContent(
+  lessonId: string,
+  rawContent: unknown,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await requireSession();
+
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { module: { include: { course: true } } },
+  });
+  if (!lesson) return { error: "Lektion nicht gefunden." };
+  if (!(await canManageCourse(session, lesson.module.course.audience))) {
+    return { error: "Keine Berechtigung, diese Lektion zu bearbeiten." };
+  }
+
+  const content = parseLessonBlocks(rawContent);
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: {
+      content: content as unknown as Prisma.InputJsonValue,
+      videoUrl: firstVideoBlockUrl(content),
+    },
+  });
+
+  revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
+  return { ok: true };
+}
+
 /** Uploads a single image picked for a lesson content block, returning its URL for the block editor's client-side state. */
 export async function uploadLessonBlockImage(formData: FormData): Promise<{ url: string } | { error: string }> {
   const session = await requireSession();
