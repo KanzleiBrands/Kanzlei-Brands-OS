@@ -501,6 +501,49 @@ export async function autoSaveLessonContent(
   return { ok: true };
 }
 
+/**
+ * Records the result of client-side re-muxing a lesson's video for
+ * fast-start playback (see video-optimize-client.ts / the Video-Optimierung
+ * admin page) - swaps in the new, already-uploaded Blob URL and marks the
+ * lesson optimized so the admin page can skip it next time. Updates the
+ * matching video content block too, if the video lives there rather than
+ * only in the legacy videoUrl field, so the two stay in sync like updateLesson keeps them.
+ */
+export async function markLessonVideoOptimized(
+  lessonId: string,
+  newVideoUrl: string,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await requireSession();
+
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { module: { include: { course: true } } },
+  });
+  if (!lesson) return { error: "Lektion nicht gefunden." };
+  if (!(await canManageCourse(session, lesson.module.course.audience))) {
+    return { error: "Keine Berechtigung, diese Lektion zu bearbeiten." };
+  }
+
+  const content = parseLessonBlocks(lesson.content);
+  const videoBlockIndex = content.findIndex((b) => b.type === "video" && b.url);
+  if (videoBlockIndex !== -1) {
+    content[videoBlockIndex] = { ...content[videoBlockIndex], url: newVideoUrl } as LessonBlock;
+  }
+
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: {
+      videoUrl: newVideoUrl,
+      videoOptimizedAt: new Date(),
+      ...(videoBlockIndex !== -1 ? { content: content as unknown as Prisma.InputJsonValue } : {}),
+    },
+  });
+
+  revalidatePath(`/dashboard/courses/${lesson.module.courseId}`);
+  revalidatePath("/dashboard/intern/schulung/verwaltung/video-optimize");
+  return { ok: true };
+}
+
 /** Uploads a single image picked for a lesson content block, returning its URL for the block editor's client-side state. */
 export async function uploadLessonBlockImage(formData: FormData): Promise<{ url: string } | { error: string }> {
   const session = await requireSession();

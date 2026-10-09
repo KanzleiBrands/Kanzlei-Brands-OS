@@ -92,7 +92,13 @@ export function LessonPlayerView({
           {!hasVideoBlock &&
             (lesson.videoUrl ? (
               <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
-                <video src={lesson.videoUrl} controls className="size-full object-contain" />
+                <video
+                  src={lesson.videoUrl}
+                  controls
+                  preload="metadata"
+                  poster={lesson.thumbnailUrl ?? undefined}
+                  className="size-full object-contain"
+                />
               </div>
             ) : lesson.thumbnailUrl ? (
               <div className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
@@ -125,7 +131,13 @@ export function LessonPlayerView({
                   if (!block.url) return null;
                   return (
                     <div key={block.id} className="overflow-hidden rounded-lg bg-black" style={{ aspectRatio: "16 / 9" }}>
-                      <video src={block.url} controls className="size-full object-contain" />
+                      <video
+                        src={block.url}
+                        controls
+                        preload="metadata"
+                        poster={lesson.thumbnailUrl ?? undefined}
+                        className="size-full object-contain"
+                      />
                     </div>
                   );
                 }

@@ -1452,6 +1452,7 @@ model Lesson {
   description     String?
   order           Int
   videoUrl        String? // Vercel Blob URL (uploaded video)
+  videoOptimizedAt DateTime? // set once the video has been remuxed for fast-start (see video-optimize feature) - null means it may still be a slow-loading raw upload
   thumbnailUrl    String?
   pdfUrl          String? // Link to an external PDF
   notionUrl       String? // Link to an external Notion doc

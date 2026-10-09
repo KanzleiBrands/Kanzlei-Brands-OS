@@ -38,6 +38,9 @@ export default async function InternalCourseAdminPage() {
           <Link href="/dashboard/intern/schulung/verwaltung/video-import" className="text-sm underline">
             Video-Import
           </Link>
+          <Link href="/dashboard/intern/schulung/verwaltung/video-optimize" className="text-sm underline">
+            Video-Optimierung
+          </Link>
           <NewCourseForm audience="INTERNAL" />
         </div>
       </div>
