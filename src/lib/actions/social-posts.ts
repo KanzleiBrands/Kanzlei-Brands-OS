@@ -393,6 +393,8 @@ export async function approveSocialPost(formData: FormData) {
 
   revalidatePath("/dashboard/hub");
   revalidatePath("/dashboard/social");
+  revalidatePath(`/dashboard/clients/${post.organizationId}`);
+  revalidateInternalMarketing();
 }
 
 export async function requestSocialPostChanges(_prevState: string | undefined, formData: FormData) {
@@ -422,6 +424,8 @@ export async function requestSocialPostChanges(_prevState: string | undefined, f
 
   revalidatePath("/dashboard/hub");
   revalidatePath("/dashboard/social");
+  revalidatePath(`/dashboard/clients/${post.organizationId}`);
+  revalidateInternalMarketing();
   return undefined;
 }
 

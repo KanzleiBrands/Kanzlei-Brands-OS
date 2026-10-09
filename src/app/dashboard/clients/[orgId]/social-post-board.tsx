@@ -13,9 +13,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { CalendarIcon, SparklesIcon, Trash2Icon, UserIcon } from "lucide-react";
-import { moveSocialPostStatus, deleteSocialPost } from "@/lib/actions/social-posts";
+import { CalendarIcon, CheckIcon, PencilLineIcon, SparklesIcon, Trash2Icon, UserIcon } from "lucide-react";
+import { moveSocialPostStatus, deleteSocialPost, approveSocialPost, requestSocialPostChanges } from "@/lib/actions/social-posts";
 import { PlatformIcon } from "@/components/platform-icon";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { SocialPostFormDialog, type SocialPostData, type SocialPostStatus } from "./social-post-form-dialog";
 import { type MediaLibraryItemData } from "./media-library-list";
 import { type ContentSnippetItem } from "./content-snippets-list";
@@ -45,13 +47,82 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function PostCard({ post, organizationId, channels, agencyUsers, mediaLibraryItems, contentSnippets }: {
+/**
+ * Für das interne Marketing-Center (Kanzlei Brands' eigener Account) gibt es
+ * keinen externen Kunden, der auf /dashboard/hub freigeben könnte (AGENCY_ADMIN
+ * wird von dieser Seite sogar aktiv weggeleitet, siehe social-content/page.tsx)
+ * - deshalb bekommt "Interne Freigabe" hier ausnahmsweise eine eigene Freigeben/
+ * Änderung-wünschen-Aktion direkt auf der Karte. Für echte Kunden erscheint das
+ * NIE (siehe isInternalOrg in content-tab.tsx) - dort bleibt Freigabe bewusst
+ * ausschließlich Kundensache.
+ */
+function InternalApprovalActions({ postId }: { postId: string }) {
+  const [showChangeForm, setShowChangeForm] = useState(false);
+  const [isApproving, startApproving] = useTransition();
+  const [isRequesting, startRequesting] = useTransition();
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function handleApprove() {
+    const fd = new FormData();
+    fd.set("postId", postId);
+    startApproving(() => approveSocialPost(fd));
+  }
+
+  function handleRequestChanges() {
+    if (!feedback.trim()) {
+      setError("Bitte beschreibe die gewünschte Änderung.");
+      return;
+    }
+    setError(null);
+    const fd = new FormData();
+    fd.set("postId", postId);
+    fd.set("feedback", feedback);
+    startRequesting(async () => {
+      const result = await requestSocialPostChanges(undefined, fd);
+      if (result) setError(result);
+    });
+  }
+
+  return (
+    <div onPointerDown={(e) => e.stopPropagation()} className="flex flex-col gap-1.5 rounded-md border border-dashed p-2">
+      {!showChangeForm ? (
+        <div className="flex gap-1.5">
+          <Button type="button" size="sm" disabled={isApproving} onClick={handleApprove} className="bg-emerald-600 text-white hover:bg-emerald-500">
+            <CheckIcon className="size-3.5" />
+            {isApproving ? "Wird freigegeben..." : "Freigeben"}
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setShowChangeForm(true)}>
+            <PencilLineIcon className="size-3.5" />
+            Änderung wünschen
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <Textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={2} placeholder="Was soll geändert werden?" />
+          <div className="flex gap-1.5">
+            <Button type="button" size="sm" disabled={isRequesting} onClick={handleRequestChanges}>
+              {isRequesting ? "Wird gesendet..." : "Senden"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowChangeForm(false)}>
+              Abbrechen
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function PostCard({ post, organizationId, channels, agencyUsers, mediaLibraryItems, contentSnippets, isInternalOrg }: {
   post: BoardPost;
   organizationId: string;
   channels: Channel[];
   agencyUsers: AgencyUser[];
   mediaLibraryItems: MediaLibraryItemData[];
   contentSnippets: ContentSnippetItem[];
+  isInternalOrg: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: post.id });
   const [isPending, startTransition] = useTransition();
@@ -129,6 +200,7 @@ function PostCard({ post, organizationId, channels, agencyUsers, mediaLibraryIte
         </p>
       )}
       {post.publishError && <p className="rounded bg-destructive/10 px-2 py-1 text-xs text-destructive">{post.publishError}</p>}
+      {isInternalOrg && post.status === "CLIENT_REVIEW" && <InternalApprovalActions postId={post.id} />}
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         {post.scheduledAt && (
           <span className="inline-flex items-center gap-1">
@@ -200,6 +272,7 @@ export function SocialPostBoard({
   agencyUsers,
   mediaLibraryItems,
   contentSnippets,
+  isInternalOrg = false,
 }: {
   organizationId: string;
   posts: BoardPost[];
@@ -207,6 +280,8 @@ export function SocialPostBoard({
   agencyUsers: AgencyUser[];
   mediaLibraryItems: MediaLibraryItemData[];
   contentSnippets: ContentSnippetItem[];
+  /** Interne Freigabe bekommt hier ausnahmsweise eine Freigeben/Änderung-wünschen-Aktion direkt auf der Karte - siehe InternalApprovalActions. */
+  isInternalOrg?: boolean;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -249,6 +324,7 @@ export function SocialPostBoard({
                   agencyUsers={agencyUsers}
                   mediaLibraryItems={mediaLibraryItems}
                   contentSnippets={contentSnippets}
+                  isInternalOrg={isInternalOrg}
                 />
               ))}
           </Column>

@@ -127,6 +127,7 @@ export function ContentTab({
           agencyUsers={agencyUsers}
           mediaLibraryItems={mediaLibraryItems}
           contentSnippets={contentSnippets}
+          isInternalOrg={socialContentBooked === null}
         />
       )}
       {view === "calendar" && (
