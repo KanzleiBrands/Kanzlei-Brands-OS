@@ -21,6 +21,9 @@ export default async function InternalSocialMediaPage() {
     contentReferenceAccounts,
     mediaLibraryItems,
     contentSnippets,
+    platformSettings,
+    firefliesTranscripts,
+    firefliesTranscriptCount,
   ] = await Promise.all([
     prisma.socialChannel.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.socialPost.findMany({
@@ -43,6 +46,9 @@ export default async function InternalSocialMediaPage() {
     prisma.contentReferenceAccount.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
     prisma.mediaLibraryItem.findMany({ where: { organizationId }, orderBy: { createdAt: "desc" } }),
     prisma.contentSnippet.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" } }),
+    prisma.platformSettings.findUnique({ where: { id: "singleton" } }),
+    prisma.firefliesTranscript.findMany({ orderBy: { dateTime: "desc" }, take: 200 }),
+    prisma.firefliesTranscript.count(),
   ]);
 
   return (
@@ -80,6 +86,22 @@ export default async function InternalSocialMediaPage() {
       contentIntention={organization?.contentIntention ?? null}
       socialContentBooked={null}
       socialApprovalReminderEnabled={null}
+      firefliesSync={{
+        enabled: platformSettings?.firefliesSyncEnabled ?? false,
+        lastSyncedAt: platformSettings?.firefliesLastSyncedAt?.toISOString() ?? null,
+        lastSyncError: platformSettings?.firefliesLastSyncError ?? null,
+        transcriptCount: firefliesTranscriptCount,
+      }}
+      firefliesTranscripts={firefliesTranscripts.map((t) => ({
+        id: t.id,
+        title: t.title,
+        dateTime: t.dateTime.toISOString(),
+        durationMinutes: t.durationMinutes,
+        organizerEmail: t.organizerEmail,
+        participants: t.participants,
+        summaryOverview: t.summaryOverview,
+        transcriptText: t.transcriptText,
+      }))}
       posts={posts.map((post) => ({
         id: post.id,
         platform: post.platform,

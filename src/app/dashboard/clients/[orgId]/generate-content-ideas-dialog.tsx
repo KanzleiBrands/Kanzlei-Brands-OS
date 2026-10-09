@@ -31,9 +31,15 @@ const PLATFORM_LABELS: Record<Platform, string> = {
 export function GenerateContentIdeasDialog({
   organizationId,
   formats,
+  prefillInput,
+  prefillNonce,
 }: {
   organizationId: string;
   formats: ContentFormatOption[];
+  /** Von außen gesetzter Quelltext (z.B. ein Fireflies-Transkript, siehe fireflies-transcripts-tab.tsx) - öffnet den Dialog vorausgefüllt. */
+  prefillInput?: string | null;
+  /** Bei jedem "Idee daraus generieren"-Klick hochgezählt, auch für denselben Text erneut - löst das Öffnen zuverlässig aus, ohne auf String-Gleichheit angewiesen zu sein. */
+  prefillNonce?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(generateContentIdeas, undefined);
@@ -46,6 +52,7 @@ export function GenerateContentIdeasDialog({
   const [pyramidStage, setPyramidStage] = useState<ContentPyramidStageValue>("REACH");
   const [input, setInput] = useState("");
   const [count, setCount] = useState("10");
+  const [consumedPrefillNonce, setConsumedPrefillNonce] = useState(0);
 
   useEffect(() => {
     if (wasPending.current && !isPending && !error) {
@@ -59,6 +66,15 @@ export function GenerateContentIdeasDialog({
     }
     wasPending.current = isPending;
   }, [isPending, error]);
+
+  // Von React empfohlenes Muster fürs Ableiten von State aus einer geänderten
+  // Prop direkt im Render, statt setState in einem Effekt aufzurufen -
+  // consumedPrefillNonce verhindert ein erneutes Auslösen beim nächsten Render.
+  if (prefillInput && prefillNonce && prefillNonce !== consumedPrefillNonce) {
+    setConsumedPrefillNonce(prefillNonce);
+    setInput(prefillInput);
+    setOpen(true);
+  }
 
   function togglePlatform(p: Platform) {
     setPlatforms((prev) => {

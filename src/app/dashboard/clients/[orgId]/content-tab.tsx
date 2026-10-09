@@ -19,10 +19,11 @@ import { type MediaLibraryItemData } from "./media-library-list";
 import { type ContentSnippetItem } from "./content-snippets-list";
 import { BulkScheduleDialog } from "./bulk-schedule-dialog";
 import { ContentPyramidOverview } from "./content-pyramid-overview";
+import { FirefliesTranscriptsTab, type FirefliesTranscriptItem } from "./fireflies-transcripts-tab";
 
 type Channel = { id: string; platform: "FACEBOOK" | "INSTAGRAM" | "LINKEDIN"; displayName: string; active: boolean };
 type AgencyUser = { id: string; name: string };
-type View = "board" | "calendar" | "community" | "analytics" | "config";
+type View = "board" | "calendar" | "community" | "analytics" | "config" | "calls";
 
 export function ContentTab({
   organizationId,
@@ -41,6 +42,8 @@ export function ContentTab({
   contentSnippets,
   socialContentBooked,
   socialApprovalReminderEnabled,
+  firefliesSync,
+  firefliesTranscripts,
   canManageChannels = true,
   canManageFormats = true,
   showChannelList = true,
@@ -63,6 +66,10 @@ export function ContentTab({
   socialContentBooked: boolean | null;
   /** null im internen Marketing-Center, wo es keine echten Kunden-Nutzer zum Erinnern gibt. */
   socialApprovalReminderEnabled: boolean | null;
+  /** null für echte Kunden - der Fireflies-Sync ist agentur-weit, nie pro Kunde sichtbar. */
+  firefliesSync: { enabled: boolean; lastSyncedAt: string | null; lastSyncError: string | null; transcriptCount: number } | null;
+  /** [] für echte Kunden - siehe firefliesSync. */
+  firefliesTranscripts: FirefliesTranscriptItem[];
   /** Kanäle verbinden/trennen bleibt Admin-Sache - siehe SocialChannelList. */
   canManageChannels?: boolean;
   /** Format-Bibliothek verwalten ist Admin-Sache - siehe requireAgencyAdmin in content-formats.ts. */
@@ -71,6 +78,9 @@ export function ContentTab({
   showChannelList?: boolean;
 }) {
   const [view, setView] = useState<View>("board");
+  const [ideaPrefillInput, setIdeaPrefillInput] = useState<string | null>(null);
+  const [ideaPrefillNonce, setIdeaPrefillNonce] = useState(0);
+  const isInternalOrg = socialContentBooked === null;
   const commentInboxPosts: CommentInboxPost[] = posts.map((post) => ({
     id: post.id,
     platform: post.platform,
@@ -104,10 +114,20 @@ export function ContentTab({
           <Button type="button" size="sm" variant={view === "config" ? "default" : "outline"} onClick={() => setView("config")}>
             Konfiguration
           </Button>
+          {isInternalOrg && (
+            <Button type="button" size="sm" variant={view === "calls" ? "default" : "outline"} onClick={() => setView("calls")}>
+              Calls
+            </Button>
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {canManageFormats && <ContentFormatManager formats={contentFormats} />}
-          <GenerateContentIdeasDialog organizationId={organizationId} formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))} />
+          <GenerateContentIdeasDialog
+            organizationId={organizationId}
+            formats={contentFormats.map((f) => ({ id: f.id, name: f.name }))}
+            prefillInput={ideaPrefillInput}
+            prefillNonce={ideaPrefillNonce}
+          />
           <BulkScheduleDialog organizationId={organizationId} posts={schedulablePosts} />
           <SocialCsvImportDialog organizationId={organizationId} />
           <SocialPostFormDialog
@@ -132,7 +152,16 @@ export function ContentTab({
           agencyUsers={agencyUsers}
           mediaLibraryItems={mediaLibraryItems}
           contentSnippets={contentSnippets}
-          isInternalOrg={socialContentBooked === null}
+          isInternalOrg={isInternalOrg}
+        />
+      )}
+      {view === "calls" && isInternalOrg && (
+        <FirefliesTranscriptsTab
+          transcripts={firefliesTranscripts}
+          onUseAsIdeaSource={(text) => {
+            setIdeaPrefillInput(text);
+            setIdeaPrefillNonce((n) => n + 1);
+          }}
         />
       )}
       {view === "calendar" && (
@@ -159,6 +188,7 @@ export function ContentTab({
           contentSnippets={contentSnippets}
           socialContentBooked={socialContentBooked}
           socialApprovalReminderEnabled={socialApprovalReminderEnabled}
+          firefliesSync={firefliesSync}
         />
       )}
     </div>

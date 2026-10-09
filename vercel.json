@@ -47,6 +47,10 @@
     {
       "path": "/api/cron/social-approval-reminder",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/fireflies-sync",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
