@@ -8,6 +8,7 @@ import { SeoGapsList, type SeoContentGapItem } from "./seo-gaps-list";
 import { SeoBacklinksList, type SeoBacklinkItem, type SeoBacklinkProfileItem } from "./seo-backlinks-list";
 import { SeoCompetitorGapsList, type SeoCompetitorDomainItem, type SeoCompetitorGapItem } from "./seo-competitor-gaps-list";
 import { GscConnectionPanel } from "./gsc-connection-panel";
+import { GscConnectStatus } from "./gsc-connect-status";
 import { DataForSeoConfigPanel, type DataForSeoState } from "./dataforseo-config-panel";
 
 type View = "board" | "gaps" | "competitors" | "backlinks" | "config";
@@ -43,6 +44,7 @@ export function SeoBlogTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <GscConnectStatus />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1.5">
           <Button type="button" size="sm" variant={view === "board" ? "default" : "outline"} onClick={() => setView("board")}>
