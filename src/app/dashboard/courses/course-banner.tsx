@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { PlayCircleIcon } from "lucide-react";
 
 const SIZE_CONFIG = {
@@ -33,12 +34,14 @@ export function CourseBanner({
   return (
     <div className={`relative overflow-hidden rounded-2xl bg-neutral-900 ${pad}`}>
       {thumbnailUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={thumbnailUrl}
           alt=""
           aria-hidden
-          className="absolute inset-0 size-full scale-125 object-cover opacity-50 blur-2xl"
+          fill
+          sizes="100vw"
+          quality={40}
+          className="scale-125 object-cover opacity-50 blur-2xl"
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-neutral-900 to-neutral-900" />
@@ -47,10 +50,9 @@ export function CourseBanner({
 
       <div className="relative flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          <div className={`aspect-video shrink-0 overflow-hidden rounded-lg bg-white/10 ${thumb}`}>
+          <div className={`relative aspect-video shrink-0 overflow-hidden rounded-lg bg-white/10 ${thumb}`}>
             {thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumbnailUrl} alt="" className="size-full object-cover" />
+              <Image src={thumbnailUrl} alt="" fill sizes="150px" className="object-cover" />
             ) : (
               <div className="flex size-full items-center justify-center">
                 <PlayCircleIcon className="size-8 text-white/60" />

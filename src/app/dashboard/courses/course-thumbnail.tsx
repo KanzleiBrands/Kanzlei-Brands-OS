@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { PlayCircleIcon } from "lucide-react";
 
 /**
@@ -8,6 +9,14 @@ import { PlayCircleIcon } from "lucide-react";
  * never cropped: object-cover only ever crops when the container's aspect
  * ratio doesn't match the image's, and here it always does, regardless of
  * how wide the caller renders it.
+ *
+ * Uses next/image (not a raw <img>, unlike most other upload previews in
+ * this codebase) specifically because the ThumbnailGenerator source file is
+ * a full 1600x900 image (several hundred KB to a few MB) shown here at
+ * 64-300px wide - without resizing, a page listing a dozen courses/modules
+ * was pulling tens of MB just for thumbnails. next/image resizes + transcodes
+ * to a modern format on Vercel's image CDN and caches the result, so this
+ * fixes existing already-uploaded thumbnails too, not just new ones.
  */
 export function CourseThumbnail({
   src,
@@ -20,9 +29,8 @@ export function CourseThumbnail({
 }) {
   if (src) {
     return (
-      <div className={`aspect-video overflow-hidden bg-muted ${className}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- external Blob/local-uploads URLs, matches avatar-upload-form.tsx convention */}
-        <img src={src} alt={alt} className="size-full object-cover" />
+      <div className={`relative aspect-video overflow-hidden bg-muted ${className}`}>
+        <Image src={src} alt={alt} fill sizes="(min-width: 1024px) 300px, (min-width: 640px) 200px, 50vw" className="object-cover" />
       </div>
     );
   }

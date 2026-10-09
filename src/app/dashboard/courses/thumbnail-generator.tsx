@@ -228,19 +228,27 @@ export function ThumbnailGenerator({
     setSaving(true);
     await document.fonts.ready;
     draw();
-    canvas.toBlob((blob) => {
-      setSaving(false);
-      if (!blob) return;
-      const file = new File([blob], "thumbnail.png", { type: "image/png" });
-      const input = fileInputRef.current;
-      if (input) {
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        input.files = dataTransfer.files;
-      }
-      onGenerate(URL.createObjectURL(blob));
-      setOpen(false);
-    }, "image/png");
+    canvas.toBlob(
+      (blob) => {
+        setSaving(false);
+        if (!blob) return;
+        const file = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
+        const input = fileInputRef.current;
+        if (input) {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          input.files = dataTransfer.files;
+        }
+        onGenerate(URL.createObjectURL(blob));
+        setOpen(false);
+      },
+      // JPEG statt PNG: der Canvas ist immer vollständig deckend (Hintergrund +
+      // Gradient + Textbalken), Transparenz wird nie gebraucht - PNG war für
+      // dieses 1600x900-Foto mehrere hundert KB bis einige MB groß, JPEG bei
+      // dieser Qualität nur ein Bruchteil davon (siehe course-thumbnail.tsx).
+      "image/jpeg",
+      0.85,
+    );
   }
 
   return (

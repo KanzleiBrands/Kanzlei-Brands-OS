@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  images: {
+    // Vercel Blob (production file storage, see src/lib/file-storage.ts) -
+    // needed so next/image can resize/transcode uploaded course thumbnails
+    // etc. instead of serving the original multi-MB file straight through.
+    remotePatterns: [{ protocol: "https", hostname: "*.public.blob.vercel-storage.com" }],
+  },
 };
 
 export default nextConfig;
