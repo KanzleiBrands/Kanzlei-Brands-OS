@@ -182,7 +182,12 @@ export function ContentTab({
         />
       )}
       {view === "community" && <SocialCommentInbox organizationId={organizationId} posts={commentInboxPosts} comments={comments} />}
-      {view === "analytics" && <SocialAnalytics posts={analyticsPosts} />}
+      {view === "analytics" && (
+        <SocialAnalytics
+          posts={analyticsPosts}
+          pyramidPosts={posts.map((post) => ({ status: post.status, pyramidStage: post.pyramidStage }))}
+        />
+      )}
       {view === "config" && (
         <ContentConfigPanel
           organizationId={organizationId}

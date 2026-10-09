@@ -6,6 +6,8 @@ import { duplicateSocialPostAsIdea } from "@/lib/actions/social-posts";
 import { PlatformIcon } from "@/components/platform-icon";
 import { StatTile } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
+import { ContentPyramidOverview } from "./content-pyramid-overview";
+import type { ContentPyramidStageValue } from "@/lib/social/content-pyramid";
 
 export type AnalyticsPost = {
   id: string;
@@ -176,7 +178,14 @@ function RecyclingSuggestions({ posts, now }: { posts: AnalyticsPost[]; now: num
   );
 }
 
-export function SocialAnalytics({ posts }: { posts: AnalyticsPost[] }) {
+export function SocialAnalytics({
+  posts,
+  pyramidPosts,
+}: {
+  posts: AnalyticsPost[];
+  /** Alle Beiträge (nicht nur veröffentlichte, siehe content-tab.tsx) für die Pyramiden-Verteilung - unabhängig vom Analytics-Datensatz, der nur Metriken veröffentlichter Beiträge enthält. */
+  pyramidPosts: { status: string; pyramidStage: ContentPyramidStageValue | null }[];
+}) {
   // Frozen once per mount instead of read fresh on every render, so the
   // component stays pure (see react-hooks/purity) - the trend/30-day window
   // only needs to be "as of when this view opened", not live-ticking.
@@ -209,6 +218,8 @@ export function SocialAnalytics({ posts }: { posts: AnalyticsPost[] }) {
         <StatTile label="Interaktionen gesamt" value={totalEngagement.toLocaleString("de-DE")} subtext="Likes, Kommentare, Shares" />
         <StatTile label="Klicks gesamt" value={totalClicks.toLocaleString("de-DE")} subtext="Facebook" />
       </div>
+
+      <ContentPyramidOverview posts={pyramidPosts} />
 
       <RecyclingSuggestions posts={posts} now={now} />
 

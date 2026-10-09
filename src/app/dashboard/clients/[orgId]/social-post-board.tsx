@@ -88,12 +88,18 @@ function InternalApprovalActions({ postId }: { postId: string }) {
   return (
     <div onPointerDown={(e) => e.stopPropagation()} className="flex flex-col gap-1.5 rounded-md border border-dashed p-2">
       {!showChangeForm ? (
-        <div className="flex gap-1.5">
-          <Button type="button" size="sm" disabled={isApproving} onClick={handleApprove} className="bg-emerald-600 text-white hover:bg-emerald-500">
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            disabled={isApproving}
+            onClick={handleApprove}
+            className="w-full bg-emerald-600 text-white hover:bg-emerald-500"
+          >
             <CheckIcon className="size-3.5" />
             {isApproving ? "Wird freigegeben..." : "Freigeben"}
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setShowChangeForm(true)}>
+          <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setShowChangeForm(true)}>
             <PencilLineIcon className="size-3.5" />
             Änderung wünschen
           </Button>
