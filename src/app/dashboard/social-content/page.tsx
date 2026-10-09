@@ -72,7 +72,7 @@ export default async function SocialContentPage() {
       ) : pendingApproval.length === 0 && socialTimeline.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Hier erscheinen Freigaben und veröffentlichte Beiträge, sobald eure Social-Media-Kampagne startet.
+            Hier erscheinen Freigaben und veröffentlichte Beiträge, sobald es mit eurem Social Media Content losgeht.
           </CardContent>
         </Card>
       ) : (

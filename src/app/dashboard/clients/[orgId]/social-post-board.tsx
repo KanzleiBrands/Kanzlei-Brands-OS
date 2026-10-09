@@ -31,7 +31,7 @@ export type BoardPost = SocialPostData & {
 const COLUMNS: { status: BoardPost["status"]; label: string; droppable: boolean }[] = [
   { status: "IDEA", label: "Idee", droppable: true },
   { status: "IN_PRODUCTION", label: "In Produktion", droppable: true },
-  { status: "CLIENT_REVIEW", label: "Kundenfreigabe", droppable: true },
+  { status: "CLIENT_REVIEW", label: "Interne Freigabe", droppable: true },
   { status: "CHANGES_REQUESTED", label: "Änderung gewünscht", droppable: false },
   { status: "SCHEDULED", label: "Geplant", droppable: true },
   { status: "PUBLISHED", label: "Veröffentlicht", droppable: false },
