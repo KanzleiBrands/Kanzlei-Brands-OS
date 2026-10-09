@@ -2505,6 +2505,12 @@ model PlatformSettings {
   dataForSeoLastSyncedAt DateTime?
   dataForSeoLastSyncError String?
 
+  // Markenname, nach dem in KI-Antworten (ChatGPT/Claude/Gemini/Perplexity)
+  // als Erwähnung gesucht wird - siehe src/lib/actions/seo-geo.ts. Getrennt
+  // von dataForSeoTargetDomain, da eine Markenerwähnung im Fließtext ("bei
+  // Kanzlei Brands") nicht zwingend eine Domain/URL enthält.
+  geoTargetBrandName String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -2746,4 +2752,52 @@ model SeoBacklinkProfile {
   fetchError String?
 
   updatedAt DateTime @updatedAt
+}
+
+enum GeoAiProvider {
+  CHATGPT
+  CLAUDE
+  GEMINI
+  PERPLEXITY
+}
+
+// Manuell gepflegte Liste typischer Fragen/Prompts, mit denen potenzielle
+// Mandanten ChatGPT/Claude/Gemini/Perplexity nach einer Kanzlei fragen
+// könnten (z.B. "Welche Kanzlei hilft bei Markenrecht in Deutschland?") -
+// die Grundlage der GEO-Sichtbarkeits-Prüfung (siehe GeoVisibilityCheck).
+model GeoMonitoredPrompt {
+  id     String  @id @default(cuid())
+  prompt String
+  label  String?
+
+  addedAt DateTime @default(now())
+
+  checks GeoVisibilityCheck[]
+}
+
+// Ergebnis einer DataForSEO-"LLM Responses"-Abfrage (siehe
+// src/lib/dataforseo/client.ts, checkGeoVisibility) für einen Prompt bei
+// einem KI-Modell - bewusst nur der jeweils letzte Stand pro Prompt+Modell
+// (@@unique), kein Verlauf, da v1 nur die aktuelle Sichtbarkeit zeigen soll
+// und jeder erneute Check echtes Geld kostet.
+model GeoVisibilityCheck {
+  id       String             @id @default(cuid())
+  promptId String
+  prompt   GeoMonitoredPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  provider GeoAiProvider
+
+  // Markenname (geoTargetBrandName) kommt im Antworttext vor.
+  mentioned Boolean @default(false)
+  // Eine Quellenangabe/Citation der Antwort zeigt auf unsere Zieldomain -
+  // nur möglich, wenn das Modell Websuche genutzt hat (web_search-Flag).
+  cited     Boolean @default(false)
+  citedUrl  String?
+  modelName String?
+  // Gekürzter Antworttext (siehe DATAFORSEO_RESPONSE_EXCERPT_MAX_CHARS) für
+  // die manuelle Durchsicht, kein Volltext-Archiv.
+  responseExcerpt String?
+
+  checkedAt DateTime @default(now())
+
+  @@unique([promptId, provider])
 }

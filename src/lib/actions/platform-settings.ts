@@ -21,6 +21,7 @@ export async function getPlatformSettings() {
       firefliesSyncEnabled: true,
       closeCallsSyncEnabled: true,
       dataForSeoTargetDomain: "kanzlei-brands.de",
+      geoTargetBrandName: "Kanzlei Brands",
     },
   });
 }

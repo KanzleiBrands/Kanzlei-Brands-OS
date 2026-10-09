@@ -16,21 +16,23 @@ export default async function SeoBlogPage() {
   const session = await getSession();
   if (!session?.user) redirect("/login");
 
-  const [posts, gaps, backlinks, backlinkProfile, competitorDomains, competitorGaps, gscConnection, platformSettings] = await Promise.all([
-    prisma.blogPost.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.seoContentGap.findMany({ where: { status: "NEW" }, orderBy: { impressions: "desc" }, take: 50 }),
-    prisma.seoBacklink.findMany({ orderBy: { addedAt: "desc" } }),
-    prisma.seoBacklinkProfile.findUnique({ where: { id: "singleton" } }),
-    prisma.seoCompetitorDomain.findMany({ orderBy: { addedAt: "desc" } }),
-    prisma.seoCompetitorKeywordGap.findMany({
-      where: { status: "NEW" },
-      orderBy: { searchVolume: "desc" },
-      take: 50,
-      include: { competitorDomain: true },
-    }),
-    prisma.googleSearchConsoleConnection.findUnique({ where: { id: "singleton" } }),
-    prisma.platformSettings.findUnique({ where: { id: "singleton" } }),
-  ]);
+  const [posts, gaps, backlinks, backlinkProfile, competitorDomains, competitorGaps, geoPrompts, gscConnection, platformSettings] =
+    await Promise.all([
+      prisma.blogPost.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.seoContentGap.findMany({ where: { status: "NEW" }, orderBy: { impressions: "desc" }, take: 50 }),
+      prisma.seoBacklink.findMany({ orderBy: { addedAt: "desc" } }),
+      prisma.seoBacklinkProfile.findUnique({ where: { id: "singleton" } }),
+      prisma.seoCompetitorDomain.findMany({ orderBy: { addedAt: "desc" } }),
+      prisma.seoCompetitorKeywordGap.findMany({
+        where: { status: "NEW" },
+        orderBy: { searchVolume: "desc" },
+        take: 50,
+        include: { competitorDomain: true },
+      }),
+      prisma.geoMonitoredPrompt.findMany({ orderBy: { addedAt: "desc" }, include: { checks: true } }),
+      prisma.googleSearchConsoleConnection.findUnique({ where: { id: "singleton" } }),
+      prisma.platformSettings.findUnique({ where: { id: "singleton" } }),
+    ]);
 
   return (
     <SeoBlogTab
@@ -83,6 +85,18 @@ export default async function SeoBlogPage() {
         competitorPosition: gap.competitorPosition,
         ourPosition: gap.ourPosition,
       }))}
+      geoPrompts={geoPrompts.map((p) => ({
+        id: p.id,
+        prompt: p.prompt,
+        label: p.label,
+        checks: p.checks.map((c) => ({
+          provider: c.provider,
+          mentioned: c.mentioned,
+          cited: c.cited,
+          citedUrl: c.citedUrl,
+          checkedAt: c.checkedAt.toISOString(),
+        })),
+      }))}
       gsc={{
         connected: !!gscConnection,
         siteUrl: gscConnection?.siteUrl ?? null,
@@ -93,6 +107,7 @@ export default async function SeoBlogPage() {
         configured: isDataForSeoConfigured(),
         enabled: platformSettings?.dataForSeoEnabled ?? false,
         targetDomain: platformSettings?.dataForSeoTargetDomain ?? null,
+        geoTargetBrandName: platformSettings?.geoTargetBrandName ?? null,
         lastSyncedAt: platformSettings?.dataForSeoLastSyncedAt?.toISOString() ?? null,
         lastSyncError: platformSettings?.dataForSeoLastSyncError ?? null,
       }}

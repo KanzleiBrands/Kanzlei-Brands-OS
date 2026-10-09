@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/access";
 import { getAnthropicClient } from "@/lib/anthropic";
+import { getPlatformSettings } from "@/lib/actions/platform-settings";
 
 /**
  * Blog-/SEO-Content-Pipeline (v1, nur intern) - spiegelt bewusst die
@@ -55,17 +56,17 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
 type GeneratedBlogIdea = { title: string; topic: string; targetKeyword: string };
 
 async function generateIdeasFromInput(input: string, count: number): Promise<GeneratedBlogIdea[]> {
-  const prompt = `Du hilfst einer Kanzlei-Marketing-Agentur, Themen für Blogartikel (SEO) zu entwickeln.
+  const prompt = `Du hilfst einer Kanzlei-Marketing-Agentur, Themen für Blogartikel zu entwickeln, die PRIMÄR für GEO (Generative Engine Optimization - zitiert/genannt werden von ChatGPT, Claude, Gemini, Perplexity) und erst sekundär für klassisches Google-Keyword-Ranking geschrieben werden. Das unterscheidet sich von reinem SEO-Keyword-Stacking: KI-Assistenten zitieren Passagen, die eine konkrete Frage klar und eigenständig beantworten, nicht Seiten, die ein Keyword oft wiederholen.
 
-Quelltext (Transkript, Notizen, Content-Lücke oder Stichpunkte, aus denen Themen abgeleitet werden sollen):
+Quelltext (Transkript, Notizen, Content-Lücke, GEO-Sichtbarkeitslücke oder Stichpunkte, aus denen Themen abgeleitet werden sollen):
 """
 ${input}
 """
 
-Aufgabe: Entwickle genau ${count} unterschiedliche Blogartikel-Ideen, die auf dem Quelltext basieren und für organisches Suchmaschinen-Ranking (SEO) UND KI-Antworten (ChatGPT, Google AI) geeignet sind - klare Antworten, konkrete Zahlen/Beispiele statt vager Aussagen. Jede Idee besteht aus:
-- "title": ein konkreter Arbeitstitel (max. 12 Wörter).
-- "topic": 3-5 Sätze, die beschreiben, welche Fragen der Artikel beantwortet und welcher Blickwinkel aus dem Quelltext aufgegriffen wird.
-- "targetKeyword": das Haupt-Suchbegriff/Keyword, auf das der Artikel optimiert werden soll.
+Aufgabe: Entwickle genau ${count} unterschiedliche Blogartikel-Ideen, die auf dem Quelltext basieren. Jede Idee besteht aus:
+- "title": ein konkreter Arbeitstitel (max. 12 Wörter) - wenn sinnvoll als echte Frage formuliert, genau so, wie ein Mandant sie einem KI-Assistenten stellen würde.
+- "topic": 3-5 Sätze, die die konkrete(n) Frage(n) benennen, die der Artikel eigenständig und zitierfähig beantwortet (mit welchem Blickwinkel/welchen Fakten aus dem Quelltext), nicht nur ein grobes Thema.
+- "targetKeyword": das Haupt-Suchbegriff/Keyword, auf das der Artikel zusätzlich optimiert werden soll (SEO bleibt sekundäres Ziel).
 
 ${GERMAN_ONLY} Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (keine Markdown-Codeblöcke, keine Erklärungen davor oder danach), z.B.:
 [{"title": "...", "topic": "...", "targetKeyword": "..."}]`;
@@ -213,6 +214,43 @@ export async function createBlogIdeaFromCompetitorGap(formData: FormData): Promi
   return undefined;
 }
 
+/** Ein-Klick-Idee aus einer GEO-Sichtbarkeitslücke (siehe seo-geo.ts) - ein Prompt, bei dem wir bei keinem KI-Modell genannt/zitiert werden. */
+export async function createBlogIdeaFromGeoGap(formData: FormData): Promise<{ error: string } | undefined> {
+  const session = await requireSession();
+  try {
+    requireAgencyAdmin(session.user.role);
+  } catch {
+    return { error: "Nur Agentur-Admins können Blogartikel-Ideen generieren." };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) return { error: "KI-Funktionen sind noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt)." };
+
+  const promptId = String(formData.get("promptId") ?? "");
+  const monitoredPrompt = await prisma.geoMonitoredPrompt.findUnique({ where: { id: promptId } });
+  if (!monitoredPrompt) return { error: "GEO-Prompt nicht gefunden." };
+
+  const input = `Potenzielle Mandanten fragen KI-Assistenten (ChatGPT, Claude, Gemini, Perplexity) sinngemäß: "${monitoredPrompt.prompt}" - aktuell wird unsere Kanzlei bei keinem dieser Modelle als Antwort genannt oder zitiert. Entwickle einen Blogartikel, der diese Frage so klar, konkret und zitierfähig beantwortet, dass KI-Suchassistenten ihn künftig als Quelle heranziehen (siehe GEO-Optimierung: direkte Antwort zuerst, konkrete Fakten, klare Markennennung).`;
+
+  try {
+    const ideas = await generateIdeasFromInput(input, 1);
+    if (ideas.length === 0) return { error: "Die KI hat keine verwertbare Idee geliefert." };
+
+    const idea = ideas[0];
+    await prisma.blogPost.create({
+      data: {
+        title: idea.title,
+        topic: idea.topic,
+        targetKeyword: idea.targetKeyword,
+        ideaSourceLabel: `GEO-Sichtbarkeitslücke: "${monitoredPrompt.prompt}" (bei keinem KI-Modell genannt)`,
+      },
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "KI-Anfrage fehlgeschlagen." };
+  }
+
+  revalidatePath(SEO_TAB_PATH);
+  return undefined;
+}
+
 /** Phase 2: schreibt den vollständigen Artikel (Markdown + SEO-Metadaten) zu einer bereits generierten Idee. */
 export async function generateBlogPostDraft(formData: FormData): Promise<{ error: string } | { content: string }> {
   const session = await requireSession();
@@ -227,16 +265,23 @@ export async function generateBlogPostDraft(formData: FormData): Promise<{ error
   if (!post.title || !post.topic) return { error: "Dieser Beitrag hat keine Ideen-Grundlage (Titel/Thema) für die Texterstellung." };
   if (!process.env.ANTHROPIC_API_KEY) return { error: "KI-Funktionen sind noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt)." };
 
-  const prompt = `Du schreibst einen vollständigen SEO-Blogartikel für eine Kanzlei-Marketing-Agentur (Zielgruppe: potenzielle Mandanten/Bewerber).
+  const settings = await getPlatformSettings();
+  const brandName = settings.geoTargetBrandName || "Kanzlei Brands";
+
+  const prompt = `Du schreibst einen vollständigen Blogartikel für ${brandName} (eine Kanzlei-Marketing-Agentur, Zielgruppe: potenzielle Mandanten/Bewerber). Das PRIMÄRE Ziel ist GEO (Generative Engine Optimization): ChatGPT, Claude, Gemini und Perplexity sollen diesen Artikel künftig als Quelle zitieren und ${brandName} dabei namentlich nennen, wenn jemand eine passende Frage stellt. Klassisches Google-Ranking (SEO) ist ein sekundäres Ziel, das sich aus guter GEO-Struktur meist von selbst ergibt - NICHT umgekehrt: schreib keinesfalls einen Text, der das Haupt-Keyword nur oft wiederholt ("Keyword-Stacking"), ohne eine Frage wirklich konkret zu beantworten.
 
 Arbeitstitel: ${post.title}
 Worum es gehen soll: ${post.topic}
-Haupt-Keyword: ${post.targetKeyword ?? "(kein spezifisches Keyword vorgegeben)"}
+Haupt-Keyword (sekundäres SEO-Ziel, natürlich einbauen, nicht künstlich wiederholen): ${post.targetKeyword ?? "(kein spezifisches Keyword vorgegeben)"}
 
-Aufgabe: Schreibe einen vollständigen, gut strukturierten Artikel (ca. 800-1200 Wörter) als Markdown:
-- Direkte, klare Antwort(en) gleich zu Beginn (wichtig sowohl für Google-Snippets als auch für KI-Antworten/Zitierbarkeit).
-- Klare Zwischenüberschriften (##), konkrete Beispiele/Zahlen statt vager Aussagen, wo möglich.
-- Ein kurzes Fazit am Ende.
+Aufgabe: Schreibe einen vollständigen Artikel (ca. 800-1200 Wörter) als Markdown, der folgende GEO-Zitierfähigkeits-Regeln einhält:
+- Direkte, vollständige Antwort auf die Kernfrage bereits im ersten Absatz (2-4 Sätze) - muss für sich allein stehend zitierbar sein, ohne den Rest des Artikels zu brauchen.
+- Danach eine kurze Stichpunkt-Zusammenfassung (3-5 Punkte) der wichtigsten Fakten/Antworten - das ist der am leichtesten von KI-Modellen extrahierbare Teil.
+- Nenne "${brandName}" explizit im Fließtext (z.B. "Bei ${brandName} empfehlen wir...") statt nur unpersönlich "wir" oder "man" zu schreiben - KI-Antworten können eine Aussage nur einer Marke zuordnen, wenn sie dort auch konkret benannt wird.
+- Zwischenüberschriften (##) nach Möglichkeit als echte Fragen formuliert, genau so, wie ein Mandant sie einem KI-Assistenten stellen würde (z.B. "Wie lange dauert ein Markenanmeldeverfahren?" statt "Dauer der Anmeldung").
+- Kurze, in sich geschlossene Absätze (2-4 Sätze) - lange Schachtelsätze sind für KI-Modelle schwerer sauber zu zitieren.
+- Konkrete Zahlen, Fristen, Beispiele oder Fallkonstellationen statt vager Marketing-Aussagen.
+- Ein FAQ-Abschnitt am Ende mit 3-4 kurzen, in sich abgeschlossenen Frage-Antwort-Paaren zu naheliegenden Anschlussfragen.
 Gib danach, getrennt durch eine Zeile "---META---", noch metaTitle (max. 60 Zeichen) und metaDescription (max. 155 Zeichen) im Format:
 metaTitle: ...
 metaDescription: ...

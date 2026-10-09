@@ -12,11 +12,13 @@ import {
   triggerSearchVolumeEnrichmentNow,
   triggerBacklinkProfileSyncNow,
 } from "@/lib/actions/seo-dataforseo";
+import { updateGeoTargetBrandName } from "@/lib/actions/seo-geo";
 
 export type DataForSeoState = {
   configured: boolean;
   enabled: boolean;
   targetDomain: string | null;
+  geoTargetBrandName: string | null;
   lastSyncedAt: string | null;
   lastSyncError: string | null;
 };
@@ -31,7 +33,9 @@ export type DataForSeoState = {
  */
 export function DataForSeoConfigPanel({ state }: { state: DataForSeoState }) {
   const [domain, setDomain] = useState(state.targetDomain ?? "");
+  const [brandName, setBrandName] = useState(state.geoTargetBrandName ?? "");
   const [isSavingDomain, startSavingDomain] = useTransition();
+  const [isSavingBrandName, startSavingBrandName] = useTransition();
   const [isToggling, startToggling] = useTransition();
   const [isEnrichingVolume, startEnrichingVolume] = useTransition();
   const [isSyncingBacklinks, startSyncingBacklinks] = useTransition();
@@ -42,6 +46,15 @@ export function DataForSeoConfigPanel({ state }: { state: DataForSeoState }) {
     startSavingDomain(async () => {
       await updateDataForSeoTargetDomain(fd);
       toast.success("Zieldomain gespeichert.");
+    });
+  }
+
+  function handleSaveBrandName() {
+    const fd = new FormData();
+    fd.set("brandName", brandName.trim());
+    startSavingBrandName(async () => {
+      await updateGeoTargetBrandName(fd);
+      toast.success("Markenname gespeichert.");
     });
   }
 
@@ -84,6 +97,17 @@ export function DataForSeoConfigPanel({ state }: { state: DataForSeoState }) {
           <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="z.B. kanzlei-brands.de" className="w-56" />
         </div>
         <Button type="button" size="sm" variant="outline" disabled={isSavingDomain} onClick={handleSaveDomain}>
+          <LinkIcon className="size-4" />
+          Speichern
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2 border-t pt-2">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Markenname (für GEO-Sichtbarkeit, z.B. &quot;Kanzlei Brands&quot;)</label>
+          <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="z.B. Kanzlei Brands" className="w-56" />
+        </div>
+        <Button type="button" size="sm" variant="outline" disabled={isSavingBrandName} onClick={handleSaveBrandName}>
           <LinkIcon className="size-4" />
           Speichern
         </Button>

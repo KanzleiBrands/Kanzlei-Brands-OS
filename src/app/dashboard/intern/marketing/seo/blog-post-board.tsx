@@ -46,10 +46,11 @@ export function BlogPostBoard({ posts, canManage }: { posts: BlogPostItem[]; can
         {COLUMNS.map((col) => {
           const columnPosts = posts.filter((p) => p.status === col.status);
           return (
-            <div key={col.status} className="flex w-64 shrink-0 flex-col gap-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                {col.label} ({columnPosts.length})
-              </p>
+            <div key={col.status} className="flex w-64 shrink-0 flex-col gap-2 rounded-xl border bg-muted/30 p-2.5">
+              <div className="flex items-center justify-between px-0.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase">{col.label}</p>
+                <span className="text-xs text-muted-foreground">{columnPosts.length}</span>
+              </div>
               <div className="flex flex-col gap-2">
                 {columnPosts.map((post) => (
                   <button

@@ -7,11 +7,12 @@ import { BlogGenerateIdeasDialog } from "./blog-generate-ideas-dialog";
 import { SeoGapsList, type SeoContentGapItem } from "./seo-gaps-list";
 import { SeoBacklinksList, type SeoBacklinkItem, type SeoBacklinkProfileItem } from "./seo-backlinks-list";
 import { SeoCompetitorGapsList, type SeoCompetitorDomainItem, type SeoCompetitorGapItem } from "./seo-competitor-gaps-list";
+import { GeoVisibilityList, type GeoPromptItem } from "./geo-visibility-list";
 import { GscConnectionPanel } from "./gsc-connection-panel";
 import { GscConnectStatus } from "./gsc-connect-status";
 import { DataForSeoConfigPanel, type DataForSeoState } from "./dataforseo-config-panel";
 
-type View = "board" | "gaps" | "competitors" | "backlinks" | "config";
+type View = "board" | "gaps" | "competitors" | "geo" | "backlinks" | "config";
 
 /**
  * SEO/GEO-Blog-Pipeline (v1) - Ersatz für byclaire.co, siehe page.tsx für den
@@ -27,6 +28,7 @@ export function SeoBlogTab({
   backlinkProfile,
   competitorDomains,
   competitorGaps,
+  geoPrompts,
   gsc,
   dataForSeo,
 }: {
@@ -37,6 +39,7 @@ export function SeoBlogTab({
   backlinkProfile: SeoBacklinkProfileItem;
   competitorDomains: SeoCompetitorDomainItem[];
   competitorGaps: SeoCompetitorGapItem[];
+  geoPrompts: GeoPromptItem[];
   gsc: { connected: boolean; siteUrl: string | null; lastSyncedAt: string | null; lastSyncError: string | null };
   dataForSeo: DataForSeoState;
 }) {
@@ -49,6 +52,9 @@ export function SeoBlogTab({
         <div className="flex gap-1.5">
           <Button type="button" size="sm" variant={view === "board" ? "default" : "outline"} onClick={() => setView("board")}>
             Board
+          </Button>
+          <Button type="button" size="sm" variant={view === "geo" ? "default" : "outline"} onClick={() => setView("geo")}>
+            GEO-Sichtbarkeit {geoPrompts.length > 0 && `(${geoPrompts.length})`}
           </Button>
           <Button type="button" size="sm" variant={view === "gaps" ? "default" : "outline"} onClick={() => setView("gaps")}>
             Content-Lücken {gaps.length > 0 && `(${gaps.length})`}
@@ -67,6 +73,7 @@ export function SeoBlogTab({
       </div>
 
       {view === "board" && <BlogPostBoard posts={posts} canManage={canManage} />}
+      {view === "geo" && <GeoVisibilityList prompts={geoPrompts} brandNameConfigured={Boolean(dataForSeo.geoTargetBrandName)} />}
       {view === "gaps" && <SeoGapsList gaps={gaps} />}
       {view === "competitors" && <SeoCompetitorGapsList domains={competitorDomains} gaps={competitorGaps} />}
       {view === "backlinks" && <SeoBacklinksList backlinks={backlinks} profile={backlinkProfile} />}
