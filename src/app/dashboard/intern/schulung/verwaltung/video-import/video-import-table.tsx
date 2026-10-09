@@ -98,6 +98,7 @@ export function VideoImportTable({
                   <div className="flex flex-col gap-1">
                     <Badge variant={status.variant} className="w-fit">
                       {status.label}
+                      {match.score > 0 && ` · ${Math.round(match.score * 100)}%`}
                     </Badge>
                     {selectedLesson?.hasVideo && (
                       <span className="text-xs text-destructive">Überschreibt vorhandenes Video</span>
