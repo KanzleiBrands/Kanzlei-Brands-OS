@@ -37,8 +37,11 @@ export function VideoImportTable({
   const [selection, setSelection] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(matches.map((m) => [m.blob.url, m.suggestedLessonId])),
   );
+  // "Mehrdeutig" (mehrere ähnlich gute Kandidaten) und "kein_treffer" brauchen
+  // echtes manuelles Eingreifen - bei "sicher" und "unsicher" gibt es jeweils
+  // genau einen vorgeschlagenen Kandidaten, den übernehmen wir vorausgewählt.
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(matches.map((m) => [m.blob.url, m.status === "sicher"])),
+    Object.fromEntries(matches.map((m) => [m.blob.url, m.status === "sicher" || m.status === "unsicher"])),
   );
   const [isPending, startTransition] = useTransition();
 
@@ -114,7 +117,12 @@ export function VideoImportTable({
                     }}
                   >
                     <SelectTrigger className="w-full min-w-72">
-                      <SelectValue placeholder="Lektion wählen..." />
+                      <SelectValue placeholder="Lektion wählen...">
+                        {(value: string) => {
+                          const lesson = lessons.find((l) => l.id === value);
+                          return lesson ? lessonLabel(lesson) : "Lektion wählen...";
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {sortedLessons.map((lesson) => (
